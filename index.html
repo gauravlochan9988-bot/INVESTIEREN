@@ -4,15 +4,25 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Investieren MVP</title>
-    <script>
-      if (window.location.protocol === "file:") {
-        window.location.replace("http://127.0.0.1:8000/");
-      }
-    </script>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
-    <div class="app-shell">
+    <div id="authOverlay" class="auth-overlay">
+      <div class="auth-card">
+        <div class="auth-mark">IA</div>
+        <p class="auth-kicker">Private Access</p>
+        <h1>Enter password to open the dashboard</h1>
+        <p class="auth-copy">This dashboard is protected for this session.</p>
+        <form id="authForm" class="auth-form">
+          <label class="auth-label" for="authPassword">Password</label>
+          <input id="authPassword" class="auth-input" type="password" placeholder="Password" autocomplete="current-password" />
+          <button class="primary-button auth-button" type="submit">Unlock dashboard</button>
+          <p id="authError" class="auth-error" hidden>Wrong password</p>
+        </form>
+      </div>
+    </div>
+
+    <div class="app-shell" id="appShell" hidden>
       <header class="topbar">
         <button class="brand-block brand-button" id="brandHomeButton" type="button" aria-label="Reset dashboard">
           <span class="brand-mark">IA</span>
@@ -25,14 +35,14 @@
         <div class="search-wrap">
           <label class="searchbar" for="searchInput">
             <span class="search-icon"></span>
-            <input id="searchInput" type="search" placeholder="Search stock, ETF or company" autocomplete="off" />
+            <input id="searchInput" type="search" placeholder="Search all stocks, ETFs or companies" autocomplete="off" />
           </label>
           <div id="searchSuggestions" class="search-suggestions" hidden></div>
         </div>
 
         <div class="topbar-actions">
-          <div id="statusMessage" class="status-text" aria-live="polite">Live data</div>
-          <button class="icon-button" id="refreshStocks" type="button" aria-label="Refresh dashboard" title="Refresh dashboard">🔄</button>
+          <button class="ghost-button topbar-action-button" id="logoutButton" type="button" aria-label="Log out" title="Log out">Logout</button>
+          <button class="icon-button" id="refreshStocks" type="button" aria-label="Refresh dashboard" title="Refresh dashboard">⟳</button>
         </div>
       </header>
 
@@ -57,9 +67,9 @@
                 <div>
                   <p class="panel-kicker">Selected Asset</p>
                   <h2 id="analysisTitle">Select a stock to start analysis</h2>
-                  <p id="selectedChangeValue" class="hero-subline">Choose a stock from search or watchlist to load the decision view.</p>
+                  <p id="selectedChangeValue" class="hero-subline">Search all available stocks and ETFs to load live analysis.</p>
                 </div>
-                <div id="analysisBadge" class="signal-badge signal-badge-muted">Decision view</div>
+                <div id="analysisBadge" class="signal-badge signal-badge-muted" hidden>Decision view</div>
               </div>
 
               <div id="loadingState" class="loading-state" hidden>
@@ -67,21 +77,34 @@
                 <span>Loading analysis...</span>
               </div>
 
+              <section id="homeStateCard" class="home-state-card">
+                <p class="home-state-kicker">Start Here</p>
+                <h3>Select a stock to start analysis</h3>
+                <p class="home-state-copy">
+                  Search or choose a stock from the watchlist to load live analysis.
+                </p>
+                <div class="home-state-steps" aria-label="How to use the dashboard">
+                  <span>1. Search a symbol</span>
+                  <span>2. Review risk and bias</span>
+                  <span>3. Only act on clean setups</span>
+                </div>
+              </section>
+
               <div id="noTradeBanner" class="no-trade-banner" hidden>
                 <div class="no-trade-icon">!</div>
                 <div>
-                  <strong id="noTradeTitle">Aktuell kein guter Einstieg - Markt unsicher</strong>
-                  <p id="noTradeReason">Waiting for a cleaner setup.</p>
+                  <strong id="noTradeTitle">NO TRADE</strong>
+                  <p id="noTradeReason">Market conditions are unclear right now.</p>
                 </div>
               </div>
 
-              <div class="decision-panel">
+              <div id="decisionPanel" class="decision-panel" hidden>
                 <div class="decision-main">
-                  <div class="decision-primary">
-                    <span class="decision-label">Recommendation</span>
-                    <strong id="recommendationValue" class="decision-recommendation">--</strong>
-                    <p id="riskValue" class="decision-risk">Risk: --</p>
-                  </div>
+                <div class="decision-primary">
+                  <span class="decision-label">Recommendation</span>
+                  <strong id="recommendationValue" class="decision-recommendation">--</strong>
+                  <p id="riskValue" class="decision-risk">Risk: --</p>
+                </div>
 
                   <div class="decision-side">
                     <article class="decision-support-card">
@@ -95,14 +118,14 @@
 
                       <div class="decision-fact-row decision-fact-row-strong">
                         <div>
-                          <span class="decision-fact-label">Confidence</span>
+                          <span class="decision-fact-label">Conviction</span>
                           <strong id="confidenceValue" class="decision-fact-value">--</strong>
                         </div>
                         <div class="decision-confidence">
                           <div class="confidence-track">
                             <div id="confidenceBar" class="confidence-bar"></div>
                           </div>
-                          <p id="confidenceNote">Signal quality, not certainty.</p>
+                          <p id="confidenceNote">Live analysis appears after you pick a stock.</p>
                         </div>
                       </div>
                     </article>
@@ -133,7 +156,7 @@
                 </div>
               </div>
 
-              <section class="action-panel">
+              <section id="actionPanel" class="action-panel" hidden>
                 <div class="panel-head panel-head-tight">
                   <div>
                     <p class="panel-kicker">Trade Setup</p>
@@ -167,7 +190,7 @@
             </div>
           </section>
 
-          <section class="panel chart-panel">
+          <section id="chartPanel" class="panel chart-panel" hidden>
             <div class="panel-head panel-head-tight">
               <div>
                 <p class="panel-kicker">Chart</p>
@@ -188,7 +211,7 @@
             </div>
           </section>
 
-          <details class="panel signals-panel">
+          <details id="signalsPanel" class="panel signals-panel" hidden>
             <summary>
               <div>
                 <p class="panel-kicker">Signal Stack</p>
@@ -198,7 +221,7 @@
             <div id="signalsGrid" class="signals-grid"></div>
           </details>
 
-          <section class="panel detail-section context-section">
+          <section id="contextSection" class="panel detail-section context-section" hidden>
             <div class="panel-head panel-head-tight">
               <div>
                 <p class="panel-kicker">Need attention</p>
@@ -246,6 +269,7 @@
                 <p class="panel-kicker">Portfolio</p>
                 <h3>Positions and P/L</h3>
               </div>
+              <span class="panel-section-note">Manual tracking only</span>
             </div>
 
             <div class="portfolio-summary-grid">
@@ -268,29 +292,36 @@
             </div>
 
             <div class="portfolio-layout">
-              <form id="positionForm" class="position-form">
-                <input type="hidden" id="positionId" />
-                <label>
-                  <span>Symbol</span>
-                  <select id="symbolInput" required></select>
-                </label>
-                <label>
-                  <span>Quantity</span>
-                  <input id="quantityInput" type="number" min="0.0001" step="0.0001" required />
-                </label>
-                <label>
-                  <span>Average Price</span>
-                  <input id="priceInput" type="number" min="0.01" step="0.01" required />
-                </label>
-                <label>
-                  <span>Opened At</span>
-                  <input id="openedAtInput" type="date" required />
-                </label>
-                <div class="form-actions">
-                  <button class="primary-button" id="saveButton" type="submit">Add position</button>
-                  <button class="ghost-button" id="cancelEditButton" type="button" hidden>Cancel</button>
+              <div class="portfolio-form-shell">
+                <div class="portfolio-form-copy">
+                  <strong>Track a position</strong>
+                  <p>Add or update positions so P/L stays grounded in your real entries.</p>
                 </div>
-              </form>
+                <form id="positionForm" class="position-form">
+                  <input type="hidden" id="positionId" />
+                  <label>
+                    <span>Symbol</span>
+                    <select id="symbolInput" required></select>
+                  </label>
+                  <label>
+                    <span>Quantity</span>
+                    <input id="quantityInput" type="number" min="0.0001" step="0.0001" required />
+                  </label>
+                  <label>
+                    <span>Average Price</span>
+                    <input id="priceInput" type="number" min="0.01" step="0.01" required />
+                  </label>
+                  <label>
+                    <span>Opened At</span>
+                    <input id="openedAtInput" type="date" required />
+                  </label>
+                  <div class="form-actions">
+                    <button class="primary-button" id="saveButton" type="submit">Add position</button>
+                    <button class="ghost-button" id="cancelEditButton" type="button" hidden>Cancel</button>
+                  </div>
+                </form>
+                <p class="portfolio-form-note">This section is for tracking and review, not for automatic execution.</p>
+              </div>
 
               <div id="portfolioBody" class="portfolio-list"></div>
             </div>
