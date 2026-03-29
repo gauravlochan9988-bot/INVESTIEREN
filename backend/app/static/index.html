@@ -7,7 +7,22 @@
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
-    <div class="app-shell">
+    <div id="authOverlay" class="auth-overlay">
+      <div class="auth-card">
+        <div class="auth-mark">IA</div>
+        <p class="auth-kicker">Private Access</p>
+        <h1>Enter password to open the dashboard</h1>
+        <p class="auth-copy">This dashboard is protected for this session.</p>
+        <form id="authForm" class="auth-form">
+          <label class="auth-label" for="authPassword">Password</label>
+          <input id="authPassword" class="auth-input" type="password" placeholder="Password" autocomplete="current-password" />
+          <button class="primary-button auth-button" type="submit">Unlock dashboard</button>
+          <p id="authError" class="auth-error" hidden>Wrong password</p>
+        </form>
+      </div>
+    </div>
+
+    <div class="app-shell" id="appShell" hidden>
       <header class="topbar">
         <button class="brand-block brand-button" id="brandHomeButton" type="button" aria-label="Reset dashboard">
           <span class="brand-mark">IA</span>
@@ -26,6 +41,7 @@
         </div>
 
         <div class="topbar-actions">
+          <button class="ghost-button topbar-action-button" id="logoutButton" type="button" aria-label="Log out" title="Log out">Logout</button>
           <button class="icon-button" id="refreshStocks" type="button" aria-label="Refresh dashboard" title="Refresh dashboard">⟳</button>
         </div>
       </header>
