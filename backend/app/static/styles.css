@@ -544,7 +544,7 @@ select:focus-visible,
 
 .content-grid {
   display: grid;
-  grid-template-columns: 312px minmax(0, 1fr);
+  grid-template-columns: 372px minmax(0, 1fr);
   align-items: stretch;
   gap: 20px;
 }
@@ -603,7 +603,8 @@ select:focus-visible,
   align-content: start;
   max-height: calc(100vh - 180px);
   padding-right: 4px;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .watchlist-item {
@@ -656,10 +657,17 @@ select:focus-visible,
   gap: 12px;
 }
 
+.watchlist-item-left {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .watchlist-item-right {
   flex-direction: column;
   align-items: flex-end;
   gap: 3px;
+  flex: 0 0 auto;
+  min-width: 92px;
 }
 
 .watchlist-item-left strong,
@@ -670,6 +678,7 @@ select:focus-visible,
 .watchlist-item-left strong {
   letter-spacing: 0.03em;
   font-size: 0.95rem;
+  white-space: nowrap;
 }
 
 .watchlist-item-left span,
@@ -698,9 +707,13 @@ select:focus-visible,
   color: rgba(243, 247, 251, 0.62);
 }
 
+.watchlist-item-left div {
+  min-width: 0;
+}
+
 .watchlist-item-left span {
   display: block;
-  max-width: 214px;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1741,7 +1754,7 @@ select:focus {
 
 @media (max-width: 1480px) {
   .content-grid {
-    grid-template-columns: 308px minmax(0, 1fr);
+    grid-template-columns: 340px minmax(0, 1fr);
   }
 
   .portfolio-summary-grid {
