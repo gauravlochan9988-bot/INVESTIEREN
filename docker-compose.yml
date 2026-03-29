@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: investieren-postgres
+    environment:
+      POSTGRES_DB: investieren
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - investieren_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d investieren"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  investieren_postgres_data:

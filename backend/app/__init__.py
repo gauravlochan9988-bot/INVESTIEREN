@@ -1,0 +1,1 @@
+"""Investieren MVP application package."""

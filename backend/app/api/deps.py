@@ -1,0 +1,107 @@
+from functools import lru_cache
+
+from app.core.config import get_settings
+from app.repositories.portfolio import PortfolioRepository
+from app.services.analysis import AnalysisService
+from app.services.macro import MacroContextService
+from app.services.market_data import MarketDataService, YFinanceProvider
+from app.services.news import (
+    ChainedNewsProvider,
+    FinnhubNewsProvider,
+    NewsSentimentService,
+    YFinanceNewsProvider,
+)
+from app.services.portfolio import PortfolioService
+from app.services.search import StockSearchService, build_stock_search_service
+from app.services.summary import SummaryService
+
+
+@lru_cache
+def get_market_data_service_instance() -> MarketDataService:
+    settings = get_settings()
+    return MarketDataService(
+        provider=YFinanceProvider(),
+        allowed_symbols=settings.watchlist,
+        ttl_seconds=settings.market_cache_ttl_seconds,
+    )
+
+
+@lru_cache
+def get_summary_service_instance() -> SummaryService:
+    return SummaryService()
+
+
+@lru_cache
+def get_macro_context_service_instance() -> MacroContextService:
+    settings = get_settings()
+    return MacroContextService(
+        provider=YFinanceProvider(),
+        ttl_seconds=settings.macro_cache_ttl_seconds,
+        market_symbol=settings.macro_market_symbol,
+        usd_symbol=settings.macro_usd_symbol,
+        interest_rate_effect=settings.macro_interest_rate_effect,
+    )
+
+
+@lru_cache
+def get_news_sentiment_service_instance() -> NewsSentimentService:
+    settings = get_settings()
+    provider = (
+        ChainedNewsProvider(
+            [
+                FinnhubNewsProvider(settings.finnhub_api_key),
+                YFinanceNewsProvider(),
+            ]
+        )
+        if settings.finnhub_api_key
+        else YFinanceNewsProvider()
+    )
+    return NewsSentimentService(
+        provider=provider,
+        ttl_seconds=settings.news_cache_ttl_seconds,
+        headline_limit=settings.news_headline_limit,
+    )
+
+
+@lru_cache
+def get_analysis_service_instance() -> AnalysisService:
+    return AnalysisService(
+        market_data_service=get_market_data_service_instance(),
+        macro_context_service=get_macro_context_service_instance(),
+        news_sentiment_service=get_news_sentiment_service_instance(),
+        summary_service=get_summary_service_instance(),
+    )
+
+
+@lru_cache
+def get_portfolio_repository_instance() -> PortfolioRepository:
+    return PortfolioRepository()
+
+
+@lru_cache
+def get_portfolio_service_instance() -> PortfolioService:
+    return PortfolioService(
+        market_data_service=get_market_data_service_instance(),
+        portfolio_repository=get_portfolio_repository_instance(),
+    )
+
+
+def get_market_data_service() -> MarketDataService:
+    return get_market_data_service_instance()
+
+
+def get_analysis_service() -> AnalysisService:
+    return get_analysis_service_instance()
+
+
+def get_portfolio_service() -> PortfolioService:
+    return get_portfolio_service_instance()
+
+
+@lru_cache
+def get_stock_search_service_instance() -> StockSearchService:
+    return build_stock_search_service()
+
+
+def get_stock_search_service() -> StockSearchService:
+    return get_stock_search_service_instance()

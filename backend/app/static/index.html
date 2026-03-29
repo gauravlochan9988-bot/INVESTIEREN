@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Investieren MVP</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand-block">
+          <span class="brand-mark">IA</span>
+          <div>
+            <p class="panel-kicker">Trading Dashboard</p>
+            <h1>Investieren AI</h1>
+          </div>
+        </div>
+
+        <div class="search-wrap">
+          <label class="searchbar" for="searchInput">
+            <span class="search-icon"></span>
+            <input id="searchInput" type="search" placeholder="Search symbol or company" autocomplete="off" />
+          </label>
+          <div id="searchSuggestions" class="search-suggestions" hidden></div>
+        </div>
+
+        <div class="topbar-actions">
+          <div id="statusMessage" class="status-chip">Ready</div>
+          <button class="icon-button" id="refreshStocks" type="button" aria-label="Refresh dashboard">↻</button>
+        </div>
+      </header>
+
+      <div id="errorBanner" class="error-banner" hidden></div>
+
+      <main class="content-grid">
+        <aside class="panel watchlist-panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Watchlist</p>
+              <h2>Tracked names</h2>
+            </div>
+            <span id="watchlistMeta" class="meta-text">Loading market snapshot...</span>
+          </div>
+          <div id="watchlistBody" class="watchlist-list"></div>
+        </aside>
+
+        <div class="dashboard-main">
+          <section class="panel analysis-panel">
+            <div class="analysis-hero">
+              <div class="analysis-hero-top">
+                <div>
+                  <p class="panel-kicker">Selected Asset</p>
+                  <h2 id="analysisTitle">Search for a stock to start analysis</h2>
+                  <p id="selectedChangeValue" class="hero-subline">Choose a stock from search or watchlist to load the decision view.</p>
+                </div>
+                <div id="analysisBadge" class="signal-badge signal-badge-muted">Decision view</div>
+              </div>
+
+              <div id="loadingState" class="loading-state" hidden>Loading analysis...</div>
+
+              <div id="noTradeBanner" class="no-trade-banner" hidden>
+                <div class="no-trade-icon">!</div>
+                <div>
+                  <strong>🚫 Kein sinnvoller Trade aktuell</strong>
+                  <p id="noTradeReason">Waiting for a cleaner setup.</p>
+                </div>
+              </div>
+
+              <div class="decision-panel">
+                <div class="decision-main">
+                <div class="decision-primary">
+                  <span class="decision-label">Recommendation</span>
+                  <strong id="recommendationValue" class="decision-recommendation">--</strong>
+                  <p id="riskValue" class="decision-risk">Risk: --</p>
+                </div>
+
+                  <div class="decision-side">
+                    <article class="decision-support-card">
+                      <div class="decision-fact-row">
+                        <div>
+                          <span class="decision-fact-label">Selected Price</span>
+                          <strong id="selectedPriceValue" class="decision-fact-value">--</strong>
+                        </div>
+                        <p id="selectedPriceLabel" class="decision-fact-note">Waiting for market data</p>
+                      </div>
+
+                      <div class="decision-fact-row decision-fact-row-strong">
+                        <div>
+                          <span class="decision-fact-label">Confidence</span>
+                          <strong id="confidenceValue" class="decision-fact-value">--</strong>
+                        </div>
+                        <div class="decision-confidence">
+                          <div class="confidence-track">
+                            <div id="confidenceBar" class="confidence-bar"></div>
+                          </div>
+                          <p id="confidenceNote">Signal quality, not certainty.</p>
+                        </div>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+
+                <div class="decision-support">
+                  <p id="analysisSummary" class="hero-summary">
+                    Search for a stock to start analysis.
+                  </p>
+
+                  <section class="probability-panel">
+                    <div class="probability-card probability-card-up">
+                      <div class="probability-headline">
+                        <span>Probability Up</span>
+                        <strong id="probabilityUpValue">--</strong>
+                      </div>
+                      <div class="probability-track">
+                        <div id="probabilityUpBar" class="probability-fill probability-fill-up"></div>
+                      </div>
+                    </div>
+                    <div class="probability-card probability-card-down">
+                      <div class="probability-headline">
+                        <span>Probability Down</span>
+                        <strong id="probabilityDownValue">--</strong>
+                      </div>
+                      <div class="probability-track">
+                        <div id="probabilityDownBar" class="probability-fill probability-fill-down"></div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+
+              <section class="action-panel">
+                <div class="panel-head panel-head-tight">
+                  <div>
+                    <p class="panel-kicker">Trade Setup</p>
+                    <h3>Execution basics</h3>
+                  </div>
+                </div>
+                <div class="action-grid">
+                  <article class="action-card">
+                    <span>Entry Signal</span>
+                    <strong id="entrySignalValue" class="decision-value">--</strong>
+                    <p id="entryReasonValue">Waiting for analysis.</p>
+                  </article>
+                  <article class="action-card">
+                    <span>Exit Signal</span>
+                    <strong id="exitSignalValue" class="decision-value">--</strong>
+                    <p id="exitReasonValue">Waiting for analysis.</p>
+                  </article>
+                  <article class="action-card">
+                    <span>Position Size</span>
+                    <strong id="positionSizeValue">--</strong>
+                    <p id="positionSizeReason">No active setup loaded.</p>
+                  </article>
+                  <article class="action-card">
+                    <span>Stop Loss</span>
+                    <strong id="stopLossValue">--</strong>
+                    <p id="stopLossReason">Waiting for analysis.</p>
+                  </article>
+                </div>
+                <p class="timeframe-line">Timeframe: <strong id="timeframeValue">--</strong></p>
+              </section>
+            </div>
+          </section>
+
+          <section class="panel chart-panel">
+            <div class="panel-head panel-head-tight">
+              <div>
+                <p class="panel-kicker">Chart</p>
+                <h3>Price context</h3>
+              </div>
+              <div class="chart-legend">
+                <span class="legend-item"><i class="legend-line legend-line-price"></i>Price</span>
+                <span class="legend-item"><i class="legend-line legend-line-sma20"></i>SMA20</span>
+                <span class="legend-item"><i class="legend-line legend-line-sma50"></i>SMA50</span>
+              </div>
+            </div>
+            <div class="chart-meta">
+              <span>History from backend</span>
+              <strong id="chartSymbol">--</strong>
+            </div>
+            <div class="chart-surface">
+              <svg id="historyChart" viewBox="0 0 720 280" aria-label="Price history chart"></svg>
+            </div>
+          </section>
+
+          <details class="panel signals-panel">
+            <summary>
+              <div>
+                <p class="panel-kicker">Signal Stack</p>
+                <h3>Technical context</h3>
+              </div>
+            </summary>
+            <div id="signalsGrid" class="signals-grid"></div>
+          </details>
+
+          <section class="panel detail-section context-section">
+            <div class="panel-head panel-head-tight">
+              <div>
+                <p class="panel-kicker">Need attention</p>
+                <h3>Warnings and backdrop</h3>
+              </div>
+            </div>
+            <div class="context-block">
+              <div>
+                <p class="context-label">Warnings</p>
+                <div id="warningsList" class="warnings-list">
+                  <span class="warning-empty">No active warnings.</span>
+                </div>
+              </div>
+
+              <div>
+                <div class="context-headline">
+                  <p class="context-label">Macro</p>
+                  <span class="context-subtitle">Backdrop</span>
+                </div>
+                <div class="macro-list">
+                  <div class="macro-row">
+                    <span>Market Trend</span>
+                    <strong id="macroTrendValue">--</strong>
+                  </div>
+                  <div class="macro-row">
+                    <span>Rates</span>
+                    <strong id="ratesValue">--</strong>
+                  </div>
+                  <div class="macro-row">
+                    <span>USD</span>
+                    <strong id="usdValue">--</strong>
+                  </div>
+                  <div class="macro-row">
+                    <span>Macro Score</span>
+                    <strong id="macroScoreValue">--</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel detail-section portfolio-section">
+            <div class="panel-head panel-head-tight">
+              <div>
+                <p class="panel-kicker">Portfolio</p>
+                <h3>Positions and P/L</h3>
+              </div>
+            </div>
+
+            <div class="portfolio-summary-grid">
+              <article class="summary-card">
+                <span>Total Value</span>
+                <strong id="marketValueValue">$0.00</strong>
+              </article>
+              <article class="summary-card">
+                <span>Cost Basis</span>
+                <strong id="costBasisValue">$0.00</strong>
+              </article>
+              <article class="summary-card">
+                <span>Market Value</span>
+                <strong id="portfolioMarketValueValue">$0.00</strong>
+              </article>
+              <article class="summary-card">
+                <span>Total P/L</span>
+                <strong id="pnlValue">$0.00</strong>
+              </article>
+            </div>
+
+            <div class="portfolio-layout">
+              <form id="positionForm" class="position-form">
+                <input type="hidden" id="positionId" />
+                <label>
+                  <span>Symbol</span>
+                  <select id="symbolInput" required></select>
+                </label>
+                <label>
+                  <span>Quantity</span>
+                  <input id="quantityInput" type="number" min="0.0001" step="0.0001" required />
+                </label>
+                <label>
+                  <span>Average Price</span>
+                  <input id="priceInput" type="number" min="0.01" step="0.01" required />
+                </label>
+                <label>
+                  <span>Opened At</span>
+                  <input id="openedAtInput" type="date" required />
+                </label>
+                <div class="form-actions">
+                  <button class="primary-button" id="saveButton" type="submit">Add position</button>
+                  <button class="ghost-button" id="cancelEditButton" type="button" hidden>Cancel</button>
+                </div>
+              </form>
+
+              <div id="portfolioBody" class="portfolio-list"></div>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    </div>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
