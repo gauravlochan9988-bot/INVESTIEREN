@@ -1529,19 +1529,30 @@ function renderPortfolio(snapshot) {
   }
 
   snapshot.positions.forEach((position) => {
+    const symbolName = state.symbolDirectory.get(position.symbol) || position.symbol;
     const card = document.createElement("article");
     card.className = "position-card";
     card.innerHTML = `
       <div class="position-card-top">
-        <div>
+        <div class="position-symbol-meta">
           <strong>${position.symbol}</strong>
-          <p>${position.quantity} shares · opened ${position.opened_at}</p>
+          <span>${symbolName}</span>
         </div>
         <span class="${position.pnl >= 0 ? "tone-positive" : "tone-negative"}">${percent(position.pnl_percent)}</span>
       </div>
       <div class="position-meta">
-        <p>Average ${currency(position.average_price)} · Current ${currency(position.current_price)}</p>
-        <p>Value ${currency(position.market_value)} · P/L ${currency(position.pnl)}</p>
+        <div class="position-pair">
+          <span>Exposure</span>
+          <strong>${position.quantity} shares</strong>
+        </div>
+        <div class="position-pair">
+          <span>Average / Current</span>
+          <strong>${currency(position.average_price)} / ${currency(position.current_price)}</strong>
+        </div>
+        <div class="position-pair">
+          <span>Value / P&amp;L</span>
+          <strong>${currency(position.market_value)} / ${currency(position.pnl)}</strong>
+        </div>
       </div>
       <div class="row-actions">
         <button class="row-button" data-edit="${position.id}" type="button">Edit</button>

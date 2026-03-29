@@ -318,7 +318,7 @@ select {
 
 .search-wrap {
   position: relative;
-  width: min(100%, 900px);
+  width: min(100%, 980px);
   justify-self: stretch;
 }
 
@@ -544,7 +544,7 @@ select:focus-visible,
 
 .content-grid {
   display: grid;
-  grid-template-columns: 356px minmax(0, 1fr);
+  grid-template-columns: 312px minmax(0, 1fr);
   align-items: stretch;
   gap: 20px;
 }
@@ -564,8 +564,11 @@ select:focus-visible,
 
 .watchlist-panel {
   display: grid;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 16px;
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - 48px);
 }
 
 .watchlist-panel .panel-head {
@@ -598,6 +601,9 @@ select:focus-visible,
 
 .watchlist-list {
   align-content: start;
+  max-height: calc(100vh - 180px);
+  padding-right: 4px;
+  overflow: auto;
 }
 
 .watchlist-item {
@@ -724,7 +730,7 @@ select:focus-visible,
 
 .dashboard-main {
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 
 .analysis-panel {
@@ -765,7 +771,7 @@ select:focus-visible,
 
 .analysis-hero {
   display: grid;
-  gap: 18px;
+  gap: 20px;
 }
 
 .analysis-hero-top {
@@ -849,13 +855,16 @@ select:focus-visible,
 .home-state-card {
   display: grid;
   gap: 14px;
-  padding: 22px 24px;
+  min-height: 256px;
+  padding: 28px 30px;
+  align-content: center;
   border: 1px solid rgba(98, 174, 252, 0.18);
   border-radius: 24px;
   background:
     radial-gradient(circle at top left, rgba(98, 174, 252, 0.14), transparent 34%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    radial-gradient(circle at bottom right, rgba(37, 196, 125, 0.08), transparent 28%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 24px 54px rgba(3, 8, 14, 0.18);
 }
 
 .home-state-kicker {
@@ -875,7 +884,7 @@ select:focus-visible,
 
 .home-state-copy {
   margin: 0;
-  max-width: 62ch;
+  max-width: 54ch;
   color: rgba(243, 247, 251, 0.84);
   line-height: 1.6;
 }
@@ -957,20 +966,22 @@ select:focus-visible,
 
 .decision-main {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
-  gap: 12px;
+  grid-template-columns: minmax(0, 1.48fr) minmax(300px, 0.72fr);
+  gap: 14px;
 }
 
 .decision-primary {
   display: grid;
   align-content: start;
-  gap: 8px;
-  padding: 24px 26px;
+  gap: 10px;
+  min-height: 212px;
+  padding: 28px 28px 26px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 22px;
   background:
-    radial-gradient(circle at top left, rgba(98, 174, 252, 0.2), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025));
+    radial-gradient(circle at top left, rgba(98, 174, 252, 0.22), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.04), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.025));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   position: relative;
   overflow: hidden;
@@ -989,8 +1000,8 @@ select:focus-visible,
 .decision-primary::after {
   content: "";
   position: absolute;
-  inset: auto -20% -52% 32%;
-  height: 140px;
+  inset: auto -16% -48% 28%;
+  height: 180px;
   background: radial-gradient(circle, rgba(255, 255, 255, 0.06), transparent 62%);
   pointer-events: none;
 }
@@ -1006,9 +1017,9 @@ select:focus-visible,
 .decision-recommendation {
   display: block;
   margin: 0;
-  font-size: clamp(4.8rem, 9vw, 7.8rem);
-  line-height: 0.82;
-  letter-spacing: -0.09em;
+  font-size: clamp(5.2rem, 9vw, 8.2rem);
+  line-height: 0.8;
+  letter-spacing: -0.1em;
   font-family: var(--font-display);
   font-weight: 800;
   text-shadow: 0 16px 42px rgba(0, 0, 0, 0.34);
@@ -1057,7 +1068,8 @@ select:focus-visible,
 .decision-support-card {
   display: grid;
   gap: 14px;
-  padding: 16px;
+  height: 100%;
+  padding: 18px;
   background:
     linear-gradient(135deg, rgba(98, 174, 252, 0.1), rgba(37, 196, 125, 0.08)),
     rgba(255, 255, 255, 0.03);
@@ -1198,13 +1210,14 @@ select:focus-visible,
 .action-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .action-card {
   display: grid;
   gap: 7px;
-  padding: 12px 13px;
+  min-height: 134px;
+  padding: 14px;
   background: rgba(255, 255, 255, 0.02);
 }
 
@@ -1500,23 +1513,56 @@ select:focus-visible,
 .portfolio-section {
   display: grid;
   gap: 18px;
+  background:
+    radial-gradient(circle at top left, rgba(98, 174, 252, 0.06), transparent 20%),
+    linear-gradient(180deg, rgba(12, 22, 33, 0.98), rgba(10, 18, 28, 0.98));
 }
 
 .portfolio-summary-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 
 .summary-card {
-  padding: 16px;
+  min-height: 110px;
+  padding: 16px 18px;
 }
 
 .portfolio-layout {
   display: grid;
-  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
   align-items: start;
   gap: 18px;
+}
+
+.portfolio-form-shell {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at top left, rgba(98, 174, 252, 0.08), transparent 26%),
+    rgba(255, 255, 255, 0.03);
+}
+
+.portfolio-form-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.portfolio-form-copy strong {
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.portfolio-form-copy p,
+.portfolio-form-note {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+  font-size: 0.9rem;
 }
 
 .position-form {
@@ -1581,7 +1627,12 @@ select:focus {
 }
 
 .position-card {
-  padding: 16px;
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.03), transparent 22%),
+    rgba(255, 255, 255, 0.026);
 }
 
 .position-card strong {
@@ -1589,10 +1640,50 @@ select:focus {
   margin-bottom: 4px;
 }
 
+.portfolio-list {
+  max-height: 620px;
+  padding-right: 4px;
+  overflow: auto;
+}
+
+.position-symbol-meta {
+  display: grid;
+  gap: 2px;
+}
+
+.position-symbol-meta strong {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.position-symbol-meta span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .position-meta {
   display: grid;
-  gap: 6px;
-  margin: 12px 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.position-pair {
+  display: grid;
+  gap: 4px;
+}
+
+.position-pair span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.position-pair strong {
+  margin: 0;
+  font-size: 0.96rem;
+  letter-spacing: -0.02em;
 }
 
 .position-card .tone-positive,
@@ -1652,6 +1743,10 @@ select:focus {
   .content-grid {
     grid-template-columns: 308px minmax(0, 1fr);
   }
+
+  .portfolio-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 1260px) {
@@ -1666,6 +1761,12 @@ select:focus {
   .watchlist-panel {
     position: static;
     max-height: none;
+  }
+
+  .watchlist-list,
+  .portfolio-list {
+    max-height: none;
+    overflow: visible;
   }
 
   .portfolio-layout {
@@ -1691,6 +1792,10 @@ select:focus {
   .bias-panel,
   .action-grid,
   .portfolio-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .position-meta {
     grid-template-columns: 1fr;
   }
 
