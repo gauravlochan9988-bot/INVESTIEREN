@@ -224,12 +224,12 @@ function stockMatchesQuery(stock, query) {
   );
 }
 
-function searchMatches() {
-  const query = normalizedSearchQuery();
-  if (!query) {
-    return state.stocks;
+function directSymbolCandidate() {
+  const candidate = state.searchQuery.trim().toUpperCase().replaceAll(".", "-");
+  if (!candidate) {
+    return null;
   }
-  return state.stocks.filter((stock) => stockMatchesQuery(stock, query));
+  return candidate.length >= 2 && /^[A-Z][A-Z0-9-]{0,9}$/.test(candidate) ? candidate : null;
 }
 
 function formatSignalValue(signal) {
@@ -267,13 +267,77 @@ function signalListFromPayload(signals) {
   return Object.values(signals || {}).filter(Boolean);
 }
 
+function knownSymbols() {
+  const merged = [];
+  const seen = new Set();
+
+  const pushSymbol = (symbol, name) => {
+    const normalizedSymbol = `${symbol || ""}`.trim().toUpperCase();
+    const normalizedName = `${name || ""}`.trim() || normalizedSymbol;
+    if (!normalizedSymbol || seen.has(normalizedSymbol)) {
+      return;
+    }
+    seen.add(normalizedSymbol);
+    merged.push({ symbol: normalizedSymbol, name: normalizedName });
+  };
+
+  state.stocks.forEach((stock) => pushSymbol(stock.symbol, stock.name));
+  state.searchResults.forEach((stock) => pushSymbol(stock.symbol, stock.name));
+  state.portfolio.forEach((position) =>
+    pushSymbol(position.symbol, state.symbolDirectory.get(position.symbol) || position.symbol),
+  );
+
+  if (state.selectedQuote) {
+    pushSymbol(
+      state.selectedQuote.symbol,
+      state.symbolDirectory.get(state.selectedQuote.symbol) || state.selectedQuote.name,
+    );
+  }
+  if (state.selectedSymbol) {
+    pushSymbol(state.selectedSymbol, state.symbolDirectory.get(state.selectedSymbol) || state.selectedSymbol);
+  }
+
+  [...state.symbolDirectory.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .forEach(([symbol, name]) => pushSymbol(symbol, name));
+
+  return merged;
+}
+
+function renderSymbolOptions() {
+  const currentValue = elements.symbolInput.value || state.selectedSymbol || "";
+  const symbols = knownSymbols();
+  elements.symbolInput.innerHTML = "";
+
+  symbols.forEach((stock) => {
+    const option = document.createElement("option");
+    option.value = stock.symbol;
+    option.textContent = `${stock.symbol} · ${stock.name}`;
+    elements.symbolInput.appendChild(option);
+  });
+
+  if (currentValue && symbols.some((stock) => stock.symbol === currentValue)) {
+    elements.symbolInput.value = currentValue;
+    return;
+  }
+
+  if (state.selectedSymbol && symbols.some((stock) => stock.symbol === state.selectedSymbol)) {
+    elements.symbolInput.value = state.selectedSymbol;
+    return;
+  }
+
+  if (symbols[0]) {
+    elements.symbolInput.value = symbols[0].symbol;
+  }
+}
+
 function localSearchResults(limit = 6) {
   const query = normalizedSearchQuery();
   if (!query) {
     return [];
   }
 
-  return state.stocks
+  return knownSymbols()
     .filter((stock) => stockMatchesQuery(stock, query))
     .slice(0, limit);
 }
@@ -320,6 +384,7 @@ function renderSearchSuggestions() {
   const matches = suggestionMatches();
   elements.searchSuggestions.innerHTML = "";
   const query = normalizedSearchQuery();
+  const directSymbol = directSymbolCandidate();
 
   if (!query) {
     elements.searchSuggestions.hidden = true;
@@ -341,6 +406,20 @@ function renderSearchSuggestions() {
       `;
       elements.searchSuggestions.appendChild(item);
     });
+
+    if (directSymbol && !matches.some((stock) => stock.symbol === directSymbol)) {
+      const directItem = document.createElement("button");
+      directItem.type = "button";
+      directItem.className = "suggestion-item suggestion-item-hint";
+      directItem.dataset.analyze = directSymbol;
+      directItem.innerHTML = `
+        <div>
+          <strong>${directSymbol}</strong>
+          <span>Direct symbol lookup</span>
+        </div>
+      `;
+      elements.searchSuggestions.appendChild(directItem);
+    }
     return;
   }
 
@@ -353,6 +432,21 @@ function renderSearchSuggestions() {
   const hints = fallbackSuggestions();
   elements.searchSuggestions.hidden = false;
   elements.searchSuggestions.innerHTML = `<div class="suggestion-empty">No results</div>`;
+
+  if (directSymbol) {
+    const directItem = document.createElement("button");
+    directItem.type = "button";
+    directItem.className = "suggestion-item suggestion-item-hint";
+    directItem.dataset.analyze = directSymbol;
+    directItem.innerHTML = `
+      <div>
+        <strong>${directSymbol}</strong>
+        <span>Analyze this symbol directly</span>
+      </div>
+    `;
+    elements.searchSuggestions.appendChild(directItem);
+  }
+
   hints.forEach((stock) => {
     const item = document.createElement("button");
     item.type = "button";
@@ -432,10 +526,11 @@ function roundTo(value, digits) {
 
 async function loadSearchSuggestions() {
   const query = state.searchQuery.trim();
-  if (!query) {
+  if (!query || query.length < 2) {
     state.searchResults = [];
     state.searchStatus = "idle";
     renderSearchSuggestions();
+    renderSymbolOptions();
     return;
   }
 
@@ -444,6 +539,7 @@ async function loadSearchSuggestions() {
     state.searchResults = state.searchCache.get(cacheKey);
     state.searchStatus = "ready";
     renderSearchSuggestions();
+    renderSymbolOptions();
     return;
   }
 
@@ -460,6 +556,7 @@ async function loadSearchSuggestions() {
     state.searchResults = results;
     state.searchStatus = "ready";
     renderSearchSuggestions();
+    renderSymbolOptions();
   } catch (error) {
     if (requestId !== state.searchRequestId) {
       return;
@@ -467,6 +564,7 @@ async function loadSearchSuggestions() {
     state.searchResults = [];
     state.searchStatus = "ready";
     renderSearchSuggestions();
+    renderSymbolOptions();
   }
 }
 
@@ -478,8 +576,19 @@ function scheduleSearchSuggestions() {
     state.searchRequestId += 1;
     state.searchStatus = "idle";
     renderSearchSuggestions();
+    renderSymbolOptions();
     return;
   }
+
+  if (query.length < 2) {
+    state.searchResults = [];
+    state.searchRequestId += 1;
+    state.searchStatus = "idle";
+    renderSearchSuggestions();
+    renderSymbolOptions();
+    return;
+  }
+
   renderSearchSuggestions();
   state.searchTimer = window.setTimeout(() => {
     loadSearchSuggestions();
@@ -492,26 +601,18 @@ function topSearchResult() {
 
 function renderWatchlist() {
   elements.watchlistBody.innerHTML = "";
-  elements.symbolInput.innerHTML = "";
 
   if (!state.stocks.length) {
     elements.watchlistBody.innerHTML = `<div class="watchlist-empty">No stocks available.</div>`;
+    renderSymbolOptions();
     return;
   }
 
   const updatedAt = new Date(state.stocks[0].updated_at).toLocaleString();
-  elements.watchlistMeta.textContent = `Updated ${updatedAt}`;
+  elements.watchlistMeta.textContent = `${state.stocks.length} tracked names · Updated ${updatedAt}`;
 
   state.stocks.forEach((stock) => {
     rememberSymbolMeta(stock.symbol, stock.name);
-    const option = document.createElement("option");
-    option.value = stock.symbol;
-    option.textContent = `${stock.symbol} · ${stock.name}`;
-    elements.symbolInput.appendChild(option);
-  });
-
-  const matches = searchMatches();
-  matches.forEach((stock) => {
     const item = document.createElement("button");
     item.type = "button";
     item.className = `watchlist-item ${state.selectedSymbol === stock.symbol ? "watchlist-item-active" : ""}`;
@@ -532,19 +633,14 @@ function renderWatchlist() {
     elements.watchlistBody.appendChild(item);
   });
 
-  if (!matches.length) {
-    elements.watchlistBody.innerHTML = `<div class="watchlist-empty">No match for your search.</div>`;
-  }
-
-  if (!elements.symbolInput.value && state.stocks[0]) {
-    elements.symbolInput.value = state.stocks[0].symbol;
-  }
+  renderSymbolOptions();
 }
 
 function renderSelectedQuote(symbol) {
   const stock = quoteForSymbol(symbol);
   if (!stock) {
     elements.selectedPriceValue.textContent = "--";
+    elements.selectedPriceValue.className = "decision-fact-value";
     elements.selectedPriceLabel.textContent = "Select a stock to load price and context";
     elements.selectedChangeValue.textContent = "Select a stock to start analysis";
     elements.selectedChangeValue.className = "hero-subline";
@@ -552,6 +648,7 @@ function renderSelectedQuote(symbol) {
   }
 
   elements.selectedPriceValue.textContent = currency(stock.price);
+  elements.selectedPriceValue.className = `decision-fact-value ${stock.change_percent >= 0 ? "tone-positive" : "tone-negative"}`;
   elements.selectedPriceLabel.textContent = `${stock.name} · ${stock.volume.toLocaleString()} volume`;
   elements.selectedChangeValue.textContent = `${stock.name} · ${percent(stock.change_percent)} today`;
   elements.selectedChangeValue.className = `hero-subline ${stock.change_percent >= 0 ? "tone-positive" : "tone-negative"}`;
@@ -732,6 +829,8 @@ function renderHomeState() {
   elements.confidenceNote.textContent = "Confidence appears after analysis.";
   elements.probabilityUpValue.textContent = "--";
   elements.probabilityDownValue.textContent = "--";
+  elements.probabilityUpValue.className = "";
+  elements.probabilityDownValue.className = "";
   elements.probabilityUpBar.style.width = "0%";
   elements.probabilityDownBar.style.width = "0%";
   elements.noTradeBanner.hidden = true;
@@ -801,6 +900,8 @@ function renderAnalysis(analysis) {
     : `${roundedPercent(analysis.probability_up)} up · ${roundedPercent(analysis.probability_down)} down${warnings.length ? ` · ${warnings.length} warnings` : ""}`;
   elements.probabilityUpValue.textContent = roundedPercent(analysis.probability_up);
   elements.probabilityDownValue.textContent = roundedPercent(analysis.probability_down);
+  elements.probabilityUpValue.className = "tone-positive";
+  elements.probabilityDownValue.className = "tone-negative";
   elements.probabilityUpBar.style.width = `${Math.round(analysis.probability_up * 100)}%`;
   elements.probabilityDownBar.style.width = `${Math.round(analysis.probability_down * 100)}%`;
 
@@ -828,6 +929,7 @@ function renderPortfolio(snapshot) {
   elements.portfolioMarketValueValue.textContent = currency(snapshot.market_value);
   elements.pnlValue.textContent = `${currency(snapshot.total_pnl)} (${percent(snapshot.total_pnl_percent)})`;
   elements.pnlValue.className = snapshot.total_pnl >= 0 ? "tone-positive" : "tone-negative";
+  renderSymbolOptions();
 
   if (!snapshot.positions.length) {
     elements.portfolioBody.innerHTML = `
@@ -900,10 +1002,15 @@ async function analyze(symbol) {
 
     state.selectedSymbol = symbol;
     state.selectedQuote = quoteForSymbol(symbol) || quoteFromHistory(symbol, history.points);
+    rememberSymbolMeta(
+      symbol,
+      state.symbolDirectory.get(symbol) || state.selectedQuote?.name || symbol,
+    );
     persistSelectedSymbol(symbol);
     elements.searchInput.value = `${symbol}`;
     state.searchQuery = elements.searchInput.value;
     state.searchResults = [];
+    renderSymbolOptions();
     renderAnalysis(analysis);
     renderChart(history.points);
   } catch (error) {
@@ -995,7 +1102,6 @@ function bindEvents() {
   elements.searchInput.addEventListener("input", (event) => {
     state.searchQuery = event.target.value;
     scheduleSearchSuggestions();
-    renderWatchlist();
   });
 
   elements.searchInput.addEventListener("keydown", async (event) => {
@@ -1010,10 +1116,15 @@ function bindEvents() {
 
     event.preventDefault();
     const bestMatch = topSearchResult();
-    if (!bestMatch) {
+    if (bestMatch) {
+      await analyze(bestMatch.symbol);
       return;
     }
-    await analyze(bestMatch.symbol);
+
+    const directSymbol = directSymbolCandidate();
+    if (directSymbol) {
+      await analyze(directSymbol);
+    }
   });
 
   elements.searchInput.addEventListener("focus", () => {

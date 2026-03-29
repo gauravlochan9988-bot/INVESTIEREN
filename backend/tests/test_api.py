@@ -10,10 +10,28 @@ def test_search_endpoint_returns_global_symbol_results(client):
     response = client.get("/api/search", params={"q": "ap"})
 
     assert response.status_code == 200
-    assert response.json() == [
-        {"symbol": "AAPL", "name": "Apple Inc"},
-        {"symbol": "APD", "name": "Air Products and Chemicals"},
-    ]
+    payload = response.json()
+    symbols = [item["symbol"] for item in payload[:3]]
+    assert "AAPL" in symbols
+    assert "APD" in symbols
+
+
+def test_search_endpoint_matches_companies_outside_watchlist(client):
+    response = client.get("/api/search", params={"q": "co"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    symbols = [item["symbol"] for item in payload[:3]]
+    assert "KO" in symbols
+    assert "COIN" in symbols
+
+
+def test_search_endpoint_surfaces_index_etfs_from_partial_query(client):
+    response = client.get("/api/search", params={"q": "sp"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [item["symbol"] for item in payload[:3]] == ["SPY", "VOO", "IVV"]
 
 
 def test_analyze_endpoint_returns_decision_payload(client):

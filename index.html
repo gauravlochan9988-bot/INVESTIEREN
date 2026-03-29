@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Investieren MVP</title>
+    <script>
+      if (window.location.protocol === "file:") {
+        window.location.replace("http://127.0.0.1:8000/");
+      }
+    </script>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
@@ -20,7 +25,7 @@
         <div class="search-wrap">
           <label class="searchbar" for="searchInput">
             <span class="search-icon"></span>
-            <input id="searchInput" type="search" placeholder="Search symbol, stock, ETF or company" autocomplete="off" />
+            <input id="searchInput" type="search" placeholder="Search symbol or company" autocomplete="off" />
           </label>
           <div id="searchSuggestions" class="search-suggestions" hidden></div>
         </div>
@@ -69,11 +74,11 @@
 
               <div class="decision-panel">
                 <div class="decision-main">
-                <div class="decision-primary">
-                  <span class="decision-label">Recommendation</span>
-                  <strong id="recommendationValue" class="decision-recommendation">--</strong>
-                  <p id="riskValue" class="decision-risk">Risk: --</p>
-                </div>
+                  <div class="decision-primary">
+                    <span class="decision-label">Recommendation</span>
+                    <strong id="recommendationValue" class="decision-recommendation">--</strong>
+                    <p id="riskValue" class="decision-risk">Risk: --</p>
+                  </div>
 
                   <div class="decision-side">
                     <article class="decision-support-card">

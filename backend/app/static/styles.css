@@ -14,7 +14,10 @@
   --neutral-soft: rgba(243, 191, 88, 0.14);
   --blue: #62aefc;
   --blue-soft: rgba(98, 174, 252, 0.14);
+  --panel-highlight: rgba(255, 255, 255, 0.045);
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+  --shadow-soft: 0 18px 44px rgba(0, 0, 0, 0.22);
+  --shadow-hover: 0 26px 58px rgba(0, 0, 0, 0.28);
   --radius-xl: 30px;
   --radius-lg: 22px;
   --radius-md: 18px;
@@ -98,7 +101,8 @@ select {
   grid-template-columns: 260px minmax(0, 1fr) auto;
   align-items: center;
   gap: 16px;
-  padding: 14px 18px;
+  padding: 16px 20px;
+  transition: border-color 220ms ease, box-shadow 260ms ease, background 260ms ease;
 }
 
 .brand-block {
@@ -148,6 +152,14 @@ select {
   gap: 12px;
   padding: 13px 16px;
   background: rgba(255, 255, 255, 0.03);
+  transition: border-color 220ms ease, background 220ms ease, box-shadow 240ms ease, transform 240ms ease;
+}
+
+.searchbar:focus-within {
+  border-color: rgba(98, 174, 252, 0.34);
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow: 0 0 0 4px rgba(98, 174, 252, 0.08);
+  transform: translateY(-1px);
 }
 
 .searchbar input {
@@ -202,7 +214,7 @@ select {
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.03);
   cursor: pointer;
-  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+  transition: transform 220ms ease, border-color 220ms ease, background 220ms ease, box-shadow 240ms ease;
 }
 
 .suggestion-item strong {
@@ -253,7 +265,7 @@ select {
   border: 1px solid transparent;
   border-radius: 16px;
   cursor: pointer;
-  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+  transition: transform 200ms ease, border-color 220ms ease, background 220ms ease, box-shadow 220ms ease, color 220ms ease;
 }
 
 .icon-button:hover,
@@ -262,12 +274,13 @@ select {
 .row-button:hover,
 .watchlist-item:hover,
 .suggestion-item:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 .suggestion-item:hover {
   border-color: rgba(98, 174, 252, 0.32);
   background: rgba(255, 255, 255, 0.06);
+  box-shadow: var(--shadow-soft);
 }
 
 .icon-button {
@@ -277,6 +290,37 @@ select {
   color: var(--text);
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.icon-button:hover,
+.ghost-button:hover,
+.row-button:hover {
+  border-color: rgba(98, 174, 252, 0.26);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: var(--shadow-soft);
+}
+
+.primary-button:hover {
+  box-shadow: 0 16px 28px rgba(41, 198, 127, 0.24);
+}
+
+.icon-button:active,
+.primary-button:active,
+.ghost-button:active,
+.row-button:active,
+.watchlist-item:active,
+.suggestion-item:active {
+  transform: translateY(0);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+.watchlist-item:focus-visible,
+.suggestion-item:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(98, 174, 252, 0.12);
 }
 
 .error-banner {
@@ -294,15 +338,21 @@ select {
 
 .panel {
   min-height: 0;
-  padding: 18px;
+  padding: 20px;
   background: linear-gradient(180deg, rgba(13, 24, 36, 0.98), rgba(10, 18, 28, 0.98));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  transition: transform 260ms ease, border-color 260ms ease, box-shadow 260ms ease, background 260ms ease;
+}
+
+.panel:hover {
+  border-color: rgba(170, 200, 224, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), var(--shadow-soft);
 }
 
 .watchlist-panel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 14px;
+  gap: 16px;
   position: sticky;
   top: 14px;
   max-height: calc(100vh - 28px);
@@ -319,7 +369,7 @@ select {
 
 .watchlist-item {
   width: 100%;
-  padding: 12px 14px;
+  padding: 14px 15px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -328,11 +378,19 @@ select {
   text-align: left;
   background: rgba(255, 255, 255, 0.03);
   border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
 .watchlist-item-active {
   border-color: rgba(37, 196, 125, 0.4);
   background: linear-gradient(135deg, rgba(37, 196, 125, 0.12), rgba(98, 174, 252, 0.08));
+  box-shadow: 0 14px 34px rgba(14, 32, 24, 0.24);
+}
+
+.watchlist-item:hover {
+  border-color: rgba(98, 174, 252, 0.22);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.03));
+  box-shadow: var(--shadow-soft);
 }
 
 .watchlist-item-left,
@@ -391,7 +449,7 @@ select {
 
 .dashboard-main {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
 .analysis-panel {
@@ -409,12 +467,12 @@ select {
 
 .analysis-hero,
 .detail-section {
-  padding: 18px 20px;
+  padding: 20px 22px;
 }
 
 .analysis-hero {
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 
 .analysis-hero-top {
@@ -434,24 +492,39 @@ select {
 }
 
 .signal-badge {
-  min-width: 112px;
-  padding: 8px 12px;
+  min-width: 120px;
+  padding: 9px 14px;
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.04);
+  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+}
+
+.signal-badge-buy {
+  box-shadow: 0 10px 26px rgba(37, 196, 125, 0.16);
+}
+
+.signal-badge-sell {
+  box-shadow: 0 10px 26px rgba(255, 107, 114, 0.16);
+}
+
+.signal-badge-hold {
+  box-shadow: 0 10px 26px rgba(243, 191, 88, 0.12);
 }
 
 .signal-badge-buy,
 .tone-positive {
   color: var(--positive);
+  text-shadow: 0 0 18px rgba(37, 196, 125, 0.08);
 }
 
 .signal-badge-sell,
 .tone-negative {
   color: var(--negative);
+  text-shadow: 0 0 18px rgba(255, 107, 114, 0.08);
 }
 
 .signal-badge-hold,
@@ -484,10 +557,11 @@ select {
   grid-template-columns: auto minmax(0, 1fr);
   gap: 14px;
   align-items: start;
-  padding: 16px 18px;
-  border: 1px solid rgba(243, 191, 88, 0.26);
+  padding: 18px 20px;
+  border: 1px solid rgba(243, 191, 88, 0.34);
   border-radius: 22px;
   background: linear-gradient(135deg, rgba(243, 191, 88, 0.16), rgba(255, 107, 114, 0.08));
+  box-shadow: 0 22px 46px rgba(58, 32, 11, 0.18);
 }
 
 .no-trade-icon {
@@ -504,8 +578,8 @@ select {
 
 .no-trade-banner strong {
   display: block;
-  margin-bottom: 4px;
-  font-size: 1.3rem;
+  margin-bottom: 6px;
+  font-size: 1.38rem;
   letter-spacing: -0.03em;
 }
 
@@ -517,31 +591,42 @@ select {
 .hero-summary {
   margin: 0;
   max-width: 72ch;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .decision-panel {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
 .decision-main {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
-  gap: 14px;
+  gap: 16px;
 }
 
 .decision-primary {
   display: grid;
   align-content: start;
-  gap: 8px;
-  padding: 22px 24px;
+  gap: 10px;
+  padding: 26px 28px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 22px;
   background:
     radial-gradient(circle at top left, rgba(98, 174, 252, 0.2), transparent 34%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+.decision-primary::after {
+  content: "";
+  position: absolute;
+  inset: auto -20% -52% 32%;
+  height: 140px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.06), transparent 62%);
+  pointer-events: none;
 }
 
 .decision-label {
@@ -555,16 +640,17 @@ select {
 .decision-recommendation {
   display: block;
   margin: 0;
-  font-size: clamp(3.4rem, 7vw, 5.6rem);
-  line-height: 0.86;
+  font-size: clamp(3.8rem, 8vw, 6.2rem);
+  line-height: 0.82;
   letter-spacing: -0.11em;
   font-family: var(--font-display);
-  text-shadow: 0 10px 32px rgba(0, 0, 0, 0.26);
+  font-weight: 800;
+  text-shadow: 0 16px 42px rgba(0, 0, 0, 0.34);
 }
 
 .decision-risk {
   margin: 0;
-  font-size: 1.02rem;
+  font-size: 1.04rem;
   font-weight: 700;
 }
 
@@ -581,12 +667,25 @@ select {
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.03);
+  transition: transform 220ms ease, border-color 220ms ease, background 220ms ease, box-shadow 240ms ease;
+}
+
+.decision-support-card:hover,
+.probability-card:hover,
+.action-card:hover,
+.summary-card:hover,
+.signal-card:hover,
+.position-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(170, 200, 224, 0.16);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.03));
+  box-shadow: var(--shadow-soft);
 }
 
 .decision-support-card {
   display: grid;
-  gap: 14px;
-  padding: 16px;
+  gap: 16px;
+  padding: 18px;
   background:
     linear-gradient(135deg, rgba(98, 174, 252, 0.1), rgba(37, 196, 125, 0.08)),
     rgba(255, 255, 255, 0.03);
@@ -598,7 +697,7 @@ select {
 }
 
 .decision-fact-row-strong {
-  padding-top: 12px;
+  padding-top: 14px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -616,7 +715,7 @@ select {
 .action-card strong {
   display: block;
   margin: 4px 0 0;
-  font-size: 1.34rem;
+  font-size: 1.42rem;
   letter-spacing: -0.03em;
 }
 
@@ -657,7 +756,7 @@ select {
 
 .confidence-track {
   margin: 0;
-  height: 8px;
+  height: 9px;
 }
 
 .confidence-bar {
@@ -665,29 +764,29 @@ select {
   width: 0;
   border-radius: inherit;
   background: linear-gradient(90deg, var(--blue), var(--positive));
-  transition: width 220ms ease;
+  transition: width 320ms ease;
 }
 
 .probability-panel {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .probability-card {
-  padding: 12px 14px;
+  padding: 14px 16px;
 }
 
 .probability-track {
   margin-top: 10px;
-  height: 10px;
+  height: 11px;
 }
 
 .probability-fill {
   height: 100%;
   width: 0;
   border-radius: inherit;
-  transition: width 220ms ease;
+  transition: width 320ms ease;
 }
 
 .probability-fill-up {
@@ -700,12 +799,12 @@ select {
 
 .chart-panel,
 .signals-panel {
-  padding: 16px 18px;
+  padding: 18px 20px;
 }
 
 .action-panel {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   padding-top: 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
@@ -713,13 +812,13 @@ select {
 .action-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .action-card {
   display: grid;
-  gap: 6px;
-  padding: 12px 13px;
+  gap: 7px;
+  padding: 14px 15px;
   background: rgba(255, 255, 255, 0.02);
 }
 
@@ -782,12 +881,18 @@ select {
 }
 
 .chart-surface {
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   background:
     radial-gradient(circle at top center, rgba(98, 174, 252, 0.08), transparent 34%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0.01));
+  transition: border-color 220ms ease, box-shadow 220ms ease, background 220ms ease;
+}
+
+.chart-surface:hover {
+  border-color: rgba(170, 200, 224, 0.15);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), var(--shadow-soft);
 }
 
 #historyChart {
@@ -849,12 +954,12 @@ select {
 .signals-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
+  gap: 12px;
   padding: 0 18px 18px;
 }
 
 .signal-card {
-  padding: 12px;
+  padding: 14px;
   background: rgba(255, 255, 255, 0.02);
 }
 
@@ -899,7 +1004,7 @@ select {
 
 .detail-section {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
 .context-section {
@@ -932,7 +1037,7 @@ select {
 
 .macro-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .macro-row {
@@ -940,7 +1045,7 @@ select {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 10px 0;
+  padding: 12px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -980,9 +1085,10 @@ select {
 }
 
 .warning-badge {
-  padding: 9px 12px;
+  padding: 10px 13px;
   font-size: 0.8rem;
   font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .warning-badge-negative {
@@ -1007,29 +1113,29 @@ select {
 
 .portfolio-section {
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 
 .portfolio-summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .summary-card {
-  padding: 14px;
+  padding: 16px;
 }
 
 .portfolio-layout {
   display: grid;
   grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
   align-items: start;
-  gap: 16px;
+  gap: 18px;
 }
 
 .position-form {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .position-form label {
@@ -1051,11 +1157,15 @@ select {
   border-radius: 14px;
   outline: none;
   background: rgba(255, 255, 255, 0.04);
+  transition: border-color 220ms ease, background 220ms ease, box-shadow 220ms ease, transform 220ms ease;
 }
 
 input:focus,
 select:focus {
   border-color: rgba(98, 174, 252, 0.46);
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow: 0 0 0 4px rgba(98, 174, 252, 0.08);
+  transform: translateY(-1px);
 }
 
 .form-actions,
@@ -1068,7 +1178,8 @@ select:focus {
 .primary-button,
 .ghost-button,
 .row-button {
-  padding: 11px 15px;
+  padding: 12px 16px;
+  font-weight: 700;
 }
 
 .primary-button {
@@ -1084,7 +1195,7 @@ select:focus {
 }
 
 .position-card {
-  padding: 14px;
+  padding: 16px;
 }
 
 .position-card strong {
@@ -1094,8 +1205,26 @@ select:focus {
 
 .position-meta {
   display: grid;
-  gap: 4px;
-  margin: 10px 0;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.position-card .tone-positive,
+.watchlist-item .tone-positive,
+.hero-subline.tone-positive,
+.decision-value.tone-positive,
+.summary-card .tone-positive,
+.action-card .tone-positive {
+  font-weight: 800;
+}
+
+.position-card .tone-negative,
+.watchlist-item .tone-negative,
+.hero-subline.tone-negative,
+.decision-value.tone-negative,
+.summary-card .tone-negative,
+.action-card .tone-negative {
+  font-weight: 800;
 }
 
 .toast {

@@ -3,7 +3,7 @@ def test_root_serves_static_dashboard(client):
 
     assert response.status_code == 200
     assert "Investieren MVP" in response.text
-    assert "Search symbol or company" in response.text
+    assert "Search symbol, stock, ETF or company" in response.text
     assert "Tracked names" in response.text
     assert "Selected Asset" in response.text
     assert "Portfolio" in response.text
@@ -20,6 +20,7 @@ def test_static_assets_are_available(client):
     assert "async function analyze" in response.text
     assert "renderAnalysis" in response.text
     assert "renderSearchSuggestions" in response.text
+    assert "directSymbolCandidate" in response.text
     assert "/api/search" in response.text
     assert "No results" in response.text
     assert "localStorage" in response.text
