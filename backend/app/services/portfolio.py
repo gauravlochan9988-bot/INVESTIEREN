@@ -56,6 +56,7 @@ class PortfolioService:
                     symbol=position.symbol,
                     quantity=position.quantity,
                     average_price=position.average_price,
+                    entry_price=position.average_price,
                     opened_at=position.opened_at,
                     current_price=quote.price,
                     market_value=market_value,
@@ -118,10 +119,12 @@ class PortfolioService:
     def delete_position(self, db: Session, position_id: int) -> None:
         position = self.portfolio_repository.get_position(db, position_id)
         if position is None:
-            raise NotFoundError(f"Portfolio position {position_id} was not found.")
+            raise NotFoundError("position not found")
         self.portfolio_repository.delete(db, position)
 
     def _validate_numeric_fields(self, quantity: float, average_price: float) -> None:
+        if average_price is None:
+            raise ValidationError("Average price is required.")
         if quantity <= 0:
             raise ValidationError("Quantity must be greater than zero.")
         if average_price <= 0:

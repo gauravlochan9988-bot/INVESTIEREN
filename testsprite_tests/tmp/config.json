@@ -1,0 +1,19 @@
+{
+  "status": "commited",
+  "type": "backend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:8000",
+  "backendAuthType": "public",
+  "executionArgs": {
+    "projectName": "INVESTIEREN",
+    "projectPath": "/Users/gauravlochan/Documents/INVESTIEREN ",
+    "testIds": [],
+    "additionalInstruction": "Run the backend API test plan against the currently running FastAPI server on http://127.0.0.1:8000 and report any remaining failures clearly.",
+    "serverMode": "development",
+    "envs": {
+      "API_KEY": "sk-user-iWcMwwt_JUJ9n1fagHqDekzapxPiKpQ-14NyeH72bgc1kio_x0Cl_2nW1md9Pk-S5fCq45gLue75KLGfaJRz26S5zbRV4uUVO15DXD8tw0F-0N7vyP6w9CpNcVYlwkuYppU"
+    }
+  },
+  "serverPort": 54824,
+  "proxy": "http://d910677c-f677-4aaa-ae19-3c95ad48a6c2:4WAhNYTP9iRuzTsWKTitmSrKzPc087LH@tun.testsprite.com:8080"
+}

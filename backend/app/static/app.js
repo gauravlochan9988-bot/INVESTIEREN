@@ -1588,11 +1588,14 @@ async function loadHistory(symbol, forceRefresh = false, signal = null) {
   if (!forceRefresh && state.historyCache.has(cacheKey)) {
     return state.historyCache.get(cacheKey);
   }
-  const history = await api(withRefresh(`/api/stocks/${symbol}/history?range=1mo`, forceRefresh), {
+  const rawHistory = await api(withRefresh(`/api/stocks/${symbol}/history?range=1mo`, forceRefresh), {
     timeoutMs: ANALYSIS_TIMEOUT_MS,
     timeoutMessage: LOADING_ERROR_MESSAGE,
     signal,
   });
+  const history = Array.isArray(rawHistory)
+    ? { points: rawHistory }
+    : rawHistory;
   state.historyCache.set(cacheKey, history);
   return history;
 }

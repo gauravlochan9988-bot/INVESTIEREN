@@ -1,0 +1,63 @@
+project:
+  name: Investieren MVP
+  type: fullstack_web_app
+  description: >
+    Personal investment analysis dashboard with a FastAPI backend, static frontend,
+    live market data, technical analysis, macro context, news sentiment, and a manual portfolio.
+
+frontend:
+  stack:
+    - HTML
+    - CSS
+    - Vanilla JavaScript
+  entrypoints:
+    - backend/app/static/index.html
+    - backend/app/static/app.js
+    - backend/app/static/styles.css
+  features:
+    - Search with autocomplete for stocks and ETFs
+    - Watchlist with live quotes
+    - Analysis dashboard with recommendation, risk, warnings, entry/exit, stop loss, and position sizing
+    - Empty, loading, timeout, and no-data states
+    - Portfolio management UI
+
+backend:
+  stack:
+    - Python
+    - FastAPI
+    - SQLAlchemy
+    - Alembic
+    - PostgreSQL
+    - yfinance
+  entrypoint: backend/app/main.py
+  api_routes:
+    - GET /api/health
+    - GET /api/stocks
+    - GET /api/stocks/{symbol}/history
+    - POST /api/analyze
+    - GET /api/portfolio
+    - POST /api/portfolio/positions
+    - PATCH /api/portfolio/positions/{id}
+    - DELETE /api/portfolio/positions/{id}
+    - GET /api/search
+    - GET /api/search/universe
+  features:
+    - Technical analysis using RSI, SMA20, SMA50, momentum, volatility
+    - Risk system with warnings and no-trade logic
+    - Macro context for US, EU, and India symbols
+    - Region-aware news sentiment
+    - Portfolio CRUD and aggregated PnL
+    - Static asset serving for dashboard UI
+
+testing:
+  existing:
+    - pytest unit tests
+    - pytest service tests
+    - pytest API tests
+    - pytest static UI checks
+  current_status: passing
+
+runtime:
+  local_server:
+    url: http://127.0.0.1:8000
+    healthcheck: /api/health

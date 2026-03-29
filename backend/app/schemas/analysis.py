@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 Recommendation = Literal["BUY", "HOLD", "SELL"]
@@ -68,3 +68,38 @@ class AnalysisResponse(BaseModel):
     summary: str
     generated_at: datetime
     signals: Optional[AnalysisSignals] = None
+
+    @computed_field
+    @property
+    def score_breakdown(self) -> Optional[Dict[str, Union[float, str]]]:
+        if self.signals is None:
+            return None
+        return {
+            "trend": self.signals.trend.strength,
+            "sma_crossover": self.signals.sma_crossover.strength,
+            "rsi": self.signals.rsi.strength,
+            "momentum": self.signals.momentum.strength,
+            "volatility": self.signals.volatility.strength,
+            "news_sentiment": self.signals.news_sentiment.strength,
+            "trend_strength": self.signals.trend_strength.strength,
+        }
+
+    @computed_field
+    @property
+    def position_size(self) -> Optional[float]:
+        return self.position_size_percent
+
+    @computed_field
+    @property
+    def entry_guidance(self) -> str:
+        return self.entry_reason
+
+    @computed_field
+    @property
+    def exit_guidance(self) -> str:
+        return self.exit_reason
+
+    @computed_field
+    @property
+    def stop_loss(self) -> Optional[float]:
+        return self.stop_loss_level

@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional, Union
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -15,8 +16,16 @@ BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 
 
-def _error_response(status_code: int, message: str) -> JSONResponse:
-    return JSONResponse(status_code=status_code, content={"error": message})
+def _error_response(
+    status_code: int,
+    message: str,
+    *,
+    detail: Optional[Union[list[dict], str]] = None,
+) -> JSONResponse:
+    payload: dict = {"error": message}
+    if detail is not None:
+        payload["detail"] = detail
+    return JSONResponse(status_code=status_code, content=payload)
 
 
 def create_app() -> FastAPI:
@@ -35,13 +44,17 @@ def create_app() -> FastAPI:
     def root() -> FileResponse:
         return FileResponse(STATIC_DIR / "index.html")
 
+    @app.get("/index.html")
+    def root_index() -> FileResponse:
+        return FileResponse(STATIC_DIR / "index.html")
+
     @app.get("/api/health")
     def healthcheck() -> dict:
         return {"status": "ok", "environment": settings.app_env}
 
     @app.exception_handler(NotFoundError)
     async def not_found_handler(_: Request, exc: NotFoundError) -> JSONResponse:
-        return _error_response(404, exc.message)
+        return _error_response(404, exc.message, detail=exc.message)
 
     @app.exception_handler(ValidationError)
     async def validation_handler(_: Request, exc: ValidationError) -> JSONResponse:
@@ -55,21 +68,22 @@ def create_app() -> FastAPI:
     async def request_validation_handler(
         _: Request, exc: RequestValidationError
     ) -> JSONResponse:
-        first_error = exc.errors()[0] if exc.errors() else {}
+        errors = exc.errors()
+        first_error = errors[0] if errors else {}
         message = first_error.get("msg", "Invalid request payload.")
-        return _error_response(422, message)
+        return _error_response(422, message, detail=errors)
 
     @app.exception_handler(HTTPException)
     async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
         detail = exc.detail if isinstance(exc.detail, str) else "Request failed."
-        return _error_response(exc.status_code, detail)
+        return _error_response(exc.status_code, detail, detail=detail)
 
     @app.exception_handler(StarletteHTTPException)
     async def starlette_http_exception_handler(
         _: Request, exc: StarletteHTTPException
     ) -> JSONResponse:
         detail = exc.detail if isinstance(exc.detail, str) else "Request failed."
-        return _error_response(exc.status_code, detail)
+        return _error_response(exc.status_code, detail, detail=detail)
 
     @app.exception_handler(AppError)
     async def app_error_handler(_: Request, exc: AppError) -> JSONResponse:

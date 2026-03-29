@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "healthcheckendpointreturnsokstatus",
+    "description": "Test the GET /api/health endpoint to verify it returns a 200 status code with {\"status\":\"ok\"} when the server and dependencies are available."
+  },
+  {
+    "id": "TC002",
+    "title": "searchendpointreturnsmatchingresults",
+    "description": "Test the GET /api/search endpoint with a valid query parameter to ensure it returns a 200 status code with an array of matching stock or ETF symbols and metadata."
+  },
+  {
+    "id": "TC003",
+    "title": "searchendpointvalidationerrorformissingquery",
+    "description": "Test the GET /api/search endpoint without the required query parameter to verify it returns a 422 validation error."
+  },
+  {
+    "id": "TC004",
+    "title": "searchuniverseendpointreturnsfulluniverse",
+    "description": "Test the GET /api/search/universe endpoint to ensure it returns a 200 status code with the full universe list for client-side autocomplete."
+  },
+  {
+    "id": "TC005",
+    "title": "watchlistendpointreturnslivequotes",
+    "description": "Test the GET /api/stocks endpoint to verify it returns a 200 status code with the demo watchlist symbols and current live market quotes including price, change, and timestamp."
+  },
+  {
+    "id": "TC006",
+    "title": "historicalpricesendpointreturnsdataforvalidsymbol",
+    "description": "Test the GET /api/stocks/{symbol}/history endpoint with a valid symbol and range parameter to ensure it returns a 200 status code with time-series OHLCV data for the requested range."
+  },
+  {
+    "id": "TC007",
+    "title": "analysisendpointreturnsrecommendation",
+    "description": "Test the POST /api/analyze endpoint with valid JSON containing symbol and range to verify it returns a 200 status code with a recommendation (BUY, HOLD, SELL), score breakdown, confidence, warnings, position size, and entry/exit guidance."
+  },
+  {
+    "id": "TC008",
+    "title": "portfolioendpointreturnspositionsandpnl",
+    "description": "Test the GET /api/portfolio endpoint to verify it returns a 200 status code with the portfolio summary including positions array and aggregated PnL."
+  },
+  {
+    "id": "TC009",
+    "title": "createpositionendpointvalidatesinputandcreatesposition",
+    "description": "Test the POST /api/portfolio/positions endpoint with valid and invalid input to verify it creates a new position with a 201 status code for valid data and returns a 422 validation error for invalid quantity."
+  },
+  {
+    "id": "TC010",
+    "title": "deletepositionendpointremovesposition",
+    "description": "Test the DELETE /api/portfolio/positions/{id} endpoint to verify it removes an existing position with a 204 status code and returns a 404 error when the position is not found."
+  }
+]

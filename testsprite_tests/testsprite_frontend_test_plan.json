@@ -1,0 +1,70 @@
+[
+  {
+    "id": "TC001",
+    "title": "Load dashboard root page",
+    "description": "Verifies the SPA dashboard loads when navigating to the root route.",
+    "category": "Static Frontend Serving",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the dashboard page primary content is displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Load dashboard index.html directly",
+    "description": "Verifies the dashboard loads when navigating directly to the index HTML route.",
+    "category": "Static Frontend Serving",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /index.html"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the dashboard page primary content is displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Load main JavaScript asset",
+    "description": "Verifies the main JavaScript asset can be requested directly and renders as a JavaScript response in the browser.",
+    "category": "Static Frontend Serving",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /static/app.js"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the page displays JavaScript source content"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Missing static asset returns not found page",
+    "description": "Verifies a missing static asset route shows a not found response in the browser.",
+    "category": "Static Frontend Serving",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /static/missing.js"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a not found error page is displayed"
+      }
+    ]
+  }
+]
