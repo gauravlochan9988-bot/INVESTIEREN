@@ -63,6 +63,20 @@ uvicorn app.main:app --reload
 
 6. Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
+## Vercel deployment
+- The frontend is served from the repository root: `index.html`, `app.js`, and `styles.css`.
+- The API entrypoint for Vercel is `api/index.py`.
+- `vercel.json` rewrites `/static/*` to the root static files and `/api/*` to the FastAPI function.
+- For a simple demo deploy, the app falls back to SQLite:
+  - local default: `investieren.db` in the project root
+  - Vercel default: `/tmp/investieren.db`
+- For persistent portfolio storage in production, set `DATABASE_URL` in Vercel to a managed Postgres database.
+- Optional env vars for Vercel:
+  - `DATABASE_URL`
+  - `OPENAI_API_KEY`
+  - `OPENAI_MODEL`
+  - `MACRO_INTEREST_RATE_EFFECT`
+
 ## API overview
 - `GET /api/health`
 - `GET /api/stocks`

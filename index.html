@@ -3,6 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Private investment analysis dashboard for reviewing market setups, risk and portfolio context." />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="color-scheme" content="dark" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    />
     <title>Investieren MVP</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
@@ -13,16 +20,29 @@
         <p class="auth-kicker">Private Access</p>
         <h1>Enter password to open the dashboard</h1>
         <p class="auth-copy">This dashboard is protected for this session.</p>
-        <form id="authForm" class="auth-form">
+        <form id="authForm" class="auth-form" method="post">
           <label class="auth-label" for="authPassword">Password</label>
-          <input id="authPassword" class="auth-input" type="password" placeholder="Password" autocomplete="current-password" />
+          <input
+            id="authPassword"
+            class="auth-input"
+            name="password"
+            type="password"
+            placeholder="Password"
+            autocomplete="current-password"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            enterkeyhint="go"
+            aria-describedby="authError"
+            required
+          />
           <button class="primary-button auth-button" type="submit">Unlock dashboard</button>
-          <p id="authError" class="auth-error" hidden>Wrong password</p>
+          <p id="authError" class="auth-error" role="alert" aria-live="assertive" hidden>Wrong password</p>
         </form>
       </div>
     </div>
 
-    <div class="app-shell" id="appShell" hidden>
+    <div class="app-shell" id="appShell" hidden aria-live="polite">
       <header class="topbar">
         <button class="brand-block brand-button" id="brandHomeButton" type="button" aria-label="Reset dashboard">
           <span class="brand-mark">IA</span>
@@ -35,9 +55,20 @@
         <div class="search-wrap">
           <label class="searchbar" for="searchInput">
             <span class="search-icon"></span>
-            <input id="searchInput" type="search" placeholder="Search all stocks, ETFs or companies" autocomplete="off" />
+            <input
+              id="searchInput"
+              type="search"
+              placeholder="Search all stocks, ETFs or companies"
+              autocomplete="off"
+              autocapitalize="off"
+              autocorrect="off"
+              spellcheck="false"
+              aria-label="Search stocks, ETFs or companies"
+              aria-controls="searchSuggestions"
+              aria-autocomplete="list"
+            />
           </label>
-          <div id="searchSuggestions" class="search-suggestions" hidden></div>
+          <div id="searchSuggestions" class="search-suggestions" role="listbox" aria-label="Search suggestions" hidden></div>
         </div>
 
         <div class="topbar-actions">
@@ -46,7 +77,7 @@
         </div>
       </header>
 
-      <div id="errorBanner" class="error-banner" hidden></div>
+      <div id="errorBanner" class="error-banner" role="alert" aria-live="assertive" hidden></div>
 
       <main class="content-grid">
         <aside class="panel watchlist-panel">
@@ -57,7 +88,7 @@
             </div>
             <span id="watchlistMeta" class="meta-text">Loading market snapshot...</span>
           </div>
-          <div id="watchlistBody" class="watchlist-list"></div>
+          <div id="watchlistBody" class="watchlist-list" aria-live="polite"></div>
         </aside>
 
         <div class="dashboard-main">
@@ -72,7 +103,7 @@
                 <div id="analysisBadge" class="signal-badge signal-badge-muted" hidden>Decision view</div>
               </div>
 
-              <div id="loadingState" class="loading-state" hidden>
+              <div id="loadingState" class="loading-state" role="status" aria-live="polite" hidden>
                 <span class="loading-spinner" aria-hidden="true"></span>
                 <span>Loading analysis...</span>
               </div>
@@ -90,7 +121,7 @@
                 </div>
               </section>
 
-              <div id="noTradeBanner" class="no-trade-banner" hidden>
+              <div id="noTradeBanner" class="no-trade-banner" role="status" aria-live="polite" hidden>
                 <div class="no-trade-icon">!</div>
                 <div>
                   <strong id="noTradeTitle">NO TRADE</strong>
@@ -156,7 +187,7 @@
                 </div>
               </div>
 
-              <section id="actionPanel" class="action-panel" hidden>
+              <section id="actionPanel" class="action-panel" hidden aria-label="Trade setup details">
                 <div class="panel-head panel-head-tight">
                   <div>
                     <p class="panel-kicker">Trade Setup</p>
@@ -207,7 +238,7 @@
               <strong id="chartSymbol">--</strong>
             </div>
             <div class="chart-surface">
-              <svg id="historyChart" viewBox="0 0 720 280" aria-label="Price history chart"></svg>
+              <svg id="historyChart" viewBox="0 0 720 280" role="img" aria-label="Price history chart"></svg>
             </div>
           </section>
 
@@ -297,23 +328,23 @@
                   <strong>Track a position</strong>
                   <p>Add or update positions so P/L stays grounded in your real entries.</p>
                 </div>
-                <form id="positionForm" class="position-form">
+                <form id="positionForm" class="position-form" method="post" novalidate>
                   <input type="hidden" id="positionId" />
                   <label>
                     <span>Symbol</span>
-                    <select id="symbolInput" required></select>
+                    <select id="symbolInput" name="symbol" required></select>
                   </label>
                   <label>
                     <span>Quantity</span>
-                    <input id="quantityInput" type="number" min="0.0001" step="0.0001" required />
+                    <input id="quantityInput" name="quantity" type="number" min="0.0001" step="0.0001" inputmode="decimal" required />
                   </label>
                   <label>
                     <span>Average Price</span>
-                    <input id="priceInput" type="number" min="0.01" step="0.01" required />
+                    <input id="priceInput" name="averagePrice" type="number" min="0.01" step="0.01" inputmode="decimal" required />
                   </label>
                   <label>
                     <span>Opened At</span>
-                    <input id="openedAtInput" type="date" required />
+                    <input id="openedAtInput" name="openedAt" type="date" required />
                   </label>
                   <div class="form-actions">
                     <button class="primary-button" id="saveButton" type="submit">Add position</button>
@@ -323,15 +354,18 @@
                 <p class="portfolio-form-note">This section is for tracking and review, not for automatic execution.</p>
               </div>
 
-              <div id="portfolioBody" class="portfolio-list"></div>
+              <div id="portfolioBody" class="portfolio-list" aria-live="polite"></div>
             </div>
           </section>
         </div>
       </main>
 
-      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+      <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
     </div>
 
+    <noscript>
+      <div class="error-banner" role="alert">This dashboard needs JavaScript enabled to load live analysis.</div>
+    </noscript>
     <script src="/static/app.js" defer></script>
   </body>
 </html>

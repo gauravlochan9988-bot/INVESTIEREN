@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Dict
@@ -31,8 +32,12 @@ class Settings(BaseSettings):
     app_name: str = "Investieren MVP"
     app_env: str = "development"
     debug: bool = True
-    database_url: str = (
-        "postgresql+psycopg://postgres:postgres@localhost:5432/investieren"
+    database_url: str = Field(
+        default_factory=lambda: (
+            "sqlite+pysqlite:////tmp/investieren.db"
+            if os.getenv("VERCEL")
+            else f"sqlite+pysqlite:///{(PROJECT_ROOT / 'investieren.db').as_posix()}"
+        )
     )
     market_cache_ttl_seconds: int = 45
     macro_cache_ttl_seconds: int = 900

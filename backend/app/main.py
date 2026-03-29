@@ -9,11 +9,13 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.router import api_router
 from app.core.config import get_settings
+from app.core.database import get_engine
 from app.core.exceptions import AppError, ExternalServiceError, NotFoundError, ValidationError
+from app.models import Base
 
 
 BASE_DIR = Path(__file__).resolve().parent
-STATIC_DIR = BASE_DIR / "static"
+FRONTEND_DIR = BASE_DIR.parent.parent
 
 
 def _error_response(
@@ -38,15 +40,19 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(api_router)
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+
+    @app.on_event("startup")
+    def ensure_database_tables() -> None:
+        Base.metadata.create_all(bind=get_engine())
 
     @app.get("/")
     def root() -> FileResponse:
-        return FileResponse(STATIC_DIR / "index.html")
+        return FileResponse(FRONTEND_DIR / "index.html")
 
     @app.get("/index.html")
     def root_index() -> FileResponse:
-        return FileResponse(STATIC_DIR / "index.html")
+        return FileResponse(FRONTEND_DIR / "index.html")
 
     @app.get("/api/health")
     def healthcheck() -> dict:
