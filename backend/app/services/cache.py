@@ -40,5 +40,8 @@ class TTLCache(Generic[T]):
             return None
         return entry.value
 
+    def delete(self, key: str) -> None:
+        self._store.pop(key, None)
+
     def clear(self) -> None:
         self._store.clear()

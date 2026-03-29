@@ -63,7 +63,13 @@ class FakeMarketDataProvider:
             "NVDA": build_history(start=115.0, drift=0.7, noise=0.004),
             "AMZN": build_history(start=165.0, drift=0.35, noise=0.003),
             "NFLX": build_history(start=430.0, drift=0.05, noise=0.003),
+            "SAP.DE": build_history(start=160.0, drift=0.3, noise=0.003),
+            "ASML.AS": build_history(start=760.0, drift=1.4, noise=0.004),
+            "RELIANCE.NS": build_history(start=2850.0, drift=10.0, noise=0.003),
+            "TCS.NS": build_history(start=3950.0, drift=8.0, noise=0.002),
             "SPY": build_history(start=470.0, drift=0.28, noise=0.002),
+            "VGK": build_history(start=62.0, drift=0.08, noise=0.002),
+            "INDA": build_history(start=52.0, drift=0.12, noise=0.003),
             "DXY": build_history(start=104.0, drift=-0.03, noise=0.001),
         }
 
@@ -154,6 +160,47 @@ class FakeNewsProvider:
                     }
                 }
             ],
+            "SAP": [
+                {
+                    "content": {
+                        "title": "SAP lifts cloud outlook after strong enterprise demand in Europe",
+                        "summary": "Analysts cite improving margins and resilient customer spending.",
+                        "pubDate": now.isoformat(),
+                    }
+                },
+                {
+                    "content": {
+                        "title": "SAP wins large software contract with European manufacturer",
+                        "summary": "The agreement supports medium-term growth expectations.",
+                        "pubDate": (now - timedelta(hours=5)).isoformat(),
+                    }
+                },
+            ],
+            "RELIANCE": [
+                {
+                    "content": {
+                        "title": "Reliance Industries secures major energy order in India",
+                        "summary": "The company plans additional capex after the expansion approval.",
+                        "pubDate": now.isoformat(),
+                    }
+                },
+                {
+                    "content": {
+                        "title": "Reliance Industries sees stronger retail demand across India",
+                        "summary": "Improving volume trends support the near-term outlook.",
+                        "pubDate": (now - timedelta(hours=3)).isoformat(),
+                    }
+                },
+            ],
+            "ASML": [
+                {
+                    "content": {
+                        "title": "Chip equipment demand stays stable in Europe",
+                        "summary": "Industry conditions remain balanced.",
+                        "pubDate": now.isoformat(),
+                    }
+                }
+            ],
         }
 
     def fetch_news(self, symbol: str, limit: int) -> List[dict]:
@@ -175,6 +222,12 @@ class FakeSearchProvider:
             "core": [
                 SearchSnapshot(symbol="IVV", name="iShares Core S&P 500 ETF"),
                 SearchSnapshot(symbol="VTI", name="Vanguard Total Stock Market ETF"),
+            ],
+            "sap": [
+                SearchSnapshot(symbol="SAP.DE", name="SAP SE"),
+            ],
+            "reliance": [
+                SearchSnapshot(symbol="RELIANCE.NS", name="Reliance Industries Ltd"),
             ],
         }
 

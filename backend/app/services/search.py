@@ -100,7 +100,7 @@ class YFinanceSearchProvider:
             if not isinstance(item, dict):
                 continue
 
-            symbol = str(item.get("symbol", "")).strip().upper().replace(".", "-")
+            symbol = str(item.get("symbol", "")).strip().upper()
             name = str(item.get("longname") or item.get("shortname") or "").strip()
             quote_type = str(item.get("quoteType") or "").upper()
 
@@ -145,7 +145,7 @@ class FinnhubSearchProvider:
             if not isinstance(item, dict):
                 continue
 
-            symbol = str(item.get("symbol", "")).strip().upper().replace(".", "-")
+            symbol = str(item.get("symbol", "")).strip().upper()
             name = str(item.get("description", "")).strip()
             instrument_type = str(item.get("type") or "").upper()
 
@@ -217,6 +217,12 @@ class StockSearchService:
             for snapshot in snapshots[:capped_limit]
         ]
         return self.cache.set(cache_key, results)
+
+    def universe(self) -> List[SearchResult]:
+        return [
+            SearchResult(symbol=document.snapshot.symbol, name=document.snapshot.name)
+            for document in sorted(self.catalog, key=lambda item: item.snapshot.symbol)
+        ]
 
     def _search_with_fallbacks(self, query: str, limit: int) -> List[SearchSnapshot]:
         mapped_results = self._mapped_results(query)
@@ -401,7 +407,7 @@ def _normalize_text(value: str) -> str:
 
 
 def _is_supported_symbol(symbol: str) -> bool:
-    return bool(symbol) and symbol.replace("-", "").isalnum()
+    return bool(symbol) and symbol.replace("-", "").replace(".", "").isalnum()
 
 
 def _subsequence_penalty(text: str, query: str) -> int | None:

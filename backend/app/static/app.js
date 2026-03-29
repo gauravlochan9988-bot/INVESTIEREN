@@ -1,5 +1,6 @@
 const state = {
   stocks: [],
+  universe: [],
   portfolio: [],
   selectedSymbol: null,
   selectedAnalysis: null,
@@ -13,7 +14,12 @@ const state = {
   searchStatus: "idle",
   historyCache: new Map(),
   toastTimer: null,
+  activeAnalysisId: 0,
+  analysisAbortController: null,
 };
+
+const ANALYSIS_TIMEOUT_MS = 5000;
+const LOADING_ERROR_MESSAGE = "Data loading failed";
 
 const KNOWN_SEARCH_HINTS = {
   "s&p": [
@@ -38,15 +44,22 @@ const elements = {
   watchlistBody: document.getElementById("watchlistBody"),
   watchlistMeta: document.getElementById("watchlistMeta"),
   refreshStocks: document.getElementById("refreshStocks"),
+  brandHomeButton: document.getElementById("brandHomeButton"),
   searchInput: document.getElementById("searchInput"),
   searchSuggestions: document.getElementById("searchSuggestions"),
-  statusMessage: document.getElementById("statusMessage"),
   errorBanner: document.getElementById("errorBanner"),
   loadingState: document.getElementById("loadingState"),
+  homeStateCard: document.getElementById("homeStateCard"),
   analysisTitle: document.getElementById("analysisTitle"),
   analysisBadge: document.getElementById("analysisBadge"),
+  decisionPanel: document.getElementById("decisionPanel"),
+  actionPanel: document.getElementById("actionPanel"),
+  chartPanel: document.getElementById("chartPanel"),
+  signalsPanel: document.getElementById("signalsPanel"),
+  contextSection: document.getElementById("contextSection"),
   analysisSummary: document.getElementById("analysisSummary"),
   noTradeBanner: document.getElementById("noTradeBanner"),
+  noTradeTitle: document.getElementById("noTradeTitle"),
   noTradeReason: document.getElementById("noTradeReason"),
   recommendationValue: document.getElementById("recommendationValue"),
   confidenceValue: document.getElementById("confidenceValue"),
@@ -58,8 +71,8 @@ const elements = {
   selectedChangeValue: document.getElementById("selectedChangeValue"),
   probabilityUpValue: document.getElementById("probabilityUpValue"),
   probabilityDownValue: document.getElementById("probabilityDownValue"),
-  probabilityUpBar: document.getElementById("probabilityUpBar"),
-  probabilityDownBar: document.getElementById("probabilityDownBar"),
+  biasSupportText: document.getElementById("biasSupportText"),
+  biasStateText: document.getElementById("biasStateText"),
   entrySignalValue: document.getElementById("entrySignalValue"),
   entryReasonValue: document.getElementById("entryReasonValue"),
   exitSignalValue: document.getElementById("exitSignalValue"),
@@ -93,14 +106,72 @@ const elements = {
   toast: document.getElementById("toast"),
 };
 
+class RequestTimeoutError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "RequestTimeoutError";
+  }
+}
+
 async function api(path, options = {}) {
-  const response = await fetch(path, {
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    ...options,
-  });
+  const {
+    timeoutMs = 5000,
+    timeoutMessage = LOADING_ERROR_MESSAGE,
+    signal: externalSignal,
+    headers,
+    ...fetchOptions
+  } = options;
+  const controller = new AbortController();
+  let didTimeout = false;
+  let didAbortExternally = false;
+  const onAbort = () => {
+    didAbortExternally = true;
+    controller.abort(externalSignal?.reason || "aborted");
+  };
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      onAbort();
+    } else {
+      externalSignal.addEventListener("abort", onAbort, { once: true });
+    }
+  }
+  const timeoutId = window.setTimeout(() => {
+    didTimeout = true;
+    controller.abort("timeout");
+  }, timeoutMs);
+
+  let response;
+  try {
+    response = await fetch(path, {
+      headers: { "Content-Type": "application/json", ...(headers || {}) },
+      cache: "no-store",
+      ...fetchOptions,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    window.clearTimeout(timeoutId);
+    if (externalSignal) {
+      externalSignal.removeEventListener("abort", onAbort);
+    }
+    if (didTimeout) {
+      throw new RequestTimeoutError(timeoutMessage);
+    }
+    if (didAbortExternally || error.name === "AbortError") {
+      throw error;
+    }
+    throw new Error(LOADING_ERROR_MESSAGE);
+  }
+
+  window.clearTimeout(timeoutId);
+  if (externalSignal) {
+    externalSignal.removeEventListener("abort", onAbort);
+  }
 
   if (!response.ok) {
     let detail = `Request failed with status ${response.status}`;
+    if (response.status >= 500) {
+      detail = LOADING_ERROR_MESSAGE;
+    }
     try {
       const payload = await response.json();
       detail = payload.error || payload.detail || detail;
@@ -132,6 +203,47 @@ function roundedPercent(value) {
   return `${Math.round((value ?? 0) * 100)}%`;
 }
 
+function isNoDataMessage(message) {
+  const normalized = `${message || ""}`.toLowerCase();
+  return (
+    normalized.includes("no live market data available")
+    || normalized.includes("provider is currently unavailable")
+    || normalized.includes("symbol not supported")
+    || normalized.includes("not found")
+    || normalized.includes("timeout")
+  );
+}
+
+function classifyDataIssue(message) {
+  const normalized = `${message || ""}`.toLowerCase();
+  if (normalized.includes("timeout") || normalized.includes("zu lange")) {
+    return {
+      title: "No live market data available",
+      reason: "Timeout: the live data request took too long.",
+    };
+  }
+  if (normalized.includes("provider") || normalized.includes("unavailable")) {
+    return {
+      title: "No live market data available",
+      reason: "Provider unavailable: live data could not be loaded.",
+    };
+  }
+  if (
+    normalized.includes("symbol not supported")
+    || normalized.includes("not found")
+    || normalized.includes("unsupported")
+  ) {
+    return {
+      title: "No live market data available",
+      reason: "Symbol not supported or no live feed available for this ticker.",
+    };
+  }
+  return {
+    title: "No live market data available",
+    reason: "The data source did not return a usable live response.",
+  };
+}
+
 function showToast(message) {
   elements.toast.textContent = message;
   elements.toast.classList.add("toast-visible");
@@ -141,30 +253,215 @@ function showToast(message) {
   }, 2400);
 }
 
-function setStatus(message) {
-  elements.statusMessage.textContent = message;
+function withRefresh(path, forceRefresh = false) {
+  if (!forceRefresh) {
+    return path;
+  }
+  return `${path}${path.includes("?") ? "&" : "?"}refresh=1`;
+}
+
+function noTradeCopy(reason) {
+  const normalizedReason = `${reason || ""}`.trim();
+  const lowered = normalizedReason.toLowerCase();
+
+  if (!normalizedReason) {
+    return {
+      title: "NO TRADE",
+      reason: "Market conditions are unclear right now.",
+    };
+  }
+
+  if (lowered.includes("probability edge")) {
+    return {
+      title: "NO TRADE",
+      reason: "There is not enough edge right now to justify a clean entry.",
+    };
+  }
+
+  if (lowered.includes("conflicting")) {
+    return {
+      title: "NO TRADE",
+      reason: "Key signals are pointing in different directions.",
+    };
+  }
+
+  if (lowered.includes("volatility")) {
+    return {
+      title: "NO TRADE",
+      reason: "Volatility is high while the trend still looks weak.",
+    };
+  }
+
+  if (lowered.includes("risk is high")) {
+    return {
+      title: "NO TRADE",
+      reason: "Risk is too high for the current setup quality.",
+    };
+  }
+
+  if (lowered.includes("no clean trend")) {
+    return {
+      title: "NO TRADE",
+      reason: "There is no clean trend to build on right now.",
+    };
+  }
+
+  if (lowered.includes("broader market backdrop")) {
+    return {
+      title: "NO TRADE",
+      reason: "The broader market backdrop is not supportive enough.",
+    };
+  }
+
+  return {
+    title: "NO TRADE",
+    reason: normalizedReason,
+  };
+}
+
+function displayRecommendation(analysis) {
+  if (!analysis) {
+    return "--";
+  }
+  const warnings = analysis.warnings || [];
+  const unclearSetup = warnings.includes("Setup Unclear")
+    || warnings.includes("No Clear Trend")
+    || warnings.includes("Too Many Conflicting Signals");
+  if (
+    analysis.no_data
+    || analysis.no_trade
+    || unclearSetup
+    || analysis.risk_level === "HIGH"
+    || analysis.recommendation === "HOLD"
+    || (analysis.confidence ?? 0) < 0.5
+  ) {
+    return "NO TRADE";
+  }
+  return analysis.recommendation;
+}
+
+function marketBiasLabel(analysis) {
+  const edge = (analysis?.probability_up ?? 0.5) - 0.5;
+  const absoluteEdge = Math.abs(edge);
+
+  if (absoluteEdge < 0.06) return "neutral setup";
+  if (edge >= 0.18) return "strong bullish bias";
+  if (edge >= 0.1) return "bullish bias";
+  if (edge > 0) return "weak bullish bias";
+  if (edge <= -0.18) return "strong bearish bias";
+  if (edge <= -0.1) return "bearish bias";
+  return "weak bearish bias";
+}
+
+function convictionLabel(confidence) {
+  if ((confidence ?? 0) >= 0.75) return "high conviction";
+  if ((confidence ?? 0) >= 0.55) return "moderate conviction";
+  return "low conviction";
+}
+
+function setupStateLabel(analysis) {
+  if (analysis.no_data) return "blocked";
+  if (displayRecommendation(analysis) === "NO TRADE") return "no trade";
+  if (analysis.entry_signal) return "actionable";
+  if (analysis.exit_signal) return "defensive";
+  return "watch";
+}
+
+function biasToneClass(label) {
+  if (`${label || ""}`.includes("bullish")) return "tone-positive";
+  if (`${label || ""}`.includes("bearish")) return "tone-negative";
+  return "tone-neutral";
+}
+
+function setupStateToneClass(label) {
+  if (label === "actionable") return "tone-positive";
+  if (label === "blocked" || label === "defensive") return "tone-negative";
+  return "tone-neutral";
+}
+
+function biasLabel(probability, direction = "up") {
+  const value = Number(probability ?? 0.5);
+  const edge = direction === "down" ? value - 0.5 : value - 0.5;
+  const absoluteEdge = Math.abs(edge);
+
+  if (absoluteEdge < 0.06) {
+    return "neutral setup";
+  }
+  if (direction === "up") {
+    if (value >= 0.68) return "strong bullish bias";
+    if (value >= 0.6) return "bullish bias";
+    return "weak bullish bias";
+  }
+  if (value >= 0.68) return "strong bearish bias";
+  if (value >= 0.6) return "bearish bias";
+  return "weak bearish bias";
+}
+
+function prioritizedWarnings(warnings) {
+  const priorityMap = new Map([
+    ["No Live Market Data", 0],
+    ["Negative News", 1],
+    ["Overall Market Weak", 2],
+    ["Macro Headwind", 3],
+    ["High Volatility", 4],
+    ["Too Many Conflicting Signals", 5],
+    ["Setup Unclear", 6],
+    ["Trend Weak", 7],
+    ["No Clear Trend", 8],
+    ["Overbought", 9],
+  ]);
+
+  return [...(warnings || [])]
+    .sort((left, right) => {
+      const leftPriority = priorityMap.get(left) ?? 50;
+      const rightPriority = priorityMap.get(right) ?? 50;
+      return leftPriority - rightPriority;
+    })
+    .slice(0, 3);
+}
+
+function setStatus(message, tone = "idle") {
+  elements.refreshStocks.dataset.status = tone;
+  elements.refreshStocks.title = message;
+  elements.refreshStocks.setAttribute("aria-label", message);
+  elements.refreshStocks.classList.toggle("is-error", tone === "error");
 }
 
 function setLoading(active, message = "Loading analysis...") {
   elements.loadingState.hidden = !active;
   elements.analysisPanel.classList.toggle("analysis-loading", active);
+  elements.refreshStocks.setAttribute("aria-busy", active ? "true" : "false");
   if (active) {
     elements.loadingState.innerHTML = `<span class="loading-spinner" aria-hidden="true"></span><span>${message}</span>`;
-    setStatus(message);
+    setStatus(message, "busy");
+    elements.refreshStocks.classList.add("is-spinning");
   } else {
-    setStatus("Ready");
+    elements.refreshStocks.classList.remove("is-spinning");
+    if (elements.errorBanner.hidden) {
+      setStatus(
+        state.selectedSymbol ? "Analyze selected stock again" : "Refresh dashboard data",
+        "idle",
+      );
+    }
   }
 }
 
 function showError(message) {
   elements.errorBanner.hidden = false;
   elements.errorBanner.textContent = message;
-  setStatus("Error");
+  elements.refreshStocks.classList.remove("is-spinning");
+  setStatus(message, "error");
 }
 
 function clearError() {
   elements.errorBanner.hidden = true;
   elements.errorBanner.textContent = "";
+  if (elements.loadingState.hidden) {
+    setStatus(
+      state.selectedSymbol ? "Analyze selected stock again" : "Refresh dashboard data",
+      "idle",
+    );
+  }
 }
 
 function resetForm() {
@@ -179,12 +476,14 @@ function recommendationBadgeClass(recommendation) {
   if (recommendation === "BUY") return "signal-badge signal-badge-buy";
   if (recommendation === "SELL") return "signal-badge signal-badge-sell";
   if (recommendation === "HOLD") return "signal-badge signal-badge-hold";
+  if (recommendation === "NO TRADE") return "signal-badge signal-badge-no-trade";
   return "signal-badge signal-badge-muted";
 }
 
 function recommendationToneClass(recommendation) {
   if (recommendation === "BUY") return "tone-positive";
   if (recommendation === "SELL") return "tone-negative";
+  if (recommendation === "NO TRADE") return "tone-neutral";
   return "tone-neutral";
 }
 
@@ -225,11 +524,11 @@ function stockMatchesQuery(stock, query) {
 }
 
 function directSymbolCandidate() {
-  const candidate = state.searchQuery.trim().toUpperCase().replaceAll(".", "-");
+  const candidate = state.searchQuery.trim().toUpperCase();
   if (!candidate) {
     return null;
   }
-  return candidate.length >= 2 && /^[A-Z][A-Z0-9-]{0,9}$/.test(candidate) ? candidate : null;
+  return candidate.length >= 2 && /^[A-Z][A-Z0-9.-]{0,14}$/.test(candidate) ? candidate : null;
 }
 
 function formatSignalValue(signal) {
@@ -282,6 +581,7 @@ function knownSymbols() {
   };
 
   state.stocks.forEach((stock) => pushSymbol(stock.symbol, stock.name));
+  state.universe.forEach((stock) => pushSymbol(stock.symbol, stock.name));
   state.searchResults.forEach((stock) => pushSymbol(stock.symbol, stock.name));
   state.portfolio.forEach((position) =>
     pushSymbol(position.symbol, state.symbolDirectory.get(position.symbol) || position.symbol),
@@ -360,7 +660,13 @@ function suggestionMatches(limit = 6) {
 function watchlistEntries(limit = 16) {
   const query = normalizedSearchQuery();
   if (!query) {
-    return state.stocks.slice(0, limit);
+    const trackedSymbols = new Set(state.stocks.map((stock) => stock.symbol));
+    const trackedEntries = state.stocks.map((stock) => ({
+      symbol: stock.symbol,
+      name: stock.name,
+    }));
+    const otherEntries = state.universe.filter((stock) => !trackedSymbols.has(stock.symbol));
+    return [...trackedEntries, ...otherEntries].slice(0, limit);
   }
 
   const merged = [];
@@ -375,6 +681,7 @@ function watchlistEntries(limit = 16) {
 
   suggestionMatches(limit).forEach(push);
   localSearchResults(limit).forEach(push);
+  state.universe.filter((stock) => stockMatchesQuery(stock, query)).forEach(push);
 
   return merged;
 }
@@ -500,6 +807,14 @@ function persistSelectedSymbol(symbol) {
   }
 }
 
+function setAnalysisSectionsVisible(isVisible) {
+  elements.decisionPanel.hidden = !isVisible;
+  elements.actionPanel.hidden = !isVisible;
+  elements.chartPanel.hidden = !isVisible;
+  elements.signalsPanel.hidden = !isVisible;
+  elements.contextSection.hidden = !isVisible;
+}
+
 function readPersistedSymbol() {
   try {
     return window.localStorage.getItem(STORAGE_KEYS.selectedSymbol);
@@ -513,6 +828,27 @@ function animateAnalysisPanel() {
   window.requestAnimationFrame(() => {
     elements.analysisPanel.classList.add("analysis-ready");
   });
+}
+
+function renderLoadingState(symbol) {
+  state.selectedSymbol = symbol;
+  state.selectedAnalysis = null;
+  state.selectedQuote = null;
+  state.searchQuery = "";
+  state.searchResults = [];
+  state.searchStatus = "idle";
+  elements.searchInput.value = symbol;
+  elements.homeStateCard.hidden = true;
+  elements.noTradeBanner.hidden = true;
+  elements.analysisPanel.classList.remove("analysis-panel-home");
+  elements.analysisTitle.textContent = symbol;
+  elements.analysisBadge.hidden = true;
+  elements.analysisSummary.textContent = "";
+  elements.selectedChangeValue.textContent = "Loading...";
+  elements.selectedChangeValue.className = "hero-subline tone-neutral";
+  setAnalysisSectionsVisible(false);
+  renderSearchSuggestions();
+  renderWatchlist();
 }
 
 function rememberSymbolMeta(symbol, name) {
@@ -544,6 +880,18 @@ function quoteFromHistory(symbol, points) {
 
 function roundTo(value, digits) {
   return Number(value.toFixed(digits));
+}
+
+function formatWatchlistTimestamp(value) {
+  if (!value) {
+    return null;
+  }
+  return new Date(value).toLocaleString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 async function loadSearchSuggestions() {
@@ -629,23 +977,34 @@ function topSearchResult() {
   return suggestionMatches(1)[0] || null;
 }
 
+async function loadUniverse() {
+  const universe = await api("/api/search/universe");
+  state.universe = universe;
+  universe.forEach((stock) => rememberSymbolMeta(stock.symbol, stock.name));
+  renderSymbolOptions();
+  renderWatchlist();
+}
+
 function renderWatchlist() {
   elements.watchlistBody.innerHTML = "";
 
-  if (!state.stocks.length) {
+  if (!state.stocks.length && !state.universe.length) {
     elements.watchlistBody.innerHTML = `<div class="watchlist-empty">No stocks available.</div>`;
     renderSymbolOptions();
     return;
   }
 
-  const updatedAt = new Date(state.stocks[0].updated_at).toLocaleString();
+  const updatedAt = state.stocks[0] ? formatWatchlistTimestamp(state.stocks[0].updated_at) : null;
   const query = normalizedSearchQuery();
-  const entries = watchlistEntries(16);
+  const entries = watchlistEntries(12);
   if (query) {
-    const statusLabel = state.searchStatus === "loading" ? "Searching..." : `${entries.length} results`;
-    elements.watchlistMeta.textContent = `Search results for "${state.searchQuery.trim()}" · ${statusLabel}`;
+    const statusLabel = state.searchStatus === "loading" ? "Searching..." : `${entries.length} shown`;
+    elements.watchlistMeta.textContent = `Search · ${statusLabel}`;
   } else {
-    elements.watchlistMeta.textContent = `${state.stocks.length} tracked names · Updated ${updatedAt}`;
+    const liveLabel = updatedAt
+      ? `${state.stocks.length} live · ${updatedAt}`
+      : "No live market data available";
+    elements.watchlistMeta.textContent = `${entries.length} focus names · ${liveLabel}`;
   }
 
   state.stocks.forEach((stock) => {
@@ -653,21 +1012,31 @@ function renderWatchlist() {
   });
 
   entries.forEach((stock) => {
+    const liveQuote = quoteForSymbol(stock.symbol);
+    const isTracked = Boolean(liveQuote);
     const item = document.createElement("button");
     item.type = "button";
     item.className = `watchlist-item ${state.selectedSymbol === stock.symbol ? "watchlist-item-active" : ""}`;
     item.dataset.analyze = stock.symbol;
     item.innerHTML = `
       <div class="watchlist-item-left">
-        <span class="trend-dot ${stock.change_percent >= 0 ? "trend-dot-up" : "trend-dot-down"}"></span>
+        <span class="trend-dot ${
+          !isTracked
+            ? "trend-dot-neutral"
+            : liveQuote.change_percent >= 0
+              ? "trend-dot-up"
+              : "trend-dot-down"
+        }"></span>
         <div>
           <strong>${stock.symbol}</strong>
           <span>${stock.name}</span>
         </div>
       </div>
       <div class="watchlist-item-right">
-        <strong>${currency(stock.price)}</strong>
-        <span class="${stock.change_percent >= 0 ? "tone-positive" : "tone-negative"}">${percent(stock.change_percent)}</span>
+        <strong>${isTracked ? currency(liveQuote.price) : "--"}</strong>
+        <span class="${
+          !isTracked ? "tone-neutral" : liveQuote.change_percent >= 0 ? "tone-positive" : "tone-negative"
+        }">${isTracked ? percent(liveQuote.change_percent) : "Search result"}</span>
       </div>
     `;
     elements.watchlistBody.appendChild(item);
@@ -694,19 +1063,22 @@ function renderSelectedQuote(symbol) {
 
   elements.selectedPriceValue.textContent = currency(stock.price);
   elements.selectedPriceValue.className = `decision-fact-value ${stock.change_percent >= 0 ? "tone-positive" : "tone-negative"}`;
-  elements.selectedPriceLabel.textContent = `${stock.name} · ${stock.volume.toLocaleString()} volume`;
+  elements.selectedPriceLabel.textContent = stock.volume
+    ? `${stock.name} · ${stock.volume.toLocaleString()} volume`
+    : `${stock.name} · Live price from chart history`;
   elements.selectedChangeValue.textContent = `${stock.name} · ${percent(stock.change_percent)} today`;
   elements.selectedChangeValue.className = `hero-subline ${stock.change_percent >= 0 ? "tone-positive" : "tone-negative"}`;
 }
 
 function renderWarnings(warnings) {
+  const limitedWarnings = prioritizedWarnings(warnings);
   elements.warningsList.innerHTML = "";
-  if (!warnings.length) {
-    elements.warningsList.innerHTML = `<span class="warning-empty">No active warnings.</span>`;
+  if (!limitedWarnings.length) {
+    elements.warningsList.innerHTML = `<span class="warning-empty">No key warnings right now.</span>`;
     return;
   }
 
-  warnings.forEach((warning) => {
+  limitedWarnings.forEach((warning) => {
     const badge = document.createElement("span");
     badge.className = warningToneClass(warning);
     badge.textContent = warning;
@@ -801,6 +1173,14 @@ function renderChart(points) {
   svg.innerHTML = "";
 
   if (!points.length) {
+    const empty = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    empty.setAttribute("x", "50%");
+    empty.setAttribute("y", "50%");
+    empty.setAttribute("text-anchor", "middle");
+    empty.setAttribute("fill", "rgba(144, 163, 181, 0.8)");
+    empty.setAttribute("font-size", "15");
+    empty.textContent = "No live chart data";
+    svg.appendChild(empty);
     return;
   }
 
@@ -854,32 +1234,46 @@ function renderChart(points) {
 }
 
 function renderHomeState() {
+  if (state.analysisAbortController) {
+    state.analysisAbortController.abort();
+    state.analysisAbortController = null;
+  }
   state.selectedSymbol = null;
   state.selectedAnalysis = null;
   state.selectedQuote = null;
   elements.searchInput.value = "";
   state.searchQuery = "";
   state.searchResults = [];
+  state.searchStatus = "idle";
+  state.searchRequestId += 1;
+  window.clearTimeout(state.searchTimer);
 
-  elements.analysisTitle.textContent = "Search for a stock to start analysis";
+  elements.analysisTitle.textContent = "Select a stock to start analysis";
   elements.analysisBadge.className = "signal-badge signal-badge-muted";
-  elements.analysisBadge.textContent = "Decision view";
-  elements.analysisSummary.textContent = "Search for a stock to start analysis.";
+  elements.analysisBadge.textContent = "";
+  elements.analysisBadge.hidden = true;
+  elements.analysisSummary.textContent = "";
+  elements.homeStateCard.hidden = false;
+  elements.analysisPanel.classList.add("analysis-panel-home");
+  setAnalysisSectionsVisible(false);
+  elements.selectedChangeValue.textContent = "Search all available stocks and ETFs to load live analysis.";
+  elements.selectedChangeValue.className = "hero-subline";
   elements.recommendationValue.textContent = "--";
-  elements.recommendationValue.className = "decision-recommendation";
+  elements.recommendationValue.className = "decision-recommendation decision-recommendation-empty";
   elements.riskValue.textContent = "Risk: --";
   elements.riskValue.className = "decision-risk";
-  elements.confidenceValue.textContent = "--";
+  elements.confidenceValue.textContent = "WAITING";
   elements.confidenceBar.style.width = "0%";
-  elements.confidenceNote.textContent = "Confidence appears after analysis.";
+  elements.confidenceNote.textContent = "Live analysis appears after you pick a stock.";
   elements.probabilityUpValue.textContent = "--";
   elements.probabilityDownValue.textContent = "--";
-  elements.probabilityUpValue.className = "";
-  elements.probabilityDownValue.className = "";
-  elements.probabilityUpBar.style.width = "0%";
-  elements.probabilityDownBar.style.width = "0%";
+  elements.probabilityUpValue.className = "tone-neutral";
+  elements.probabilityDownValue.className = "tone-neutral";
+  elements.biasSupportText.textContent = "Directional context appears after analysis.";
+  elements.biasStateText.textContent = "No stock selected.";
   elements.noTradeBanner.hidden = true;
-  elements.noTradeReason.textContent = "Waiting for a cleaner setup.";
+  elements.noTradeTitle.textContent = "NO TRADE";
+  elements.noTradeReason.textContent = "Market conditions are unclear right now.";
 
   renderSelectedQuote(null);
   elements.entrySignalValue.textContent = "--";
@@ -901,59 +1295,149 @@ function renderHomeState() {
   elements.chartSymbol.textContent = "--";
   renderChart([]);
   persistSelectedSymbol(null);
+  setLoading(false);
+  clearError();
+  setStatus("Refresh dashboard data", "idle");
   renderWatchlist();
   closeSuggestions();
   animateAnalysisPanel();
 }
 
+function renderUnavailableAnalysisState(symbol, message) {
+  const issue = classifyDataIssue(message);
+  state.selectedSymbol = symbol;
+  state.selectedAnalysis = null;
+  state.selectedQuote = null;
+  persistSelectedSymbol(symbol);
+  clearError();
+  closeSuggestions();
+  elements.homeStateCard.hidden = true;
+  elements.analysisPanel.classList.remove("analysis-panel-home");
+  setAnalysisSectionsVisible(false);
+  elements.analysisTitle.textContent = `${symbol} · No live data`;
+  elements.analysisBadge.className = "signal-badge signal-badge-muted";
+  elements.analysisBadge.textContent = "NO DATA";
+  elements.analysisBadge.hidden = true;
+  elements.analysisSummary.textContent = issue.reason;
+  elements.recommendationValue.textContent = "NO TRADE";
+  elements.recommendationValue.className = "decision-recommendation tone-neutral";
+  elements.riskValue.textContent = "Analysis blocked";
+  elements.riskValue.className = "decision-risk";
+  elements.confidenceValue.textContent = "UNAVAILABLE";
+  elements.confidenceBar.style.width = "0%";
+  elements.confidenceNote.textContent = "No analysis without live market data.";
+  elements.probabilityUpValue.textContent = "data unavailable";
+  elements.probabilityDownValue.textContent = "analysis paused";
+  elements.probabilityUpValue.className = "tone-neutral";
+  elements.probabilityDownValue.className = "tone-neutral";
+  elements.biasSupportText.textContent = issue.reason;
+  elements.biasStateText.textContent = "No chart or analysis is shown without live market data.";
+  elements.noTradeBanner.hidden = false;
+  elements.noTradeTitle.textContent = issue.title;
+  elements.noTradeReason.textContent = issue.reason;
+  elements.selectedChangeValue.textContent = issue.reason;
+  elements.selectedChangeValue.className = "hero-subline tone-neutral";
+  elements.selectedPriceValue.textContent = "--";
+  elements.selectedPriceValue.className = "decision-fact-value";
+  elements.selectedPriceLabel.textContent = issue.title;
+  elements.entrySignalValue.textContent = "BLOCKED";
+  elements.entrySignalValue.className = "decision-value tone-neutral";
+  elements.entryReasonValue.textContent = issue.reason;
+  elements.exitSignalValue.textContent = "BLOCKED";
+  elements.exitSignalValue.className = "decision-value tone-neutral";
+  elements.exitReasonValue.textContent = issue.reason;
+  elements.positionSizeValue.textContent = "BLOCKED";
+  elements.positionSizeValue.className = "tone-neutral";
+  elements.positionSizeReason.textContent = issue.reason;
+  elements.stopLossValue.textContent = "--";
+  elements.stopLossReason.textContent = issue.reason;
+  elements.timeframeValue.textContent = "--";
+  renderWarnings([]);
+  renderMacro(null);
+  renderSignals([]);
+  elements.chartSymbol.textContent = symbol;
+  renderChart([]);
+  elements.searchInput.value = symbol;
+  state.searchQuery = "";
+  state.searchResults = [];
+  state.searchStatus = "idle";
+  renderSearchSuggestions();
+  renderWatchlist();
+  animateAnalysisPanel();
+}
+
 function renderDecisionBlock(analysis) {
+  const noTradeReason = noTradeCopy(analysis.no_trade_reason).reason;
   elements.entrySignalValue.textContent = analysis.entry_signal ? "YES" : "NO";
   elements.exitSignalValue.textContent = analysis.exit_signal ? "YES" : "NO";
   elements.entrySignalValue.className = `decision-value ${booleanToneClass(analysis.entry_signal)}`;
   elements.exitSignalValue.className = `decision-value ${booleanToneClass(analysis.exit_signal, true)}`;
-  elements.entryReasonValue.textContent = analysis.no_trade ? analysis.no_trade_reason : analysis.entry_reason;
+  elements.entryReasonValue.textContent = analysis.no_trade ? noTradeReason : analysis.entry_reason;
   elements.exitReasonValue.textContent = analysis.exit_reason;
 }
 
 function renderStrategyBlock(analysis) {
+  const noTradeReason = noTradeCopy(analysis.no_trade_reason).reason;
   elements.positionSizeValue.textContent = `${analysis.position_size_percent.toFixed(1)}%`;
   elements.positionSizeValue.className = analysis.position_size_percent > 0 ? "tone-positive" : "tone-neutral";
-  elements.positionSizeReason.textContent = analysis.no_trade ? analysis.no_trade_reason : analysis.position_size_reason;
+  elements.positionSizeReason.textContent = analysis.no_trade ? noTradeReason : analysis.position_size_reason;
   elements.stopLossValue.textContent = currency(analysis.stop_loss_level);
   elements.stopLossReason.textContent = analysis.stop_loss_reason;
   elements.timeframeValue.textContent = timeframeLabel(analysis.timeframe);
 }
 
 function renderAnalysis(analysis) {
+  if (analysis.no_data) {
+    renderUnavailableAnalysisState(
+      analysis.symbol,
+      analysis.no_data_reason || analysis.summary || "No live market data available.",
+    );
+    return;
+  }
+
   const stock = quoteForSymbol(analysis.symbol);
   const name = stock?.name || "Selected asset";
-  const warnings = analysis.warnings || [];
+  const warnings = prioritizedWarnings(analysis.warnings || []);
+  const recommendationLabel = displayRecommendation(analysis);
+  const showNoTrade = recommendationLabel === "NO TRADE";
+  const marketBias = marketBiasLabel(analysis);
+  const conviction = convictionLabel(analysis.confidence);
+  const setupState = setupStateLabel(analysis);
 
   state.selectedAnalysis = analysis;
+  elements.homeStateCard.hidden = true;
+  elements.analysisPanel.classList.remove("analysis-panel-home");
+  setAnalysisSectionsVisible(true);
   elements.analysisTitle.textContent = `${analysis.symbol} · ${name}`;
-  elements.analysisBadge.className = recommendationBadgeClass(analysis.recommendation);
-  elements.analysisBadge.textContent = analysis.recommendation;
+  elements.analysisBadge.className = recommendationBadgeClass(recommendationLabel);
+  elements.analysisBadge.textContent = recommendationLabel;
+  elements.analysisBadge.hidden = true;
   elements.analysisSummary.textContent = analysis.summary;
-  elements.recommendationValue.textContent = analysis.recommendation;
-  elements.recommendationValue.className = `decision-recommendation ${recommendationToneClass(analysis.recommendation)}`;
+  elements.recommendationValue.textContent = recommendationLabel;
+  elements.recommendationValue.className = `decision-recommendation ${recommendationToneClass(recommendationLabel)}`;
   elements.riskValue.textContent = `Risk: ${analysis.risk_level}`;
   elements.riskValue.className = `decision-risk ${riskToneClass(analysis.risk_level)}`;
-  elements.confidenceValue.textContent = roundedPercent(analysis.confidence);
-  elements.confidenceBar.style.width = `${Math.round(analysis.confidence * 100)}%`;
-  elements.confidenceNote.textContent = analysis.no_trade
-    ? `No-trade bias · ${roundedPercent(analysis.probability_up)} up · ${roundedPercent(analysis.probability_down)} down`
-    : `${roundedPercent(analysis.probability_up)} up · ${roundedPercent(analysis.probability_down)} down${warnings.length ? ` · ${warnings.length} warnings` : ""}`;
-  elements.probabilityUpValue.textContent = roundedPercent(analysis.probability_up);
-  elements.probabilityDownValue.textContent = roundedPercent(analysis.probability_down);
-  elements.probabilityUpValue.className = "tone-positive";
-  elements.probabilityDownValue.className = "tone-negative";
-  elements.probabilityUpBar.style.width = `${Math.round(analysis.probability_up * 100)}%`;
-  elements.probabilityDownBar.style.width = `${Math.round(analysis.probability_down * 100)}%`;
+  elements.confidenceValue.textContent = conviction.toUpperCase();
+  elements.confidenceBar.style.width = "0%";
+  elements.confidenceNote.textContent = showNoTrade
+    ? "Signals are mixed, so conviction stays limited."
+    : "Conviction reflects alignment of live signals.";
+  elements.probabilityUpValue.textContent = marketBias.toUpperCase();
+  elements.probabilityDownValue.textContent = setupState.toUpperCase();
+  elements.probabilityUpValue.className = biasToneClass(marketBias);
+  elements.probabilityDownValue.className = setupStateToneClass(setupState);
+  elements.biasSupportText.textContent = showNoTrade
+    ? "The market bias is visible, but not strong enough for a clean trade."
+    : `Current live bias looks ${marketBias}.`;
+  elements.biasStateText.textContent = showNoTrade
+    ? "Stand aside until trend, risk and live data align."
+    : setupState === "actionable"
+      ? "The setup is clear enough to monitor for execution."
+      : setupState === "defensive"
+        ? "Risk control matters more than a fresh entry here."
+        : "Wait for clearer confirmation before acting.";
 
-  elements.noTradeBanner.hidden = !analysis.no_trade;
-  if (analysis.no_trade) {
-    elements.noTradeReason.textContent = analysis.no_trade_reason;
-  }
+  elements.noTradeBanner.hidden = true;
 
   renderSelectedQuote(analysis.symbol);
   renderDecisionBlock(analysis);
@@ -1010,60 +1494,146 @@ function renderPortfolio(snapshot) {
   });
 }
 
-async function loadStocks() {
-  state.stocks = await api("/api/stocks");
+function renderPortfolioUnavailable(message) {
+  state.portfolio = [];
+  elements.costBasisValue.textContent = "--";
+  elements.marketValueValue.textContent = "--";
+  elements.portfolioMarketValueValue.textContent = "--";
+  elements.pnlValue.textContent = "--";
+  elements.pnlValue.className = "";
+  elements.portfolioBody.innerHTML = `
+    <article class="position-card">
+      <strong>Portfolio unavailable</strong>
+      <p>${message}</p>
+    </article>
+  `;
+  renderSymbolOptions();
+}
+
+async function loadStocks(forceRefresh = false) {
+  state.stocks = await api(withRefresh("/api/stocks", forceRefresh), {
+    timeoutMessage: LOADING_ERROR_MESSAGE,
+  });
   renderWatchlist();
   renderSearchSuggestions();
 }
 
-async function loadPortfolio() {
-  const snapshot = await api("/api/portfolio");
+async function loadPortfolio(forceRefresh = false) {
+  const snapshot = await api(withRefresh("/api/portfolio", forceRefresh), {
+    timeoutMessage: LOADING_ERROR_MESSAGE,
+  });
   renderPortfolio(snapshot);
 }
 
-async function loadHistory(symbol) {
+async function loadHistory(symbol, forceRefresh = false, signal = null) {
   const cacheKey = `${symbol}:1mo`;
-  if (state.historyCache.has(cacheKey)) {
+  if (!forceRefresh && state.historyCache.has(cacheKey)) {
     return state.historyCache.get(cacheKey);
   }
-  const history = await api(`/api/stocks/${symbol}/history?range=1mo`);
+  const history = await api(withRefresh(`/api/stocks/${symbol}/history?range=1mo`, forceRefresh), {
+    timeoutMs: ANALYSIS_TIMEOUT_MS,
+    timeoutMessage: LOADING_ERROR_MESSAGE,
+    signal,
+  });
   state.historyCache.set(cacheKey, history);
   return history;
 }
 
-async function analyze(symbol) {
+async function loadDashboardPanels(forceRefresh = false) {
+  const [stocksResult, portfolioResult] = await Promise.allSettled([
+    loadStocks(forceRefresh),
+    loadPortfolio(forceRefresh),
+  ]);
+  const errors = [];
+
+  if (stocksResult.status === "rejected") {
+    state.stocks = [];
+    renderWatchlist();
+    errors.push(stocksResult.reason?.message || "No live market data available.");
+  }
+
+  if (portfolioResult.status === "rejected") {
+    const message = portfolioResult.reason?.message || "No live market data available.";
+    renderPortfolioUnavailable(message);
+    errors.push(message);
+  }
+
+  return errors;
+}
+
+async function analyze(symbol, { forceRefresh = false } = {}) {
+  const analysisId = state.activeAnalysisId + 1;
+  state.activeAnalysisId = analysisId;
   clearError();
   closeSuggestions();
-  setLoading(true, `Loading ${symbol} analysis...`);
+  renderLoadingState(symbol);
+  setLoading(true, "Loading...");
+
+  if (state.analysisAbortController) {
+    state.analysisAbortController.abort();
+  }
+  const controller = new AbortController();
+  state.analysisAbortController = controller;
 
   try {
-    const [analysis, history] = await Promise.all([
-      api("/api/analyze", {
-        method: "POST",
-        body: JSON.stringify({ symbol }),
-      }),
-      loadHistory(symbol),
-    ]);
+    const analysis = await api(withRefresh("/api/analyze", forceRefresh), {
+      method: "POST",
+      body: JSON.stringify({ symbol }),
+      timeoutMs: ANALYSIS_TIMEOUT_MS,
+      timeoutMessage: LOADING_ERROR_MESSAGE,
+      signal: controller.signal,
+    });
 
-    state.selectedSymbol = symbol;
+    if (analysisId !== state.activeAnalysisId) {
+      return;
+    }
+
+    persistSelectedSymbol(symbol);
+    elements.searchInput.value = `${symbol}`;
+    state.searchQuery = "";
+    state.searchResults = [];
+    state.searchStatus = "idle";
+    renderSearchSuggestions();
+    renderSymbolOptions();
+
+    if (analysis.no_data) {
+      state.selectedQuote = quoteForSymbol(symbol) || null;
+      renderAnalysis(analysis);
+      return;
+    }
+
+    const history = await loadHistory(symbol, forceRefresh, controller.signal);
+    if (analysisId !== state.activeAnalysisId) {
+      return;
+    }
+
     state.selectedQuote = quoteForSymbol(symbol) || quoteFromHistory(symbol, history.points);
     rememberSymbolMeta(
       symbol,
       state.symbolDirectory.get(symbol) || state.selectedQuote?.name || symbol,
     );
-    persistSelectedSymbol(symbol);
-    elements.searchInput.value = `${symbol}`;
-    state.searchQuery = elements.searchInput.value;
-    state.searchResults = [];
-    renderSymbolOptions();
     renderAnalysis(analysis);
     renderChart(history.points);
   } catch (error) {
-    persistSelectedSymbol(null);
-    showError(error.message);
-    showToast(error.message);
+    if (error.name === "AbortError") {
+      return;
+    }
+    const message =
+      error instanceof RequestTimeoutError
+        ? "Timeout: live market data request took too long."
+        : error.message || LOADING_ERROR_MESSAGE;
+    if (isNoDataMessage(message)) {
+      renderUnavailableAnalysisState(symbol, message);
+    } else if (!state.selectedSymbol) {
+      renderHomeState();
+    }
+    showError(message);
+    showToast(message);
   } finally {
-    setLoading(false);
+    if (analysisId === state.activeAnalysisId) {
+      state.analysisAbortController = null;
+      setLoading(false);
+    }
   }
 }
 
@@ -1127,21 +1697,36 @@ function bindEvents() {
   elements.refreshStocks.addEventListener("click", async () => {
     clearError();
     try {
-      setStatus("Refreshing...");
+      elements.refreshStocks.classList.add("is-spinning");
+      setStatus("Refreshing dashboard data...", "busy");
       state.historyCache.clear();
       state.searchCache.clear();
-      await loadStocks();
-      await loadPortfolio();
+      await loadUniverse();
+      const refreshErrors = await loadDashboardPanels(true);
       if (state.selectedSymbol) {
-        await analyze(state.selectedSymbol);
+        await analyze(state.selectedSymbol, { forceRefresh: true });
+      }
+      if (refreshErrors.length && elements.errorBanner.hidden) {
+        showError(refreshErrors[0]);
       }
       showToast("Dashboard refreshed.");
     } catch (error) {
-      showError(error.message);
-      showToast(error.message);
+      const message = error.message || "Dashboard refresh failed. Please try again.";
+      showError(message);
+      showToast(message);
     } finally {
-      setStatus("Ready");
+      elements.refreshStocks.classList.remove("is-spinning");
+      if (elements.errorBanner.hidden) {
+        setStatus(
+          state.selectedSymbol ? "Analyze selected stock again" : "Refresh dashboard data",
+          "idle",
+        );
+      }
     }
+  });
+
+  elements.brandHomeButton.addEventListener("click", () => {
+    renderHomeState();
   });
 
   elements.searchInput.addEventListener("input", (event) => {
@@ -1237,16 +1822,13 @@ async function init() {
   bindEvents();
 
   try {
-    setStatus("Booting...");
-    await loadStocks();
-    await loadPortfolio();
-    const persistedSymbol = readPersistedSymbol();
-    if (persistedSymbol) {
-      await analyze(persistedSymbol);
-    } else if (state.stocks[0]) {
-      renderHomeState();
-    } else {
-      setStatus("No stocks available");
+    setStatus("Booting dashboard...", "busy");
+    await loadUniverse();
+    const startupErrors = await loadDashboardPanels();
+    persistSelectedSymbol(null);
+    renderHomeState();
+    if (startupErrors.length && elements.errorBanner.hidden) {
+      showError(startupErrors[0]);
     }
   } catch (error) {
     persistSelectedSymbol(null);
@@ -1254,7 +1836,12 @@ async function init() {
     showToast(error.message);
     renderHomeState();
   } finally {
-    setStatus(state.selectedSymbol ? "Ready" : elements.statusMessage.textContent);
+    if (elements.errorBanner.hidden) {
+      setStatus(
+        state.selectedSymbol ? "Analyze selected stock again" : "Refresh dashboard data",
+        "idle",
+      );
+    }
   }
 }
 

@@ -59,3 +59,33 @@ def test_finnhub_articles_parse_unix_timestamps():
     assert result.article_count == 1
     assert result.articles[0].publisher == "Finnhub"
     assert result.articles[0].published_at == datetime.fromtimestamp(1711718400, tz=timezone.utc)
+
+
+def test_news_sentiment_service_uses_symbol_fallback_for_europe_tickers():
+    service = NewsSentimentService(provider=FakeNewsProvider(), ttl_seconds=3600, headline_limit=8)
+
+    result = service.get_sentiment("SAP.DE")
+
+    assert result.sentiment_label == "POSITIVE"
+    assert result.article_count == 2
+    assert result.news_score > 0
+
+
+def test_news_sentiment_service_uses_symbol_fallback_for_india_tickers():
+    service = NewsSentimentService(provider=FakeNewsProvider(), ttl_seconds=3600, headline_limit=8)
+
+    result = service.get_sentiment("RELIANCE.NS")
+
+    assert result.sentiment_label == "POSITIVE"
+    assert result.article_count == 2
+    assert result.news_score > 0
+
+
+def test_news_sentiment_service_keeps_regional_news_neutral_when_coverage_is_thin():
+    service = NewsSentimentService(provider=FakeNewsProvider(), ttl_seconds=3600, headline_limit=8)
+
+    result = service.get_sentiment("ASML.AS")
+
+    assert result.sentiment_label == "NEUTRAL"
+    assert result.news_score == 0.0
+    assert "neutral" in result.note.lower()

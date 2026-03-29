@@ -14,25 +14,25 @@
   <body>
     <div class="app-shell">
       <header class="topbar">
-        <div class="brand-block">
+        <button class="brand-block brand-button" id="brandHomeButton" type="button" aria-label="Reset dashboard">
           <span class="brand-mark">IA</span>
           <div>
             <p class="panel-kicker">Trading Dashboard</p>
             <h1>Investieren AI</h1>
           </div>
-        </div>
+        </button>
 
         <div class="search-wrap">
           <label class="searchbar" for="searchInput">
             <span class="search-icon"></span>
-            <input id="searchInput" type="search" placeholder="Search symbol or company" autocomplete="off" />
+            <input id="searchInput" type="search" placeholder="Search stock, ETF or company" autocomplete="off" />
           </label>
           <div id="searchSuggestions" class="search-suggestions" hidden></div>
         </div>
 
         <div class="topbar-actions">
-          <div id="statusMessage" class="status-chip">Ready</div>
-          <button class="icon-button" id="refreshStocks" type="button" aria-label="Refresh dashboard">↻</button>
+          <div id="statusMessage" class="status-text" aria-live="polite">Live data</div>
+          <button class="icon-button" id="refreshStocks" type="button" aria-label="Refresh dashboard" title="Refresh dashboard">🔄</button>
         </div>
       </header>
 
@@ -56,18 +56,21 @@
               <div class="analysis-hero-top">
                 <div>
                   <p class="panel-kicker">Selected Asset</p>
-                  <h2 id="analysisTitle">Search for a stock to start analysis</h2>
+                  <h2 id="analysisTitle">Select a stock to start analysis</h2>
                   <p id="selectedChangeValue" class="hero-subline">Choose a stock from search or watchlist to load the decision view.</p>
                 </div>
                 <div id="analysisBadge" class="signal-badge signal-badge-muted">Decision view</div>
               </div>
 
-              <div id="loadingState" class="loading-state" hidden>Loading analysis...</div>
+              <div id="loadingState" class="loading-state" hidden>
+                <span class="loading-spinner" aria-hidden="true"></span>
+                <span>Loading analysis...</span>
+              </div>
 
               <div id="noTradeBanner" class="no-trade-banner" hidden>
                 <div class="no-trade-icon">!</div>
                 <div>
-                  <strong>🚫 Kein sinnvoller Trade aktuell</strong>
+                  <strong id="noTradeTitle">Aktuell kein guter Einstieg - Markt unsicher</strong>
                   <p id="noTradeReason">Waiting for a cleaner setup.</p>
                 </div>
               </div>
@@ -108,27 +111,23 @@
 
                 <div class="decision-support">
                   <p id="analysisSummary" class="hero-summary">
-                    Search for a stock to start analysis.
+                    Select a stock to start analysis.
                   </p>
 
-                  <section class="probability-panel">
+                  <section class="bias-panel">
                     <div class="probability-card probability-card-up">
                       <div class="probability-headline">
-                        <span>Probability Up</span>
+                        <span>Market Bias</span>
                         <strong id="probabilityUpValue">--</strong>
                       </div>
-                      <div class="probability-track">
-                        <div id="probabilityUpBar" class="probability-fill probability-fill-up"></div>
-                      </div>
+                      <p class="bias-copy" id="biasSupportText">Directional context appears after analysis.</p>
                     </div>
                     <div class="probability-card probability-card-down">
                       <div class="probability-headline">
-                        <span>Probability Down</span>
+                        <span>Setup State</span>
                         <strong id="probabilityDownValue">--</strong>
                       </div>
-                      <div class="probability-track">
-                        <div id="probabilityDownBar" class="probability-fill probability-fill-down"></div>
-                      </div>
+                      <p class="bias-copy" id="biasStateText">No stock selected.</p>
                     </div>
                   </section>
                 </div>

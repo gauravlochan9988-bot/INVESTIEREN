@@ -47,3 +47,19 @@ def test_stock_search_service_falls_back_to_simplified_query():
 
 def test_search_catalog_has_broad_coverage():
     assert len(DEFAULT_SEARCH_CATALOG) >= 100
+
+
+def test_stock_search_service_exposes_full_universe():
+    service = StockSearchService(provider=FakeSearchProvider(), ttl_seconds=3600)
+
+    universe = service.universe()
+
+    assert len(universe) >= 100
+    symbols = {item.symbol for item in universe}
+    assert {"AAPL", "KO", "SPY", "COIN"}.issubset(symbols)
+
+
+def test_search_catalog_includes_europe_and_india_symbols():
+    symbols = {entry.symbol for entry in DEFAULT_SEARCH_CATALOG}
+
+    assert {"SAP.DE", "ASML.AS", "RELIANCE.NS", "TCS.NS", "INDA", "VGK"}.issubset(symbols)

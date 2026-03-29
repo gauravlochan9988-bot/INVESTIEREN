@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Dict, Iterable, List, Optional, Protocol
 
 from app.core.config import get_settings
@@ -17,21 +17,7 @@ SUPPORTED_RANGES: Dict[str, str] = {
     "1y": "1y",
 }
 
-RANGE_TO_DAYS: Dict[str, int] = {
-    "1mo": 30,
-    "3mo": 90,
-    "6mo": 180,
-    "1y": 365,
-}
-
-FALLBACK_BASE_PRICES: Dict[str, float] = {
-    "AAPL": 188.0,
-    "MSFT": 418.0,
-    "TSLA": 176.0,
-    "NVDA": 132.0,
-    "AMZN": 184.0,
-}
-
+NO_LIVE_MARKET_DATA_MESSAGE = "No live market data available."
 
 @dataclass
 class QuoteSnapshot:
@@ -168,15 +154,17 @@ class MarketDataService:
         normalized = symbol.strip().upper()
         if not normalized:
             raise ValidationError("Symbol must not be empty.")
-        if not normalized.replace("-", "").isalnum():
+        if not normalized.replace("-", "").replace(".", "").isalnum():
             raise ValidationError("Symbol contains unsupported characters.")
         return normalized
 
     def _normalize_symbol(self, symbol: str) -> str:
         return self.ensure_supported_symbol(symbol)
 
-    def get_watchlist_quotes(self) -> List[StockQuote]:
+    def get_watchlist_quotes(self, force_refresh: bool = False) -> List[StockQuote]:
         cache_key = "watchlist"
+        if force_refresh:
+            self.quote_cache.delete(cache_key)
         cached = self.quote_cache.get(cache_key)
         if cached is not None:
             return cached
@@ -195,14 +183,13 @@ class MarketDataService:
                 )
                 for snapshot in snapshots
             ]
-        except (ExternalServiceError, NotFoundError):
-            stale = self.quote_cache.get_stale(cache_key)
-            if stale is not None:
-                return stale
-            quotes = self._build_fallback_quotes(symbols)
+        except (ExternalServiceError, NotFoundError) as error:
+            raise ExternalServiceError(NO_LIVE_MARKET_DATA_MESSAGE) from error
         return self.quote_cache.set(cache_key, quotes)
 
-    def get_history(self, symbol: str, range_name: str) -> List[HistoryPoint]:
+    def get_history(
+        self, symbol: str, range_name: str, force_refresh: bool = False
+    ) -> List[HistoryPoint]:
         normalized = self._normalize_symbol(symbol)
         period = SUPPORTED_RANGES.get(range_name)
         if period is None:
@@ -211,27 +198,28 @@ class MarketDataService:
             )
 
         cache_key = f"{normalized}:{period}"
+        if force_refresh:
+            self.history_cache.delete(cache_key)
         cached = self.history_cache.get(cache_key)
         if cached is not None:
             return cached
         try:
             history = self.provider.fetch_history(normalized, period)
-        except ExternalServiceError:
-            stale = self.history_cache.get_stale(cache_key)
-            if stale is not None:
-                return stale
-            history = self._build_fallback_history(normalized, range_name)
+        except ExternalServiceError as error:
+            raise ExternalServiceError(NO_LIVE_MARKET_DATA_MESSAGE) from error
         return self.history_cache.set(cache_key, history)
 
-    def get_latest_quote(self, symbol: str) -> StockQuote:
+    def get_latest_quote(self, symbol: str, force_refresh: bool = False) -> StockQuote:
         normalized = self.ensure_supported_symbol(symbol)
         if normalized in self.allowed_symbols:
-            quotes = self.get_watchlist_quotes()
+            quotes = self.get_watchlist_quotes(force_refresh=force_refresh)
             for quote in quotes:
                 if quote.symbol == normalized:
                     return quote
 
         cache_key = f"quote:{normalized}"
+        if force_refresh:
+            self.quote_cache.delete(cache_key)
         cached = self.quote_cache.get(cache_key)
         if cached is not None and cached:
             return cached[0]
@@ -248,62 +236,7 @@ class MarketDataService:
                 volume=snapshots[0].volume,
                 updated_at=snapshots[0].updated_at,
             )
-        except ExternalServiceError:
-            stale = self.quote_cache.get_stale(cache_key)
-            if stale is not None and stale:
-                return stale[0]
-            history = self._build_fallback_history(normalized, "1mo")
-            current = history[-1].close
-            previous = history[-2].close if len(history) > 1 else current
-            change_percent = ((current - previous) / previous * 100) if previous else 0.0
-            quote = StockQuote(
-                symbol=normalized,
-                name=normalized,
-                price=round(current, 2),
-                change_percent=round(change_percent, 2),
-                volume=900_000 + (sum(ord(char) for char in normalized) * 37),
-                updated_at=datetime.now(timezone.utc),
-            )
+        except ExternalServiceError as error:
+            raise ExternalServiceError(NO_LIVE_MARKET_DATA_MESSAGE) from error
         self.quote_cache.set(cache_key, [quote])
         return quote
-
-    def _build_fallback_quotes(self, symbols: List[str]) -> List[StockQuote]:
-        updated_at = datetime.now(timezone.utc)
-        quotes: List[StockQuote] = []
-        for symbol in symbols:
-            history = self._build_fallback_history(symbol, "1mo")
-            current = history[-1].close
-            previous = history[-2].close if len(history) > 1 else current
-            change_percent = ((current - previous) / previous * 100) if previous else 0.0
-            quotes.append(
-                StockQuote(
-                    symbol=symbol,
-                    name=self.allowed_symbols[symbol],
-                    price=round(current, 2),
-                    change_percent=round(change_percent, 2),
-                    volume=900_000 + (sum(ord(char) for char in symbol) * 37),
-                    updated_at=updated_at,
-                )
-            )
-        return quotes
-
-    def _build_fallback_history(self, symbol: str, range_name: str) -> List[HistoryPoint]:
-        days = RANGE_TO_DAYS[range_name]
-        seed = sum(ord(char) for char in symbol)
-        trend = ((seed % 9) - 4) * 0.0007
-        volatility = 0.002 + ((seed % 5) * 0.0005)
-        price = FALLBACK_BASE_PRICES.get(symbol, 100.0 + seed / 3)
-        start_at = datetime.now(timezone.utc) - timedelta(days=days - 1)
-
-        points: List[HistoryPoint] = []
-        for index in range(days):
-            seasonal = ((index % 7) - 3) * volatility
-            pulse = 0.0008 if index % 21 == 0 else 0.0
-            price = max(1.0, price * (1 + trend + seasonal + pulse))
-            points.append(
-                HistoryPoint(
-                    date=start_at + timedelta(days=index),
-                    close=round(price, 4),
-                )
-            )
-        return points

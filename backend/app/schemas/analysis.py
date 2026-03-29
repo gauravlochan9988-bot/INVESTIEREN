@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import List, Literal
+from typing import List, Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 Recommendation = Literal["BUY", "HOLD", "SELL"]
@@ -45,24 +45,26 @@ class MacroContext(BaseModel):
 
 class AnalysisResponse(BaseModel):
     symbol: str
-    recommendation: Recommendation
-    probability_up: float
-    probability_down: float
-    confidence: float
-    risk_level: RiskLevel
-    macro: MacroContext
+    no_data: bool = False
+    no_data_reason: Optional[str] = None
+    recommendation: Optional[Recommendation] = None
+    probability_up: Optional[float] = None
+    probability_down: Optional[float] = None
+    confidence: Optional[float] = None
+    risk_level: Optional[RiskLevel] = None
+    macro: Optional[MacroContext] = None
     no_trade: bool
     no_trade_reason: str
     entry_signal: bool
     entry_reason: str
     exit_signal: bool
     exit_reason: str
-    stop_loss_level: float
+    stop_loss_level: Optional[float] = None
     stop_loss_reason: str
-    position_size_percent: float
+    position_size_percent: Optional[float] = None
     position_size_reason: str
-    timeframe: Timeframe
-    warnings: List[str]
+    timeframe: Optional[Timeframe] = None
+    warnings: List[str] = Field(default_factory=list)
     summary: str
     generated_at: datetime
-    signals: AnalysisSignals
+    signals: Optional[AnalysisSignals] = None

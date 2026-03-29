@@ -7,6 +7,7 @@ from app.core.config import get_settings
 from app.schemas.analysis import InterestRateEffect, MacroContext, MacroTrend, UsdStrength
 from app.schemas.stocks import HistoryPoint
 from app.services.cache import TTLCache
+from app.services.regions import build_region_profile
 
 
 MIN_HISTORY_POINTS = 60
@@ -61,28 +62,49 @@ class MacroContextService:
         )
 
     def get_context(self) -> MacroSnapshot:
+        return self.get_context_for_symbol(self.market_symbol)
+
+    def get_context_for_symbol(self, symbol: str) -> MacroSnapshot:
+        profile = build_region_profile(
+            symbol,
+            default_market_symbol=self.market_symbol,
+            default_usd_symbol=self.usd_symbol,
+            default_interest_rate_effect=self.interest_rate_effect,
+        )
         cache_key = (
-            f"{self.market_symbol}:{self.usd_symbol}:{self.interest_rate_effect}"
+            f"{profile.region}:{profile.market_symbol}:{profile.usd_symbol}:{profile.interest_rate_effect}"
         )
         cached = self.cache.get(cache_key)
         if cached is not None:
             return cached
 
         try:
-            snapshot = self._build_snapshot()
+            snapshot = self._build_snapshot(
+                market_symbol=profile.market_symbol,
+                usd_symbol=profile.usd_symbol,
+                interest_rate_effect=profile.interest_rate_effect,
+            )
         except Exception:
             stale = self.cache.get_stale(cache_key)
             if stale is not None:
                 return stale
-            snapshot = self._fallback_snapshot()
+            snapshot = self._fallback_snapshot(
+                interest_rate_effect=profile.interest_rate_effect
+            )
         return self.cache.set(cache_key, snapshot)
 
-    def _build_snapshot(self) -> MacroSnapshot:
-        market_history = self.provider.fetch_history(self.market_symbol, "6mo")
-        usd_history = self.provider.fetch_history(self.usd_symbol, "6mo")
+    def _build_snapshot(
+        self,
+        *,
+        market_symbol: str,
+        usd_symbol: str,
+        interest_rate_effect: InterestRateEffect,
+    ) -> MacroSnapshot:
+        market_history = self.provider.fetch_history(market_symbol, "6mo")
+        usd_history = self.provider.fetch_history(usd_symbol, "6mo")
 
         if len(market_history) < MIN_HISTORY_POINTS or len(usd_history) < MIN_HISTORY_POINTS:
-            return self._fallback_snapshot()
+            return self._fallback_snapshot(interest_rate_effect=interest_rate_effect)
 
         market_closes = [point.close for point in market_history]
         usd_closes = [point.close for point in usd_history]
@@ -113,12 +135,12 @@ class MacroContextService:
 
         macro_score = (
             self._market_score(market_trend)
-            + self._rate_score(self.interest_rate_effect)
+            + self._rate_score(interest_rate_effect)
             + self._usd_score(usd_strength)
         )
         return MacroSnapshot(
             market_trend=market_trend,
-            interest_rate_effect=self.interest_rate_effect,
+            interest_rate_effect=interest_rate_effect,
             usd_strength=usd_strength,
             macro_score=macro_score,
             market_trend_strength=round(market_trend_strength, 4),
@@ -128,11 +150,15 @@ class MacroContextService:
             usd_momentum_10d=round(usd_momentum_10d, 4),
         )
 
-    def _fallback_snapshot(self) -> MacroSnapshot:
-        macro_score = self._rate_score(self.interest_rate_effect)
+    def _fallback_snapshot(
+        self,
+        *,
+        interest_rate_effect: InterestRateEffect,
+    ) -> MacroSnapshot:
+        macro_score = self._rate_score(interest_rate_effect)
         return MacroSnapshot(
             market_trend="neutral",
-            interest_rate_effect=self.interest_rate_effect,
+            interest_rate_effect=interest_rate_effect,
             usd_strength="neutral",
             macro_score=macro_score,
             market_trend_strength=0.35,

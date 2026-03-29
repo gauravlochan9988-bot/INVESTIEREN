@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from math import sqrt
 from typing import Sequence
 
-from app.core.exceptions import ValidationError
+from app.core.exceptions import ExternalServiceError, NotFoundError, ValidationError
 from app.schemas.analysis import (
     AnalysisResponse,
     AnalysisSignals,
@@ -26,6 +26,7 @@ RSI_PERIOD = 14
 VOLATILITY_WINDOW = 30
 DRAWDOWN_WINDOW = 50
 SUPPORT_WINDOW = 20
+MAX_WARNINGS = 3
 
 SIGNAL_WEIGHTS: dict[str, float] = {
     "trend": 0.19,
@@ -51,10 +52,28 @@ class AnalysisService:
         self.summary_service = summary_service
         self.news_sentiment_service = news_sentiment_service
 
-    def analyze_symbol(self, symbol: str) -> AnalysisResponse:
+    def analyze_symbol(self, symbol: str, force_refresh: bool = False) -> AnalysisResponse:
         normalized_symbol = self.market_data_service.ensure_supported_symbol(symbol)
-        history = self.market_data_service.get_history(normalized_symbol, "6mo")
-        return self.analyze(normalized_symbol, history)
+        try:
+            history = self.market_data_service.get_history(
+                normalized_symbol, "6mo", force_refresh=force_refresh
+            )
+            return self.analyze(normalized_symbol, history)
+        except NotFoundError as error:
+            return self._no_data_response(
+                normalized_symbol,
+                error.message,
+            )
+        except ExternalServiceError as error:
+            message = error.message.rstrip(".")
+            return self._no_data_response(normalized_symbol, f"{message}.")
+        except ValidationError as error:
+            if "At least 60 daily closes are required" not in error.message:
+                raise
+            return self._no_data_response(
+                normalized_symbol,
+                "No live market data available for a complete analysis window.",
+            )
 
     def analyze(self, symbol: str, history: Sequence[HistoryPoint]) -> AnalysisResponse:
         normalized_symbol = symbol.strip().upper()
@@ -77,7 +96,7 @@ class AnalysisService:
         sma20_vs_sma50 = ((sma20 - sma50) / sma50) if sma50 else 0.0
 
         news_snapshot = self.news_sentiment_service.get_sentiment(normalized_symbol)
-        macro_snapshot = self.macro_context_service.get_context()
+        macro_snapshot = self.macro_context_service.get_context_for_symbol(normalized_symbol)
         macro_context = macro_snapshot.to_context()
 
         signal_map = {
@@ -226,6 +245,8 @@ class AnalysisService:
 
         return AnalysisResponse(
             symbol=normalized_symbol,
+            no_data=False,
+            no_data_reason=None,
             recommendation=recommendation,
             probability_up=probability_up,
             probability_down=probability_down,
@@ -247,6 +268,36 @@ class AnalysisService:
             summary=summary,
             generated_at=datetime.now(timezone.utc),
             signals=signals,
+        )
+
+    def _no_data_response(self, symbol: str, reason: str) -> AnalysisResponse:
+        normalized_symbol = symbol.strip().upper()
+        message = "No live market data available."
+        return AnalysisResponse(
+            symbol=normalized_symbol,
+            no_data=True,
+            no_data_reason=message,
+            recommendation=None,
+            probability_up=None,
+            probability_down=None,
+            confidence=None,
+            risk_level=None,
+            macro=None,
+            no_trade=True,
+            no_trade_reason=message,
+            entry_signal=False,
+            entry_reason=message,
+            exit_signal=False,
+            exit_reason=message,
+            stop_loss_level=None,
+            stop_loss_reason=message,
+            position_size_percent=None,
+            position_size_reason=message,
+            timeframe=None,
+            warnings=[],
+            summary=message,
+            generated_at=datetime.now(timezone.utc),
+            signals=None,
         )
 
     def _trend_signal(self, sma50: float, price_vs_sma50: float) -> SignalResult:
@@ -471,6 +522,8 @@ class AnalysisService:
             warnings.append("High Volatility")
         if rsi14 >= 70:
             warnings.append("Overbought")
+        if news_snapshot.article_count == 0:
+            warnings.append("No Recent News")
         if news_snapshot.news_score <= -0.2:
             warnings.append("Negative News")
         if trend_strength < 0.35:
@@ -494,7 +547,37 @@ class AnalysisService:
             warnings.append("Rates Pressure Equities")
         if macro_snapshot.usd_strength == "strong":
             warnings.append("USD Strong")
-        return warnings
+        prioritized: list[str] = []
+        priority_order = [
+            "Too Many Conflicting Signals",
+            "Setup Unclear",
+            "No Clear Trend",
+            "High Volatility",
+            "Negative News",
+            "Overall Market Weak",
+            "Macro Headwind",
+            "High Risk / Low Confidence",
+            "Market Uncertain",
+            "Drawdown Risk",
+            "Overbought",
+            "Rates Pressure Equities",
+            "USD Strong",
+            "No Recent News",
+            "Trend Weak",
+        ]
+
+        for item in priority_order:
+            if item in warnings and item not in prioritized:
+                prioritized.append(item)
+            if len(prioritized) >= MAX_WARNINGS:
+                return prioritized
+
+        for item in warnings:
+            if item not in prioritized:
+                prioritized.append(item)
+            if len(prioritized) >= MAX_WARNINGS:
+                break
+        return prioritized
 
     def _no_trade_decision(
         self,

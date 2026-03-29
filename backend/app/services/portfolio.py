@@ -18,7 +18,7 @@ class PortfolioService:
         self.market_data_service = market_data_service
         self.portfolio_repository = portfolio_repository
 
-    def get_portfolio(self, db: Session) -> PortfolioResponse:
+    def get_portfolio(self, db: Session, force_refresh: bool = False) -> PortfolioResponse:
         positions = self.portfolio_repository.list_positions(db)
         if not positions:
             return PortfolioResponse(
@@ -30,7 +30,10 @@ class PortfolioService:
             )
 
         quotes = {
-            quote.symbol: quote for quote in self.market_data_service.get_watchlist_quotes()
+            quote.symbol: quote
+            for quote in self.market_data_service.get_watchlist_quotes(
+                force_refresh=force_refresh
+            )
         }
         position_rows = []
         total_cost_basis = 0.0

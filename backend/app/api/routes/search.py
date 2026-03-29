@@ -15,3 +15,10 @@ def search_stocks(
     stock_search_service: StockSearchService = Depends(get_stock_search_service),
 ) -> list[SearchResult]:
     return stock_search_service.search(q, limit)
+
+
+@router.get("/search/universe", response_model=list[SearchResult])
+def search_universe(
+    stock_search_service: StockSearchService = Depends(get_stock_search_service),
+) -> list[SearchResult]:
+    return stock_search_service.universe()

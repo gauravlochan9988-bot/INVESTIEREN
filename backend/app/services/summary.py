@@ -210,6 +210,8 @@ class SummaryService:
             return ", with the dollar acting as a headwind"
         if "Negative News" in warnings:
             return ", and negative news adds risk"
+        if "No Recent News" in warnings:
+            return ", and there is little recent news context"
         if "High Volatility" in warnings:
             return ", while volatility stays high"
         if "Overbought" in warnings:

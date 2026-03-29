@@ -206,4 +206,30 @@ DEFAULT_SEARCH_CATALOG: tuple[SearchCatalogEntry, ...] = (
     SearchCatalogEntry("ARKK", "ARK Innovation ETF", ("ark innovation", "innovation etf")),
     SearchCatalogEntry("IWF", "iShares Russell 1000 Growth ETF", ("growth etf",)),
     SearchCatalogEntry("IWD", "iShares Russell 1000 Value ETF", ("value etf",)),
+
+    # Europe
+    SearchCatalogEntry("SAP.DE", "SAP SE", ("sap germany", "sap de", "sap")),
+    SearchCatalogEntry("SIE.DE", "Siemens AG", ("siemens", "siemens germany")),
+    SearchCatalogEntry("ALV.DE", "Allianz SE", ("allianz", "allianz germany")),
+    SearchCatalogEntry("AIR.PA", "Airbus SE", ("airbus", "airbus europe")),
+    SearchCatalogEntry("MC.PA", "LVMH Moet Hennessy Louis Vuitton SE", ("lvmh", "louis vuitton")),
+    SearchCatalogEntry("ASML.AS", "ASML Holding NV", ("asml", "asml europe")),
+    SearchCatalogEntry("NESN.SW", "Nestle SA", ("nestle", "nestle switzerland")),
+    SearchCatalogEntry("NOVN.SW", "Novartis AG", ("novartis",)),
+    SearchCatalogEntry("SHEL.L", "Shell plc", ("shell uk", "shell london")),
+    SearchCatalogEntry("VOW3.DE", "Volkswagen AG", ("volkswagen", "vw")),
+    SearchCatalogEntry("VGK", "Vanguard FTSE Europe ETF", ("europe etf", "europe market")),
+    SearchCatalogEntry("FEZ", "SPDR EURO STOXX 50 ETF", ("euro stoxx", "eurozone etf")),
+
+    # India
+    SearchCatalogEntry("RELIANCE.NS", "Reliance Industries Ltd", ("reliance", "india reliance")),
+    SearchCatalogEntry("TCS.NS", "Tata Consultancy Services Ltd", ("tcs", "tata consultancy")),
+    SearchCatalogEntry("INFY.NS", "Infosys Ltd", ("infosys",)),
+    SearchCatalogEntry("HDFCBANK.NS", "HDFC Bank Ltd", ("hdfc bank", "hdfcbank")),
+    SearchCatalogEntry("ICICIBANK.NS", "ICICI Bank Ltd", ("icici bank", "icicibank")),
+    SearchCatalogEntry("LT.NS", "Larsen & Toubro Ltd", ("larsen and toubro", "lt india")),
+    SearchCatalogEntry("BHARTIARTL.NS", "Bharti Airtel Ltd", ("airtel", "bharti airtel")),
+    SearchCatalogEntry("SBIN.NS", "State Bank of India", ("state bank of india", "sbi india")),
+    SearchCatalogEntry("HINDUNILVR.NS", "Hindustan Unilever Ltd", ("hindustan unilever", "hul")),
+    SearchCatalogEntry("INDA", "iShares MSCI India ETF", ("india etf", "india market")),
 )

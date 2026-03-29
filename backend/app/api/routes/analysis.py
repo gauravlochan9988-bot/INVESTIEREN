@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import get_analysis_service
 from app.schemas.analysis import AnalysisResponse, AnalyzeRequest
@@ -10,14 +10,16 @@ router = APIRouter(tags=["analysis"])
 @router.get("/analysis/{symbol}", response_model=AnalysisResponse)
 def get_analysis(
     symbol: str,
+    refresh: bool = Query(default=False),
     analysis_service: AnalysisService = Depends(get_analysis_service),
 ) -> AnalysisResponse:
-    return analysis_service.analyze_symbol(symbol)
+    return analysis_service.analyze_symbol(symbol, force_refresh=refresh)
 
 
 @router.post("/analyze", response_model=AnalysisResponse)
 def analyze_symbol(
     payload: AnalyzeRequest,
+    refresh: bool = Query(default=False),
     analysis_service: AnalysisService = Depends(get_analysis_service),
 ) -> AnalysisResponse:
-    return analysis_service.analyze_symbol(payload.symbol)
+    return analysis_service.analyze_symbol(payload.symbol, force_refresh=refresh)

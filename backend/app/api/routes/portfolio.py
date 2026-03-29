@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_portfolio_service
@@ -11,10 +11,11 @@ router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
 @router.get("", response_model=PortfolioResponse)
 def get_portfolio(
+    refresh: bool = Query(default=False),
     db: Session = Depends(get_db),
     portfolio_service: PortfolioService = Depends(get_portfolio_service),
 ) -> PortfolioResponse:
-    return portfolio_service.get_portfolio(db)
+    return portfolio_service.get_portfolio(db, force_refresh=refresh)
 
 
 @router.post("/positions", response_model=PositionResponse, status_code=status.HTTP_201_CREATED)

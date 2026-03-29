@@ -1,3 +1,4 @@
+from app.core.exceptions import ExternalServiceError
 from app.services.analysis import AnalysisService
 from app.services.macro import MacroContextService
 from app.services.market_data import MarketDataService
@@ -8,6 +9,14 @@ from tests.helpers import (
     FakeSummaryService,
     build_history,
 )
+
+
+class FailingMarketDataProvider:
+    def fetch_quotes(self, symbols, names):
+        raise ExternalServiceError("Provider error while loading quotes.")
+
+    def fetch_history(self, symbol, period):
+        raise ExternalServiceError("Live market data provider is currently unavailable.")
 
 
 def test_buy_setup_can_still_block_fresh_entry_when_overbought(analysis_service):
@@ -59,7 +68,6 @@ def test_mixed_setup_returns_hold_and_wait(analysis_service):
     assert result.timeframe == "short_term"
     assert result.position_size_percent == 0.0
     assert "High Volatility" in result.warnings
-    assert "Trend Weak" in result.warnings
     assert "Setup Unclear" in result.warnings
     assert "No Clear Trend" in result.warnings
 
@@ -97,6 +105,7 @@ def test_cleaner_setup_allows_entry_with_measured_size(analysis_service):
     assert result.timeframe == "mid_term"
     assert result.macro.market_trend in {"bullish", "neutral"}
     assert result.signals.trend_strength.status == "BULLISH"
+    assert "No Recent News" in result.warnings
 
 
 def test_bearish_macro_context_tightens_risk_and_entry():
@@ -138,3 +147,102 @@ def test_bearish_macro_context_tightens_risk_and_entry():
     assert result.position_size_percent == 0.0
     assert "Overall Market Weak" in result.warnings
     assert "Macro Headwind" in result.warnings
+
+
+def test_europe_symbol_uses_europe_macro_profile():
+    provider = FakeMarketDataProvider()
+
+    analysis_service = AnalysisService(
+        market_data_service=MarketDataService(
+            provider=provider,
+            allowed_symbols={"SAP.DE": "SAP SE"},
+            ttl_seconds=3600,
+        ),
+        macro_context_service=MacroContextService(
+            provider=provider,
+            ttl_seconds=3600,
+            market_symbol="SPY",
+            usd_symbol="DXY",
+            interest_rate_effect="neutral",
+        ),
+        news_sentiment_service=NewsSentimentService(
+            provider=FakeNewsProvider(),
+            ttl_seconds=3600,
+            headline_limit=8,
+        ),
+        summary_service=FakeSummaryService(),
+    )
+
+    result = analysis_service.analyze("SAP.DE", build_history(start=160.0, drift=0.3, noise=0.003))
+
+    assert result.symbol == "SAP.DE"
+    assert result.macro.market_trend in {"bullish", "neutral", "bearish"}
+    assert result.macro.macro_score >= -1
+
+
+def test_india_symbol_uses_india_macro_profile():
+    provider = FakeMarketDataProvider()
+    provider.history_map["INDA"] = build_history(start=52.0, drift=-0.15, noise=0.003)
+    provider.history_map["DXY"] = build_history(start=104.0, drift=0.06, noise=0.001)
+
+    analysis_service = AnalysisService(
+        market_data_service=MarketDataService(
+            provider=provider,
+            allowed_symbols={"RELIANCE.NS": "Reliance Industries"},
+            ttl_seconds=3600,
+        ),
+        macro_context_service=MacroContextService(
+            provider=provider,
+            ttl_seconds=3600,
+            market_symbol="SPY",
+            usd_symbol="DXY",
+            interest_rate_effect="negative",
+        ),
+        news_sentiment_service=NewsSentimentService(
+            provider=FakeNewsProvider(),
+            ttl_seconds=3600,
+            headline_limit=8,
+        ),
+        summary_service=FakeSummaryService(),
+    )
+
+    result = analysis_service.analyze(
+        "RELIANCE.NS",
+        build_history(start=2850.0, drift=10.0, noise=0.003),
+    )
+
+    assert result.symbol == "RELIANCE.NS"
+    assert result.macro.interest_rate_effect == "negative"
+    assert result.risk_level in {"MEDIUM", "HIGH"}
+
+
+def test_analyze_symbol_returns_no_data_status_when_live_market_data_is_missing():
+    analysis_service = AnalysisService(
+        market_data_service=MarketDataService(
+            provider=FailingMarketDataProvider(),
+            allowed_symbols={"AAPL": "Apple"},
+            ttl_seconds=3600,
+        ),
+        macro_context_service=MacroContextService(
+            provider=FakeMarketDataProvider(),
+            ttl_seconds=3600,
+            market_symbol="SPY",
+            usd_symbol="DXY",
+            interest_rate_effect="neutral",
+        ),
+        news_sentiment_service=NewsSentimentService(
+            provider=FakeNewsProvider(),
+            ttl_seconds=3600,
+            headline_limit=8,
+        ),
+        summary_service=FakeSummaryService(),
+    )
+
+    result = analysis_service.analyze_symbol("AAPL")
+
+    assert result.symbol == "AAPL"
+    assert result.no_data is True
+    assert result.no_data_reason == "No live market data available."
+    assert result.recommendation is None
+    assert result.signals is None
+    assert result.position_size_percent is None
