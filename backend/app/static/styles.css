@@ -199,6 +199,8 @@ select {
   display: grid;
   gap: 6px;
   padding: 8px;
+  max-height: min(60vh, 520px);
+  overflow: auto;
   background: rgba(10, 18, 28, 0.98);
 }
 
@@ -365,6 +367,10 @@ select:focus-visible,
   display: grid;
   gap: 10px;
   padding-right: 4px;
+}
+
+.watchlist-list {
+  align-content: start;
 }
 
 .watchlist-item {

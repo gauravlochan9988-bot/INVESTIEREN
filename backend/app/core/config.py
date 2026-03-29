@@ -17,6 +17,13 @@ DEFAULT_WATCHLIST: Dict[str, str] = {
     "TSLA": "Tesla",
     "NVDA": "NVIDIA",
     "AMZN": "Amazon",
+    "GOOGL": "Alphabet",
+    "META": "Meta",
+    "NFLX": "Netflix",
+    "AMD": "AMD",
+    "JPM": "JPMorgan",
+    "KO": "Coca-Cola",
+    "SPY": "SPDR S&P 500 ETF",
 }
 
 

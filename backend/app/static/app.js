@@ -357,6 +357,28 @@ function suggestionMatches(limit = 6) {
   return merged;
 }
 
+function watchlistEntries(limit = 16) {
+  const query = normalizedSearchQuery();
+  if (!query) {
+    return state.stocks.slice(0, limit);
+  }
+
+  const merged = [];
+  const seen = new Set();
+  const push = (stock) => {
+    if (!stock?.symbol || seen.has(stock.symbol) || merged.length >= limit) {
+      return;
+    }
+    seen.add(stock.symbol);
+    merged.push(stock);
+  };
+
+  suggestionMatches(limit).forEach(push);
+  localSearchResults(limit).forEach(push);
+
+  return merged;
+}
+
 function fallbackSuggestions(limit = 3) {
   const query = normalizedSearchQuery();
   if (!query) {
@@ -531,6 +553,7 @@ async function loadSearchSuggestions() {
     state.searchStatus = "idle";
     renderSearchSuggestions();
     renderSymbolOptions();
+    renderWatchlist();
     return;
   }
 
@@ -540,14 +563,16 @@ async function loadSearchSuggestions() {
     state.searchStatus = "ready";
     renderSearchSuggestions();
     renderSymbolOptions();
+    renderWatchlist();
     return;
   }
 
   const requestId = ++state.searchRequestId;
   state.searchStatus = "loading";
   renderSearchSuggestions();
+  renderWatchlist();
   try {
-    const results = await api(`/api/search?q=${encodeURIComponent(query)}&limit=6`);
+    const results = await api(`/api/search?q=${encodeURIComponent(query)}&limit=12`);
     if (requestId !== state.searchRequestId) {
       return;
     }
@@ -557,6 +582,7 @@ async function loadSearchSuggestions() {
     state.searchStatus = "ready";
     renderSearchSuggestions();
     renderSymbolOptions();
+    renderWatchlist();
   } catch (error) {
     if (requestId !== state.searchRequestId) {
       return;
@@ -565,6 +591,7 @@ async function loadSearchSuggestions() {
     state.searchStatus = "ready";
     renderSearchSuggestions();
     renderSymbolOptions();
+    renderWatchlist();
   }
 }
 
@@ -577,6 +604,7 @@ function scheduleSearchSuggestions() {
     state.searchStatus = "idle";
     renderSearchSuggestions();
     renderSymbolOptions();
+    renderWatchlist();
     return;
   }
 
@@ -586,10 +614,12 @@ function scheduleSearchSuggestions() {
     state.searchStatus = "idle";
     renderSearchSuggestions();
     renderSymbolOptions();
+    renderWatchlist();
     return;
   }
 
   renderSearchSuggestions();
+  renderWatchlist();
   state.searchTimer = window.setTimeout(() => {
     loadSearchSuggestions();
   }, 180);
@@ -609,10 +639,20 @@ function renderWatchlist() {
   }
 
   const updatedAt = new Date(state.stocks[0].updated_at).toLocaleString();
-  elements.watchlistMeta.textContent = `${state.stocks.length} tracked names · Updated ${updatedAt}`;
+  const query = normalizedSearchQuery();
+  const entries = watchlistEntries(16);
+  if (query) {
+    const statusLabel = state.searchStatus === "loading" ? "Searching..." : `${entries.length} results`;
+    elements.watchlistMeta.textContent = `Search results for "${state.searchQuery.trim()}" · ${statusLabel}`;
+  } else {
+    elements.watchlistMeta.textContent = `${state.stocks.length} tracked names · Updated ${updatedAt}`;
+  }
 
   state.stocks.forEach((stock) => {
     rememberSymbolMeta(stock.symbol, stock.name);
+  });
+
+  entries.forEach((stock) => {
     const item = document.createElement("button");
     item.type = "button";
     item.className = `watchlist-item ${state.selectedSymbol === stock.symbol ? "watchlist-item-active" : ""}`;
@@ -632,6 +672,11 @@ function renderWatchlist() {
     `;
     elements.watchlistBody.appendChild(item);
   });
+
+  if (!entries.length) {
+    elements.watchlistBody.innerHTML =
+      `<div class="watchlist-empty">${state.searchStatus === "loading" ? "Searching symbols..." : "No symbols found for your search."}</div>`;
+  }
 
   renderSymbolOptions();
 }

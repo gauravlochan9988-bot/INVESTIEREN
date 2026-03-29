@@ -205,7 +205,7 @@ class StockSearchService:
         if len(normalized_query) < 1:
             raise ValidationError("Search query must not be empty.")
 
-        capped_limit = max(1, min(limit, 10))
+        capped_limit = max(1, min(limit, 20))
         cache_key = f"{_normalize_text(normalized_query)}:{capped_limit}"
         cached = self.cache.get(cache_key)
         if cached is not None:
