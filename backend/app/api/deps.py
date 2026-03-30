@@ -3,6 +3,7 @@ from functools import lru_cache
 from app.core.config import get_settings
 from app.repositories.portfolio import PortfolioRepository
 from app.services.analysis import AnalysisService
+from app.services.finnhub_dashboard import FinnhubDashboardService
 from app.services.macro import MacroContextService
 from app.services.market_data import MarketDataService, YFinanceProvider
 from app.services.news import (
@@ -14,6 +15,9 @@ from app.services.news import (
 from app.services.portfolio import PortfolioService
 from app.services.search import StockSearchService, build_stock_search_service
 from app.services.summary import SummaryService
+
+
+DASHBOARD_WATCHLIST = ("AAPL", "MSFT", "NVDA", "AMZN", "META", "TSLA")
 
 
 @lru_cache
@@ -88,6 +92,20 @@ def get_portfolio_service_instance() -> PortfolioService:
 
 def get_market_data_service() -> MarketDataService:
     return get_market_data_service_instance()
+
+
+@lru_cache
+def get_finnhub_dashboard_service_instance() -> FinnhubDashboardService:
+    settings = get_settings()
+    return FinnhubDashboardService(
+        api_key=settings.finnhub_api_key,
+        watchlist=DASHBOARD_WATCHLIST,
+        ttl_seconds=settings.market_cache_ttl_seconds,
+    )
+
+
+def get_finnhub_dashboard_service() -> FinnhubDashboardService:
+    return get_finnhub_dashboard_service_instance()
 
 
 def get_analysis_service() -> AnalysisService:

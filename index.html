@@ -3,396 +3,274 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Private investment analysis dashboard for reviewing market setups, risk and portfolio context." />
+    <meta
+      name="description"
+      content="Modern trading dashboard with Finnhub market data and TradingView charts."
+    />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="color-scheme" content="dark" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:8000 http://localhost:8000 https://investieren-backend-cxvw.onrender.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+      content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://s3.tradingview.com; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' http://127.0.0.1:8000 http://localhost:8000 https://investieren-backend-cxvw.onrender.com; font-src 'self' https: data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
     />
-    <title>Investieren MVP</title>
+    <title>Investieren AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://s3.tradingview.com/tv.js"></script>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
-    <div id="authOverlay" class="auth-overlay">
-      <div class="auth-card auth-card-split">
-        <section class="auth-panel">
-          <header class="auth-topbar">
-            <div class="auth-brand">
-              <div class="auth-mark">IA</div>
+  <body class="min-h-screen bg-slate-950 text-slate-100">
+    <div
+      id="authOverlay"
+      class="fixed inset-0 z-30 flex min-h-screen items-center justify-center overflow-hidden bg-slate-950/90"
+    >
+      <div class="absolute inset-0">
+        <img
+          src="./auth-hero-hq.png"
+          alt=""
+          class="h-full w-full object-cover opacity-45"
+        />
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(15,23,42,0.35),_transparent_32%),linear-gradient(90deg,rgba(2,6,23,0.96)_0%,rgba(2,6,23,0.82)_36%,rgba(2,6,23,0.54)_60%,rgba(2,6,23,0.18)_100%)]"></div>
+      </div>
+
+      <section
+        class="relative z-10 mx-6 grid w-full max-w-6xl grid-cols-1 gap-10 lg:grid-cols-[minmax(0,480px)_1fr]"
+      >
+        <div class="space-y-10 px-2 lg:px-10">
+          <div class="flex items-center gap-4">
+            <div
+              class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-300 to-emerald-400 text-xl font-black text-slate-950 shadow-2xl shadow-emerald-400/20"
+            >
+              IA
+            </div>
+            <div>
+              <p class="text-2xl font-semibold tracking-tight">Investieren.AI</p>
+              <p class="text-sm text-slate-400">Private Access</p>
+            </div>
+          </div>
+
+          <div class="space-y-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">
+              Trading Workspace
+            </p>
+            <h1 class="max-w-xl text-5xl font-semibold leading-[0.95] tracking-tight sm:text-6xl">
+              Enter password to open the dashboard
+            </h1>
+            <p class="max-w-md text-base leading-7 text-slate-300">
+              Open your private trading workspace with Finnhub live data and TradingView charts.
+            </p>
+          </div>
+
+          <form id="authForm" class="max-w-md space-y-5" novalidate>
+            <div class="space-y-2">
+              <label for="authPassword" class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                Password
+              </label>
+              <input
+                id="authPassword"
+                name="password"
+                type="password"
+                placeholder="Password"
+                autocomplete="current-password"
+                class="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base text-white outline-none transition focus:border-emerald-400/60 focus:bg-white/10"
+                required
+              />
+            </div>
+
+            <div class="flex flex-wrap gap-3">
+              <button
+                id="authCancelButton"
+                type="button"
+                class="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+              >
+                Stay locked
+              </button>
+              <button
+                type="submit"
+                class="rounded-2xl bg-gradient-to-r from-cyan-300 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px]"
+              >
+                Unlock dashboard
+              </button>
+            </div>
+
+            <button
+              class="text-sm text-slate-400 transition hover:text-slate-200"
+              type="button"
+            >
+              Forgot password?
+            </button>
+            <p id="authError" class="text-sm text-rose-400" hidden>Wrong password</p>
+          </form>
+        </div>
+
+        <div class="hidden items-end justify-end lg:flex">
+          <div class="rounded-[2rem] border border-white/10 bg-white/5 px-6 py-5 backdrop-blur-sm">
+            <p class="text-xs uppercase tracking-[0.28em] text-slate-400">Live stack</p>
+            <div class="mt-4 grid gap-3 text-sm text-slate-200">
+              <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3">Finnhub data</div>
+              <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3">TradingView chart</div>
+              <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3">Tailwind UI</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="appShell" class="hidden min-h-screen">
+      <div class="mx-auto flex min-h-screen max-w-[1600px] flex-col px-4 py-4 sm:px-6 lg:px-8">
+        <header
+          class="mb-5 flex flex-col gap-4 rounded-[28px] border border-white/10 bg-slate-900/85 px-5 py-5 shadow-2xl shadow-black/30 backdrop-blur xl:flex-row xl:items-center xl:justify-between"
+        >
+          <button id="brandHomeButton" type="button" class="flex items-center gap-4 text-left">
+            <div
+              class="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-300 to-emerald-400 text-lg font-black text-slate-950"
+            >
+              IA
+            </div>
+            <div>
+              <p class="text-[11px] uppercase tracking-[0.35em] text-slate-500">Trading Dashboard</p>
+              <h1 class="text-2xl font-semibold tracking-tight">Investieren AI</h1>
+            </div>
+          </button>
+
+          <form id="searchForm" class="flex w-full max-w-2xl items-center gap-3">
+            <div class="relative flex-1">
+              <input
+                id="searchInput"
+                type="search"
+                placeholder="Search stocks, ETFs or companies"
+                class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-5 py-4 pr-12 text-base text-white outline-none transition focus:border-cyan-300/50"
+                autocomplete="off"
+              />
+              <span class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-500">⌕</span>
+            </div>
+            <button
+              type="submit"
+              class="rounded-2xl bg-gradient-to-r from-cyan-300 to-emerald-400 px-5 py-4 text-sm font-semibold text-slate-950"
+            >
+              Search
+            </button>
+          </form>
+
+          <div class="flex items-center gap-3">
+            <div
+              id="backendStatus"
+              class="rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-300"
+            >
+              Connecting backend...
+            </div>
+            <button
+              id="refreshButton"
+              type="button"
+              class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              Refresh
+            </button>
+            <button
+              id="logoutButton"
+              type="button"
+              class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              Logout
+            </button>
+          </div>
+        </header>
+
+        <div id="errorBanner" class="mb-4 hidden rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
+
+        <main class="grid flex-1 gap-5 xl:grid-cols-[320px_minmax(0,1fr)_360px]">
+          <aside class="rounded-[28px] border border-white/10 bg-slate-900/85 p-5 shadow-2xl shadow-black/20">
+            <div class="mb-5 flex items-end justify-between">
               <div>
-                <strong>Investieren.AI</strong>
-                <span>Private Access</span>
+                <p class="text-[11px] uppercase tracking-[0.35em] text-slate-500">Watchlist</p>
+                <h2 class="mt-2 text-xl font-semibold">Live Quotes</h2>
+              </div>
+              <span id="watchlistMeta" class="text-xs text-slate-500">Syncing...</span>
+            </div>
+            <div id="watchlistBody" class="space-y-3"></div>
+          </aside>
+
+          <section class="space-y-5">
+            <div class="rounded-[28px] border border-white/10 bg-slate-900/85 p-5 shadow-2xl shadow-black/20">
+              <div class="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p class="text-[11px] uppercase tracking-[0.35em] text-slate-500">Selected Symbol</p>
+                  <h2 id="selectedSymbolName" class="mt-2 text-3xl font-semibold tracking-tight">AAPL</h2>
+                  <p id="selectedCompanyName" class="mt-1 text-sm text-slate-400">Apple Inc</p>
+                </div>
+                <div id="changeBadge" class="inline-flex w-fit rounded-full bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-300">
+                  +0.00%
+                </div>
+              </div>
+
+              <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                  <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Price</p>
+                  <p id="metricPrice" class="mt-3 text-3xl font-semibold">$--</p>
+                </article>
+                <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                  <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Day High</p>
+                  <p id="metricHigh" class="mt-3 text-2xl font-semibold">$--</p>
+                </article>
+                <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                  <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Day Low</p>
+                  <p id="metricLow" class="mt-3 text-2xl font-semibold">$--</p>
+                </article>
+                <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                  <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Open</p>
+                  <p id="metricOpen" class="mt-3 text-2xl font-semibold">$--</p>
+                </article>
+                <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                  <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Prev Close</p>
+                  <p id="metricPrevClose" class="mt-3 text-2xl font-semibold">$--</p>
+                </article>
               </div>
             </div>
-          </header>
 
-          <div class="auth-content">
-            <p class="auth-kicker">Start Secure Session</p>
-            <h1>Enter password to open the dashboard</h1>
-            <p class="auth-copy">This dashboard is protected for this session.</p>
-            <p class="auth-helper">Only authorized access is allowed. Use your private password to continue.</p>
+            <div class="rounded-[28px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20">
+              <div class="mb-4 flex items-center justify-between px-1">
+                <div>
+                  <p class="text-[11px] uppercase tracking-[0.35em] text-slate-500">Chart</p>
+                  <h3 class="mt-2 text-xl font-semibold">TradingView</h3>
+                </div>
+                <span id="chartSymbolBadge" class="rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-semibold tracking-[0.25em] text-slate-400">AAPL</span>
+              </div>
+              <div id="tradingviewChart" class="h-[520px] overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/70"></div>
+            </div>
+          </section>
 
-            <form id="authForm" class="auth-form" novalidate>
-              <label class="auth-label" for="authPassword">Password</label>
-              <div class="auth-input-wrap">
-                <input
-                  id="authPassword"
-                  class="auth-input"
-                  name="password"
-                  type="password"
-                  placeholder="Password"
-                  autocomplete="current-password"
-                  autocapitalize="off"
-                  autocorrect="off"
-                  spellcheck="false"
-                  enterkeyhint="go"
-                  aria-describedby="authError"
-                  required
+          <aside class="space-y-5">
+            <section class="rounded-[28px] border border-white/10 bg-slate-900/85 p-5 shadow-2xl shadow-black/20">
+              <p class="text-[11px] uppercase tracking-[0.35em] text-slate-500">Company Snapshot</p>
+              <div class="mt-5 flex items-center gap-4">
+                <img
+                  id="companyLogo"
+                  src=""
+                  alt=""
+                  class="hidden h-14 w-14 rounded-2xl border border-white/10 bg-white object-contain p-2"
                 />
-                <span class="auth-input-icon" aria-hidden="true"></span>
+                <div>
+                  <h3 id="companyHeadline" class="text-xl font-semibold">Select a symbol</h3>
+                  <p id="companyExchange" class="text-sm text-slate-400">Exchange will appear here</p>
+                </div>
               </div>
-              <div class="auth-actions">
-                <button class="ghost-button auth-secondary-button" id="authCancelButton" type="button">Stay locked</button>
-                <button class="primary-button auth-button" type="submit">Unlock dashboard</button>
-              </div>
-              <button class="auth-forgot" type="button">Forgot password?</button>
-              <p id="authError" class="auth-error" role="alert" aria-live="assertive" hidden>Wrong password</p>
-            </form>
-          </div>
-        </section>
+              <dl id="companyDetails" class="mt-6 space-y-4"></dl>
+            </section>
 
-        <aside class="auth-visual" aria-hidden="true">
-          <div class="auth-visual-overlay"></div>
-        </aside>
+            <section class="rounded-[28px] border border-white/10 bg-slate-900/85 p-5 shadow-2xl shadow-black/20">
+              <div class="mb-5 flex items-end justify-between">
+                <div>
+                  <p class="text-[11px] uppercase tracking-[0.35em] text-slate-500">Latest News</p>
+                  <h3 class="mt-2 text-xl font-semibold">Company headlines</h3>
+                </div>
+                <span id="newsMeta" class="text-xs text-slate-500">Last 7 days</span>
+              </div>
+              <div id="newsList" class="space-y-3"></div>
+            </section>
+          </aside>
+        </main>
       </div>
     </div>
 
-    <div class="app-shell" id="appShell" hidden aria-live="polite">
-      <header class="topbar">
-        <button class="brand-block brand-button" id="brandHomeButton" type="button" aria-label="Reset dashboard">
-          <span class="brand-mark">IA</span>
-          <div class="brand-copy">
-            <p class="panel-kicker">Trading Dashboard</p>
-            <h1>Investieren AI</h1>
-          </div>
-        </button>
-
-        <div class="search-wrap">
-          <label class="searchbar" for="searchInput">
-            <span class="search-icon"></span>
-            <input
-              id="searchInput"
-              type="search"
-              placeholder="Search all stocks, ETFs or companies"
-              autocomplete="off"
-              autocapitalize="off"
-              autocorrect="off"
-              spellcheck="false"
-              aria-label="Search stocks, ETFs or companies"
-              aria-controls="searchSuggestions"
-              aria-autocomplete="list"
-            />
-          </label>
-          <div id="searchSuggestions" class="search-suggestions" role="listbox" aria-label="Search suggestions" hidden></div>
-        </div>
-
-        <div class="topbar-actions">
-          <div id="backendStatus" class="backend-status backend-status-loading" role="status" aria-live="polite">Connecting backend...</div>
-          <button class="ghost-button topbar-action-button" id="logoutButton" type="button" aria-label="Log out" title="Log out">Logout</button>
-          <button class="icon-button" id="refreshStocks" type="button" aria-label="Refresh dashboard" title="Refresh dashboard">⟳</button>
-        </div>
-      </header>
-
-      <div id="errorBanner" class="error-banner" role="alert" aria-live="assertive" hidden></div>
-
-      <main class="content-grid">
-        <aside class="panel watchlist-panel">
-          <div class="panel-head">
-            <div>
-              <p class="panel-kicker">Watchlist</p>
-              <h2>Tracked names</h2>
-            </div>
-            <span id="watchlistMeta" class="meta-text">Loading market snapshot...</span>
-          </div>
-          <div id="watchlistBody" class="watchlist-list" aria-live="polite"></div>
-        </aside>
-
-        <div class="dashboard-main">
-          <section class="panel analysis-panel">
-            <div class="analysis-hero">
-              <div class="analysis-hero-top">
-                <div>
-                  <p class="panel-kicker">Selected Asset</p>
-                  <h2 id="analysisTitle">Select a stock to start analysis</h2>
-                  <p id="selectedChangeValue" class="hero-subline">Search all available stocks and ETFs to load live analysis.</p>
-                </div>
-                <div id="analysisBadge" class="signal-badge signal-badge-muted" hidden>Decision view</div>
-              </div>
-
-              <div id="loadingState" class="loading-state" role="status" aria-live="polite" hidden>
-                <span class="loading-spinner" aria-hidden="true"></span>
-                <span>Loading analysis...</span>
-              </div>
-
-              <section id="homeStateCard" class="home-state-card">
-                <p class="home-state-kicker">Start Here</p>
-                <h3>Select a stock to start analysis</h3>
-                <p class="home-state-copy">
-                  Search or choose a stock from the watchlist to load live analysis.
-                </p>
-                <div class="home-state-steps" aria-label="How to use the dashboard">
-                  <span>1. Search a symbol</span>
-                  <span>2. Review risk and bias</span>
-                  <span>3. Only act on clean setups</span>
-                </div>
-              </section>
-
-              <div id="noTradeBanner" class="no-trade-banner" role="status" aria-live="polite" hidden>
-                <div class="no-trade-icon">!</div>
-                <div>
-                  <strong id="noTradeTitle">NO TRADE</strong>
-                  <p id="noTradeReason">Market conditions are unclear right now.</p>
-                </div>
-              </div>
-
-              <div id="decisionPanel" class="decision-panel" hidden>
-                <div class="decision-main">
-                <div class="decision-primary">
-                  <span class="decision-label">Recommendation</span>
-                  <strong id="recommendationValue" class="decision-recommendation">--</strong>
-                  <p id="riskValue" class="decision-risk">Risk: --</p>
-                </div>
-
-                  <div class="decision-side">
-                    <article class="decision-support-card">
-                      <div class="decision-fact-row">
-                        <div>
-                          <span class="decision-fact-label">Selected Price</span>
-                          <strong id="selectedPriceValue" class="decision-fact-value">--</strong>
-                        </div>
-                        <p id="selectedPriceLabel" class="decision-fact-note">Waiting for market data</p>
-                      </div>
-
-                      <div class="decision-fact-row decision-fact-row-strong">
-                        <div>
-                          <span class="decision-fact-label">Conviction</span>
-                          <strong id="confidenceValue" class="decision-fact-value">--</strong>
-                        </div>
-                        <div class="decision-confidence">
-                          <div class="confidence-track">
-                            <div id="confidenceBar" class="confidence-bar"></div>
-                          </div>
-                          <p id="confidenceNote">Live analysis appears after you pick a stock.</p>
-                        </div>
-                      </div>
-                    </article>
-                  </div>
-                </div>
-
-                <div class="decision-support">
-                  <p id="analysisSummary" class="hero-summary">
-                    Select a stock to start analysis.
-                  </p>
-
-                  <section class="bias-panel">
-                    <div class="probability-card probability-card-up">
-                      <div class="probability-headline">
-                        <span>Market Bias</span>
-                        <strong id="probabilityUpValue">--</strong>
-                      </div>
-                      <p class="bias-copy" id="biasSupportText">Directional context appears after analysis.</p>
-                    </div>
-                    <div class="probability-card probability-card-down">
-                      <div class="probability-headline">
-                        <span>Setup State</span>
-                        <strong id="probabilityDownValue">--</strong>
-                      </div>
-                      <p class="bias-copy" id="biasStateText">No stock selected.</p>
-                    </div>
-                  </section>
-                </div>
-              </div>
-
-              <section id="actionPanel" class="action-panel" hidden aria-label="Trade setup details">
-                <div class="panel-head panel-head-tight">
-                  <div>
-                    <p class="panel-kicker">Trade Setup</p>
-                    <h3>Execution basics</h3>
-                  </div>
-                </div>
-                <div class="action-grid">
-                  <article class="action-card">
-                    <span>Entry Signal</span>
-                    <strong id="entrySignalValue" class="decision-value">--</strong>
-                    <p id="entryReasonValue">Waiting for analysis.</p>
-                  </article>
-                  <article class="action-card">
-                    <span>Exit Signal</span>
-                    <strong id="exitSignalValue" class="decision-value">--</strong>
-                    <p id="exitReasonValue">Waiting for analysis.</p>
-                  </article>
-                  <article class="action-card">
-                    <span>Position Size</span>
-                    <strong id="positionSizeValue">--</strong>
-                    <p id="positionSizeReason">No active setup loaded.</p>
-                  </article>
-                  <article class="action-card">
-                    <span>Stop Loss</span>
-                    <strong id="stopLossValue">--</strong>
-                    <p id="stopLossReason">Waiting for analysis.</p>
-                  </article>
-                </div>
-                <p class="timeframe-line">Timeframe: <strong id="timeframeValue">--</strong></p>
-              </section>
-            </div>
-          </section>
-
-          <section id="chartPanel" class="panel chart-panel" hidden>
-            <div class="panel-head panel-head-tight">
-              <div>
-                <p class="panel-kicker">Chart</p>
-                <h3>Price context</h3>
-              </div>
-              <div class="chart-legend">
-                <span class="legend-item"><i class="legend-line legend-line-price"></i>Price</span>
-                <span class="legend-item"><i class="legend-line legend-line-sma20"></i>SMA20</span>
-                <span class="legend-item"><i class="legend-line legend-line-sma50"></i>SMA50</span>
-              </div>
-            </div>
-            <div class="chart-meta">
-              <span>History from backend</span>
-              <strong id="chartSymbol">--</strong>
-            </div>
-            <div class="chart-surface">
-              <svg id="historyChart" viewBox="0 0 720 280" role="img" aria-label="Price history chart"></svg>
-            </div>
-          </section>
-
-          <details id="signalsPanel" class="panel signals-panel" hidden>
-            <summary>
-              <div>
-                <p class="panel-kicker">Signal Stack</p>
-                <h3>Technical context</h3>
-              </div>
-            </summary>
-            <div id="signalsGrid" class="signals-grid"></div>
-          </details>
-
-          <section id="contextSection" class="panel detail-section context-section" hidden>
-            <div class="panel-head panel-head-tight">
-              <div>
-                <p class="panel-kicker">Need attention</p>
-                <h3>Warnings and backdrop</h3>
-              </div>
-            </div>
-            <div class="context-block">
-              <div>
-                <p class="context-label">Warnings</p>
-                <div id="warningsList" class="warnings-list">
-                  <span class="warning-empty">No active warnings.</span>
-                </div>
-              </div>
-
-              <div>
-                <div class="context-headline">
-                  <p class="context-label">Macro</p>
-                  <span class="context-subtitle">Backdrop</span>
-                </div>
-                <div class="macro-list">
-                  <div class="macro-row">
-                    <span>Market Trend</span>
-                    <strong id="macroTrendValue">--</strong>
-                  </div>
-                  <div class="macro-row">
-                    <span>Rates</span>
-                    <strong id="ratesValue">--</strong>
-                  </div>
-                  <div class="macro-row">
-                    <span>USD</span>
-                    <strong id="usdValue">--</strong>
-                  </div>
-                  <div class="macro-row">
-                    <span>Macro Score</span>
-                    <strong id="macroScoreValue">--</strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section class="panel detail-section portfolio-section">
-            <div class="panel-head panel-head-tight">
-              <div>
-                <p class="panel-kicker">Portfolio</p>
-                <h3>Positions and P/L</h3>
-              </div>
-              <span class="panel-section-note">Manual tracking only</span>
-            </div>
-
-            <div class="portfolio-summary-grid">
-              <article class="summary-card">
-                <span>Total Value</span>
-                <strong id="marketValueValue">$0.00</strong>
-              </article>
-              <article class="summary-card">
-                <span>Cost Basis</span>
-                <strong id="costBasisValue">$0.00</strong>
-              </article>
-              <article class="summary-card">
-                <span>Market Value</span>
-                <strong id="portfolioMarketValueValue">$0.00</strong>
-              </article>
-              <article class="summary-card">
-                <span>Total P/L</span>
-                <strong id="pnlValue">$0.00</strong>
-              </article>
-            </div>
-
-            <div class="portfolio-layout">
-              <div class="portfolio-form-shell">
-                <div class="portfolio-form-copy">
-                  <strong>Track a position</strong>
-                  <p>Add or update positions so P/L stays grounded in your real entries.</p>
-                </div>
-                <form id="positionForm" class="position-form" novalidate>
-                  <input type="hidden" id="positionId" />
-                  <label>
-                    <span>Symbol</span>
-                    <select id="symbolInput" name="symbol" required></select>
-                  </label>
-                  <label>
-                    <span>Quantity</span>
-                    <input id="quantityInput" name="quantity" type="number" min="0.0001" step="0.0001" inputmode="decimal" required />
-                  </label>
-                  <label>
-                    <span>Average Price</span>
-                    <input id="priceInput" name="averagePrice" type="number" min="0.01" step="0.01" inputmode="decimal" required />
-                  </label>
-                  <label>
-                    <span>Opened At</span>
-                    <input id="openedAtInput" name="openedAt" type="date" required />
-                  </label>
-                  <div class="form-actions">
-                    <button class="primary-button" id="saveButton" type="submit">Add position</button>
-                    <button class="ghost-button" id="cancelEditButton" type="button" hidden>Cancel</button>
-                  </div>
-                </form>
-                <p class="portfolio-form-note">This section is for tracking and review, not for automatic execution.</p>
-              </div>
-
-              <div id="portfolioBody" class="portfolio-list" aria-live="polite"></div>
-            </div>
-          </section>
-        </div>
-      </main>
-
-      <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
-    </div>
-
-    <noscript>
-      <div class="error-banner" role="alert">This dashboard needs JavaScript enabled to load live analysis.</div>
-    </noscript>
     <script src="app.js" defer></script>
   </body>
 </html>

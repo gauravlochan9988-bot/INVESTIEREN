@@ -2,56 +2,38 @@ def test_root_serves_static_dashboard(client):
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "Investieren MVP" in response.text
+    assert "Investieren AI" in response.text
     assert 'id="authOverlay"' in response.text
     assert "Enter password to open the dashboard" in response.text
     assert "Unlock dashboard" in response.text
-    assert "Search all stocks, ETFs or companies" in response.text
-    assert "Tracked names" in response.text
-    assert "Selected Asset" in response.text
-    assert "Portfolio" in response.text
-    assert "Select a stock to start analysis" in response.text
-    assert "Search or choose a stock from the watchlist to load live analysis." in response.text
+    assert "Trading Dashboard" in response.text
+    assert "Search stocks, ETFs or companies" in response.text
+    assert "Live Quotes" in response.text
+    assert "TradingView" in response.text
+    assert "Company Snapshot" in response.text
+    assert "Company headlines" in response.text
     assert 'id="brandHomeButton"' in response.text
     assert 'id="logoutButton"' in response.text
-    assert 'id="refreshStocks"' in response.text
-    assert 'id="decisionPanel" class="decision-panel" hidden' in response.text
-    assert 'id="actionPanel" class="action-panel" hidden' in response.text
-    assert 'id="chartPanel" class="panel chart-panel" hidden' in response.text
-    assert 'id="signalsPanel" class="panel signals-panel" hidden' in response.text
-    assert 'id="contextSection" class="panel detail-section context-section" hidden' in response.text
+    assert 'id="refreshButton"' in response.text
+    assert 'id="watchlistBody"' in response.text
+    assert 'id="tradingviewChart"' in response.text
+    assert 'id="newsList"' in response.text
 
 
 def test_static_assets_are_available(client):
     response = client.get("/static/app.js")
 
     assert response.status_code == 200
-    assert "async function analyze" in response.text
-    assert "renderAnalysis" in response.text
-    assert "renderSearchSuggestions" in response.text
-    assert "directSymbolCandidate" in response.text
-    assert "loadUniverse" in response.text
-    assert "RequestTimeoutError" in response.text
-    assert "withRefresh" in response.text
-    assert "brandHomeButton" in response.text
-    assert "/api/search/universe" in response.text
-    assert "/api/search" in response.text
-    assert "No results" in response.text
-    assert "No live market data available" in response.text
-    assert "The market bias is visible, but not strong enough for a clean trade." in response.text
-    assert "No chart or analysis is shown without live market data." in response.text
-    assert "displayRecommendation" in response.text
-    assert "classifyDataIssue" in response.text
-    assert "convictionLabel" in response.text
-    assert "setupStateLabel" in response.text
-    assert "marketBiasLabel" in response.text
-    assert "prioritizedWarnings" in response.text
-    assert "analysis.no_data" in response.text
-    assert "localStorage" in response.text
+    assert "loadWatchlist" in response.text
+    assert "loadSymbol" in response.text
+    assert "renderTradingView" in response.text
+    assert "loadBackendHealth" in response.text
+    assert "/api/dashboard/watchlist" in response.text
+    assert "/api/dashboard/symbol/" in response.text
+    assert "/api/dashboard/news/" in response.text
     assert "sessionStorage" in response.text
     assert 'const AUTH_PASSWORD = "9988"' in response.text
     assert "showLoginOverlay" in response.text
     assert "showAppShell" in response.text
-    assert "logoutToLogin" in response.text
-    assert "setAnalysisSectionsVisible" in response.text
-    assert "focus names" in response.text
+    assert "buildApiUrl" in response.text
+    assert "TradingView.widget" in response.text
