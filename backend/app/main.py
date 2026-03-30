@@ -7,11 +7,11 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api.router import api_router
-from app.core.config import get_settings
-from app.core.database import get_engine
-from app.core.exceptions import AppError, ExternalServiceError, NotFoundError, ValidationError
-from app.models import Base
+from .api.router import api_router
+from .core.config import get_settings
+from .core.database import get_engine
+from .core.exceptions import AppError, ExternalServiceError, NotFoundError, ValidationError
+from .models import Base
 
 
 BASE_DIR = Path(__file__).resolve().parent

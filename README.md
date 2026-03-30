@@ -77,6 +77,22 @@ uvicorn app.main:app --reload
   - `OPENAI_MODEL`
   - `MACRO_INTEREST_RATE_EFFECT`
 
+## Render deployment
+- The FastAPI app object is available at both:
+  - `backend.app:app`
+  - `backend.app.main:app`
+- Recommended Render start command:
+
+```bash
+uvicorn backend.app:app --host 0.0.0.0 --port 10000
+```
+
+- Equivalent explicit command:
+
+```bash
+uvicorn backend.app.main:app --host 0.0.0.0 --port 10000
+```
+
 ## API overview
 - `GET /api/health`
 - `GET /api/stocks`
