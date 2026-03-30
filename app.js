@@ -15,6 +15,7 @@ const state = {
   watchlist: [],
   tvReady: typeof window.TradingView !== "undefined",
   activeRequest: 0,
+  latestAnalysis: null,
 };
 
 const elements = {
@@ -41,6 +42,23 @@ const elements = {
   metricLow: document.getElementById("metricLow"),
   metricOpen: document.getElementById("metricOpen"),
   metricPrevClose: document.getElementById("metricPrevClose"),
+  recommendationCard: document.getElementById("recommendationCard"),
+  recommendationValue: document.getElementById("recommendationValue"),
+  analysisSummary: document.getElementById("analysisSummary"),
+  analysisGeneratedAt: document.getElementById("analysisGeneratedAt"),
+  biasValue: document.getElementById("biasValue"),
+  noTradeReason: document.getElementById("noTradeReason"),
+  riskValue: document.getElementById("riskValue"),
+  timeframeValue: document.getElementById("timeframeValue"),
+  entryValue: document.getElementById("entryValue"),
+  entryReason: document.getElementById("entryReason"),
+  exitValue: document.getElementById("exitValue"),
+  exitReason: document.getElementById("exitReason"),
+  positionSizeValue: document.getElementById("positionSizeValue"),
+  positionSizeReason: document.getElementById("positionSizeReason"),
+  stopLossValue: document.getElementById("stopLossValue"),
+  stopLossReason: document.getElementById("stopLossReason"),
+  warningsList: document.getElementById("warningsList"),
   chartSymbolBadge: document.getElementById("chartSymbolBadge"),
   tradingviewChart: document.getElementById("tradingviewChart"),
   companyLogo: document.getElementById("companyLogo"),
@@ -85,6 +103,97 @@ function percent(value) {
   return `${numeric >= 0 ? "+" : ""}${numeric.toFixed(2)}%`;
 }
 
+function sentenceCase(value) {
+  if (!value) {
+    return "--";
+  }
+  return String(value).replace(/_/g, " ");
+}
+
+function titleCase(value) {
+  return sentenceCase(value).replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function biasLabel(analysis) {
+  if (!analysis || analysis.no_data || analysis.no_trade) {
+    return "neutral setup";
+  }
+  const probability = Number(analysis.probability_up || 0.5);
+  if (probability >= 0.68) {
+    return "strong bullish bias";
+  }
+  if (probability >= 0.56) {
+    return "weak bullish bias";
+  }
+  if (probability <= 0.32) {
+    return "strong bearish bias";
+  }
+  if (probability <= 0.44) {
+    return "weak bearish bias";
+  }
+  return "neutral setup";
+}
+
+function recommendationLabel(analysis) {
+  if (!analysis || analysis.no_data || analysis.no_trade || analysis.risk_level === "HIGH") {
+    return "NO TRADE";
+  }
+  if (analysis.recommendation === "HOLD") {
+    return "NO TRADE";
+  }
+  return analysis.recommendation || "NO TRADE";
+}
+
+function recommendationPalette(label) {
+  if (label === "BUY") {
+    return {
+      card: "rounded-[28px] border border-emerald-400/25 bg-emerald-500/10 p-5",
+      text: "text-emerald-300",
+    };
+  }
+  if (label === "SELL") {
+    return {
+      card: "rounded-[28px] border border-rose-400/25 bg-rose-500/10 p-5",
+      text: "text-rose-300",
+    };
+  }
+  return {
+    card: "rounded-[28px] border border-amber-400/25 bg-amber-500/10 p-5",
+    text: "text-amber-300",
+  };
+}
+
+function toneClassForRisk(risk) {
+  if (risk === "LOW") {
+    return "text-emerald-300";
+  }
+  if (risk === "HIGH") {
+    return "text-rose-300";
+  }
+  return "text-amber-300";
+}
+
+function yesNoLabel(flag) {
+  return flag ? "YES" : "NO";
+}
+
+function sizeBucket(percentValue) {
+  if (percentValue === null || percentValue === undefined) {
+    return "--";
+  }
+  const numeric = Number(percentValue);
+  if (numeric <= 0) {
+    return "No position";
+  }
+  if (numeric <= 5) {
+    return `Small · ${numeric.toFixed(1)}%`;
+  }
+  if (numeric <= 15) {
+    return `Medium · ${numeric.toFixed(1)}%`;
+  }
+  return `Large · ${numeric.toFixed(1)}%`;
+}
+
 function setBackendStatus(message, tone = "loading") {
   const palette = {
     loading: "border-white/10 bg-slate-950/60 text-slate-300",
@@ -103,6 +212,98 @@ function showError(message) {
 function clearError() {
   elements.errorBanner.hidden = true;
   elements.errorBanner.textContent = "";
+}
+
+function renderAnalysisLoading(symbol) {
+  state.latestAnalysis = null;
+  elements.recommendationCard.className = "rounded-[28px] border border-white/10 bg-slate-950/70 p-5";
+  elements.recommendationValue.className = "text-5xl font-black tracking-[-0.05em] text-white";
+  elements.recommendationValue.textContent = "LOADING";
+  elements.analysisSummary.textContent = `Building analysis for ${symbol}...`;
+  elements.analysisGeneratedAt.textContent = "Running analysis";
+  elements.biasValue.textContent = "neutral setup";
+  elements.noTradeReason.textContent = "Analysis is loading.";
+  elements.riskValue.className = "mt-3 text-2xl font-semibold text-white";
+  elements.riskValue.textContent = "--";
+  elements.timeframeValue.textContent = "--";
+  elements.entryValue.textContent = "--";
+  elements.entryReason.textContent = "Analysis is loading.";
+  elements.exitValue.textContent = "--";
+  elements.exitReason.textContent = "Analysis is loading.";
+  elements.positionSizeValue.textContent = "--";
+  elements.positionSizeReason.textContent = "Analysis is loading.";
+  elements.stopLossValue.textContent = "--";
+  elements.stopLossReason.textContent = "Analysis is loading.";
+  elements.warningsList.innerHTML =
+    '<span class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-400">Loading analysis</span>';
+}
+
+function renderAnalysis(analysis) {
+  state.latestAnalysis = analysis;
+
+  if (!analysis || analysis.no_data) {
+    const reason = analysis?.no_data_reason || "No live market data available.";
+    elements.recommendationCard.className = "rounded-[28px] border border-rose-400/25 bg-rose-500/10 p-5";
+    elements.recommendationValue.className = "text-5xl font-black tracking-[-0.05em] text-rose-200";
+    elements.recommendationValue.textContent = "NO DATA";
+    elements.analysisSummary.textContent = reason;
+    elements.analysisGeneratedAt.textContent = "No analysis";
+    elements.biasValue.textContent = "neutral setup";
+    elements.noTradeReason.textContent = reason;
+    elements.riskValue.className = "mt-3 text-2xl font-semibold text-slate-200";
+    elements.riskValue.textContent = "--";
+    elements.timeframeValue.textContent = "--";
+    elements.entryValue.textContent = "NO";
+    elements.entryReason.textContent = reason;
+    elements.exitValue.textContent = "NO";
+    elements.exitReason.textContent = "No trade action available.";
+    elements.positionSizeValue.textContent = "No position";
+    elements.positionSizeReason.textContent = "Data is missing.";
+    elements.stopLossValue.textContent = "--";
+    elements.stopLossReason.textContent = "No stop loss without data.";
+    elements.warningsList.innerHTML =
+      '<span class="rounded-full border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-200">No live data</span>';
+    return;
+  }
+
+  const label = recommendationLabel(analysis);
+  const palette = recommendationPalette(label);
+  const warnings = (analysis.warnings || []).slice(0, 3);
+
+  elements.recommendationCard.className = palette.card;
+  elements.recommendationValue.className = `text-5xl font-black tracking-[-0.05em] ${palette.text}`;
+  elements.recommendationValue.textContent = label;
+  elements.analysisSummary.textContent = analysis.summary || "No summary available.";
+  elements.analysisGeneratedAt.textContent = analysis.generated_at
+    ? `Updated ${new Date(analysis.generated_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+    : "Analysis ready";
+  elements.biasValue.textContent = biasLabel(analysis);
+  elements.noTradeReason.textContent = analysis.no_trade
+    ? analysis.no_trade_reason || "Setup is not clean enough."
+    : "Setup is actionable if the broader context stays stable.";
+  elements.riskValue.className = `mt-3 text-2xl font-semibold ${toneClassForRisk(analysis.risk_level)}`;
+  elements.riskValue.textContent = analysis.risk_level || "--";
+  elements.timeframeValue.textContent = titleCase(analysis.timeframe);
+  elements.entryValue.className = `mt-3 text-2xl font-semibold ${analysis.entry_signal ? "text-emerald-300" : "text-slate-200"}`;
+  elements.entryValue.textContent = yesNoLabel(analysis.entry_signal);
+  elements.entryReason.textContent = analysis.entry_reason || "No entry guidance.";
+  elements.exitValue.className = `mt-3 text-2xl font-semibold ${analysis.exit_signal ? "text-rose-300" : "text-slate-200"}`;
+  elements.exitValue.textContent = yesNoLabel(analysis.exit_signal);
+  elements.exitReason.textContent = analysis.exit_reason || "No exit guidance.";
+  elements.positionSizeValue.textContent = sizeBucket(analysis.position_size_percent);
+  elements.positionSizeReason.textContent = analysis.position_size_reason || "No sizing guidance.";
+  elements.stopLossValue.textContent = analysis.stop_loss_level ? currency(analysis.stop_loss_level) : "--";
+  elements.stopLossReason.textContent = analysis.stop_loss_reason || "No stop loss guidance.";
+  elements.warningsList.innerHTML = warnings.length
+    ? warnings
+        .map((warning) => {
+          const tone = /negative|high|weak|unclear|drawdown|overbought|headwind|pressure|strong/i.test(warning)
+            ? "border-amber-400/20 bg-amber-500/10 text-amber-200"
+            : "border-white/10 bg-white/5 text-slate-300";
+          return `<span class="rounded-full border px-3 py-2 text-xs font-medium ${tone}">${warning}</span>`;
+        })
+        .join("")
+    : '<span class="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-200">No urgent warnings</span>';
 }
 
 function setAuthenticated(value) {
@@ -140,14 +341,33 @@ function showLoginOverlay() {
 
 async function api(path, options = {}) {
   const url = buildApiUrl(path);
-  const response = await fetch(url, {
-    cache: "no-store",
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-    ...options,
-  });
+  const timeoutMs = options.timeoutMs ?? 15000;
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
+
+  let response;
+  try {
+    response = await fetch(url, {
+      cache: "no-store",
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error.name === "AbortError") {
+      console.error("[frontend] API timeout", { path, timeoutMs });
+      throw new Error("Request timed out.");
+    }
+    console.error("[frontend] API network error", { path, error: error.message });
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
 
   let payload = null;
   const contentType = response.headers.get("content-type") || "";
@@ -368,21 +588,46 @@ async function loadSymbol(symbol, forceRefresh = false) {
   clearError();
   renderWatchlist(state.watchlist);
   elements.newsMeta.textContent = "Loading latest headlines...";
+  renderAnalysisLoading(normalized);
 
   try {
     const suffix = forceRefresh ? "?refresh=1" : "";
-    const [overview, news] = await Promise.all([
-      api(`/api/dashboard/symbol/${encodeURIComponent(normalized)}${suffix}`),
-      api(`/api/dashboard/news/${encodeURIComponent(normalized)}${suffix}`),
+    const [overviewResult, newsResult, analysisResult] = await Promise.allSettled([
+      api(`/api/dashboard/symbol/${encodeURIComponent(normalized)}${suffix}`, { timeoutMs: 12000 }),
+      api(`/api/dashboard/news/${encodeURIComponent(normalized)}${suffix}`, { timeoutMs: 12000 }),
+      api(`/api/analysis/${encodeURIComponent(normalized)}${suffix}`, { timeoutMs: 18000 }),
     ]);
 
     if (requestId !== state.activeRequest) {
       return;
     }
 
-    renderOverview(overview);
-    renderNews(news);
-    elements.newsMeta.textContent = `${news.length} stories`;
+    if (overviewResult.status === "fulfilled") {
+      renderOverview(overviewResult.value);
+    } else {
+      throw overviewResult.reason;
+    }
+
+    if (analysisResult.status === "fulfilled") {
+      renderAnalysis(analysisResult.value);
+    } else {
+      renderAnalysis({
+        no_data: true,
+        no_data_reason:
+          analysisResult.reason?.name === "AbortError"
+            ? "Analysis timed out."
+            : analysisResult.reason?.message || "Analysis unavailable.",
+      });
+    }
+
+    if (newsResult.status === "fulfilled") {
+      renderNews(newsResult.value);
+      elements.newsMeta.textContent = `${newsResult.value.length} stories`;
+    } else {
+      renderNews([]);
+      elements.newsMeta.textContent = "Unavailable";
+    }
+
     renderTradingView(normalized);
     renderWatchlist(state.watchlist);
   } catch (error) {
@@ -391,6 +636,10 @@ async function loadSymbol(symbol, forceRefresh = false) {
     }
     showError(error.message || "Failed to load symbol data.");
     elements.newsMeta.textContent = "Unavailable";
+    renderAnalysis({
+      no_data: true,
+      no_data_reason: error.message || "Analysis unavailable.",
+    });
   }
 }
 
