@@ -71,6 +71,18 @@ def create_app() -> FastAPI:
     def root_script() -> FileResponse:
         return FileResponse(FRONTEND_DIR / "app.js", media_type="application/javascript")
 
+    @app.get("/auth-hero-hq.png")
+    def root_auth_hero_hq() -> FileResponse:
+        return FileResponse(FRONTEND_DIR / "auth-hero-hq.png", media_type="image/png")
+
+    @app.get("/auth-hero-source.png")
+    def root_auth_hero_source() -> FileResponse:
+        return FileResponse(FRONTEND_DIR / "auth-hero-source.png", media_type="image/png")
+
+    @app.get("/auth-hero.png")
+    def root_auth_hero() -> FileResponse:
+        return FileResponse(FRONTEND_DIR / "auth-hero.png", media_type="image/png")
+
     @app.get("/api/health")
     def healthcheck() -> dict:
         return {"status": "ok", "environment": settings.app_env}
