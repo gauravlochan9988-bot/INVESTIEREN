@@ -11,7 +11,7 @@
       content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
     />
     <title>Investieren MVP</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div id="authOverlay" class="auth-overlay">
@@ -21,14 +21,10 @@
             <div class="auth-brand">
               <div class="auth-mark">IA</div>
               <div>
-                <strong>Investieren AI</strong>
+                <strong>Investieren.AI</strong>
                 <span>Private Access</span>
               </div>
             </div>
-            <nav class="auth-nav" aria-label="Authentication navigation">
-              <span>Home</span>
-              <span>Secure</span>
-            </nav>
           </header>
 
           <div class="auth-content">
@@ -60,6 +56,7 @@
                 <button class="ghost-button auth-secondary-button" id="authCancelButton" type="button">Stay locked</button>
                 <button class="primary-button auth-button" type="submit">Unlock dashboard</button>
               </div>
+              <button class="auth-forgot" type="button">Forgot password?</button>
               <p id="authError" class="auth-error" role="alert" aria-live="assertive" hidden>Wrong password</p>
             </form>
           </div>
@@ -67,13 +64,6 @@
 
         <aside class="auth-visual" aria-hidden="true">
           <div class="auth-visual-overlay"></div>
-          <div class="auth-orbit auth-orbit-one"></div>
-          <div class="auth-orbit auth-orbit-two"></div>
-          <div class="auth-visual-copy">
-            <p>Secure market workspace</p>
-            <strong>Private investing dashboard.</strong>
-          </div>
-          <div class="auth-visual-badge">IA</div>
         </aside>
       </div>
     </div>
@@ -82,7 +72,7 @@
       <header class="topbar">
         <button class="brand-block brand-button" id="brandHomeButton" type="button" aria-label="Reset dashboard">
           <span class="brand-mark">IA</span>
-          <div>
+          <div class="brand-copy">
             <p class="panel-kicker">Trading Dashboard</p>
             <h1>Investieren AI</h1>
           </div>
@@ -402,6 +392,6 @@
     <noscript>
       <div class="error-banner" role="alert">This dashboard needs JavaScript enabled to load live analysis.</div>
     </noscript>
-    <script src="/app.js" defer></script>
+    <script src="app.js" defer></script>
   </body>
 </html>
