@@ -86,7 +86,9 @@ class YFinanceProvider:
             except NotFoundError:
                 raise
             except Exception as exc:  # pragma: no cover - defensive parsing path
-                raise ExternalServiceError(f"Failed to parse quote data for {symbol}.") from exc
+                if len(symbols_list) == 1:
+                    raise ExternalServiceError(f"Failed to parse quote data for {symbol}.") from exc
+                continue
 
             change_percent = ((current - previous) / previous * 100) if previous else 0.0
             snapshots.append(
@@ -99,6 +101,11 @@ class YFinanceProvider:
                     updated_at=updated_at,
                 )
             )
+
+        if not snapshots:
+            if len(symbols_list) == 1:
+                raise NotFoundError(f"No market data found for symbol {symbols_list[0]}.")
+            raise ExternalServiceError("No watchlist data returned from yfinance.")
 
         return snapshots
 

@@ -81,3 +81,58 @@ def test_market_data_service_raises_live_data_error_when_provider_fails():
 
     with pytest.raises(ExternalServiceError, match="No live market data available"):
         service.get_latest_quote("NFLX")
+
+
+class PartiallyFailingMarketDataProvider:
+    def fetch_quotes(self, symbols, names):
+        from datetime import datetime, timezone
+
+        from app.services.market_data import QuoteSnapshot
+
+        if len(symbols) == 1:
+            raise ExternalServiceError("single symbol failed")
+
+        snapshots = []
+        for symbol in symbols:
+            if symbol == "NVDA":
+                continue
+            snapshots.append(
+                QuoteSnapshot(
+                    symbol=symbol,
+                    name=names[symbol],
+                    price=100.0,
+                    change_percent=1.5,
+                    volume=1000,
+                    updated_at=datetime.now(timezone.utc),
+                )
+            )
+        return snapshots
+
+    def fetch_history(self, symbol, period):
+        from datetime import datetime, timedelta, timezone
+
+        from app.schemas.stocks import HistoryPoint
+
+        base = datetime.now(timezone.utc)
+        return [
+            HistoryPoint(date=base - timedelta(days=index), close=100.0 + index)
+            for index in range(5)
+        ]
+
+
+def test_watchlist_quotes_skip_symbols_that_fail_to_parse_in_multi_symbol_requests():
+    from app.services.market_data import MarketDataService
+
+    service = MarketDataService(
+        provider=PartiallyFailingMarketDataProvider(),
+        allowed_symbols={
+            "AAPL": "Apple",
+            "MSFT": "Microsoft",
+            "NVDA": "NVIDIA",
+        },
+        ttl_seconds=3600,
+    )
+
+    quotes = service.get_watchlist_quotes()
+
+    assert [quote.symbol for quote in quotes] == ["AAPL", "MSFT"]
