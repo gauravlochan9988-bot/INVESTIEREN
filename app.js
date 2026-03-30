@@ -65,8 +65,6 @@ const elements = {
   companyHeadline: document.getElementById("companyHeadline"),
   companyExchange: document.getElementById("companyExchange"),
   companyDetails: document.getElementById("companyDetails"),
-  newsList: document.getElementById("newsList"),
-  newsMeta: document.getElementById("newsMeta"),
 };
 
 function resolveApiBaseUrl() {
@@ -470,37 +468,6 @@ function renderCompanyDetails(overview) {
     .join("");
 }
 
-function renderNews(newsItems) {
-  elements.newsList.innerHTML = "";
-
-  if (!newsItems.length) {
-    elements.newsList.innerHTML = `
-      <div class="rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-4 text-sm text-slate-400">
-        No recent company news available.
-      </div>
-    `;
-    return;
-  }
-
-  newsItems.forEach((item) => {
-    const article = document.createElement("a");
-    article.href = item.url;
-    article.target = "_blank";
-    article.rel = "noreferrer";
-    article.className =
-      "block rounded-2xl border border-white/10 bg-slate-950/45 p-4 transition hover:border-cyan-300/30 hover:bg-slate-900";
-    article.innerHTML = `
-      <p class="text-sm font-semibold leading-6 text-white">${item.headline}</p>
-      <p class="mt-2 line-clamp-3 text-sm leading-6 text-slate-400">${item.summary || "Open the article to read more."}</p>
-      <div class="mt-3 flex items-center justify-between text-xs text-slate-500">
-        <span>${item.source || "Finnhub"}</span>
-        <span>${new Date(item.published_at).toLocaleDateString()}</span>
-      </div>
-    `;
-    elements.newsList.appendChild(article);
-  });
-}
-
 function renderOverview(overview) {
   elements.selectedSymbolName.textContent = overview.symbol;
   elements.selectedCompanyName.textContent = overview.name;
@@ -587,14 +554,12 @@ async function loadSymbol(symbol, forceRefresh = false) {
   persistSelectedSymbol(normalized);
   clearError();
   renderWatchlist(state.watchlist);
-  elements.newsMeta.textContent = "Loading latest headlines...";
   renderAnalysisLoading(normalized);
 
   try {
     const suffix = forceRefresh ? "?refresh=1" : "";
-    const [overviewResult, newsResult, analysisResult] = await Promise.allSettled([
+    const [overviewResult, analysisResult] = await Promise.allSettled([
       api(`/api/dashboard/symbol/${encodeURIComponent(normalized)}${suffix}`, { timeoutMs: 12000 }),
-      api(`/api/dashboard/news/${encodeURIComponent(normalized)}${suffix}`, { timeoutMs: 12000 }),
       api(`/api/analysis/${encodeURIComponent(normalized)}${suffix}`, { timeoutMs: 18000 }),
     ]);
 
@@ -620,14 +585,6 @@ async function loadSymbol(symbol, forceRefresh = false) {
       });
     }
 
-    if (newsResult.status === "fulfilled") {
-      renderNews(newsResult.value);
-      elements.newsMeta.textContent = `${newsResult.value.length} stories`;
-    } else {
-      renderNews([]);
-      elements.newsMeta.textContent = "Unavailable";
-    }
-
     renderTradingView(normalized);
     renderWatchlist(state.watchlist);
   } catch (error) {
@@ -635,7 +592,6 @@ async function loadSymbol(symbol, forceRefresh = false) {
       return;
     }
     showError(error.message || "Failed to load symbol data.");
-    elements.newsMeta.textContent = "Unavailable";
     renderAnalysis({
       no_data: true,
       no_data_reason: error.message || "Analysis unavailable.",
