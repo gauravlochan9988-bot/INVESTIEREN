@@ -14,13 +14,13 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div id="authOverlay" class="auth-overlay">
+    <div id="authOverlay" class="auth-overlay" hidden>
       <div class="auth-card">
         <div class="auth-mark">IA</div>
         <p class="auth-kicker">Private Access</p>
         <h1>Enter password to open the dashboard</h1>
         <p class="auth-copy">This dashboard is protected for this session.</p>
-        <form id="authForm" class="auth-form" method="post">
+        <form id="authForm" class="auth-form">
           <label class="auth-label" for="authPassword">Password</label>
           <input
             id="authPassword"
@@ -42,7 +42,7 @@
       </div>
     </div>
 
-    <div class="app-shell" id="appShell" hidden aria-live="polite">
+    <div class="app-shell" id="appShell" aria-live="polite">
       <header class="topbar">
         <button class="brand-block brand-button" id="brandHomeButton" type="button" aria-label="Reset dashboard">
           <span class="brand-mark">IA</span>
@@ -328,7 +328,7 @@
                   <strong>Track a position</strong>
                   <p>Add or update positions so P/L stays grounded in your real entries.</p>
                 </div>
-                <form id="positionForm" class="position-form" method="post" novalidate>
+                <form id="positionForm" class="position-form" novalidate>
                   <input type="hidden" id="positionId" />
                   <label>
                     <span>Symbol</span>
