@@ -15,30 +15,66 @@
   </head>
   <body>
     <div id="authOverlay" class="auth-overlay">
-      <div class="auth-card">
-        <div class="auth-mark">IA</div>
-        <p class="auth-kicker">Private Access</p>
-        <h1>Enter password to open the dashboard</h1>
-        <p class="auth-copy">This dashboard is protected for this session.</p>
-        <form id="authForm" class="auth-form" novalidate>
-          <label class="auth-label" for="authPassword">Password</label>
-          <input
-            id="authPassword"
-            class="auth-input"
-            name="password"
-            type="password"
-            placeholder="Password"
-            autocomplete="current-password"
-            autocapitalize="off"
-            autocorrect="off"
-            spellcheck="false"
-            enterkeyhint="go"
-            aria-describedby="authError"
-            required
-          />
-          <button class="primary-button auth-button" type="submit">Unlock dashboard</button>
-          <p id="authError" class="auth-error" role="alert" aria-live="assertive" hidden>Wrong password</p>
-        </form>
+      <div class="auth-card auth-card-split">
+        <section class="auth-panel">
+          <header class="auth-topbar">
+            <div class="auth-brand">
+              <div class="auth-mark">IA</div>
+              <div>
+                <strong>Investieren AI</strong>
+                <span>Private Access</span>
+              </div>
+            </div>
+            <nav class="auth-nav" aria-label="Authentication navigation">
+              <span>Home</span>
+              <span>Secure</span>
+            </nav>
+          </header>
+
+          <div class="auth-content">
+            <p class="auth-kicker">Start Secure Session</p>
+            <h1>Enter password to open the dashboard</h1>
+            <p class="auth-copy">This dashboard is protected for this session.</p>
+            <p class="auth-helper">Only authorized access is allowed. Use your private password to continue.</p>
+
+            <form id="authForm" class="auth-form" novalidate>
+              <label class="auth-label" for="authPassword">Password</label>
+              <div class="auth-input-wrap">
+                <input
+                  id="authPassword"
+                  class="auth-input"
+                  name="password"
+                  type="password"
+                  placeholder="Password"
+                  autocomplete="current-password"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  enterkeyhint="go"
+                  aria-describedby="authError"
+                  required
+                />
+                <span class="auth-input-icon" aria-hidden="true"></span>
+              </div>
+              <div class="auth-actions">
+                <button class="ghost-button auth-secondary-button" id="authCancelButton" type="button">Stay locked</button>
+                <button class="primary-button auth-button" type="submit">Unlock dashboard</button>
+              </div>
+              <p id="authError" class="auth-error" role="alert" aria-live="assertive" hidden>Wrong password</p>
+            </form>
+          </div>
+        </section>
+
+        <aside class="auth-visual" aria-hidden="true">
+          <div class="auth-visual-overlay"></div>
+          <div class="auth-orbit auth-orbit-one"></div>
+          <div class="auth-orbit auth-orbit-two"></div>
+          <div class="auth-visual-copy">
+            <p>Secure market workspace</p>
+            <strong>Private investing dashboard.</strong>
+          </div>
+          <div class="auth-visual-badge">IA</div>
+        </aside>
       </div>
     </div>
 

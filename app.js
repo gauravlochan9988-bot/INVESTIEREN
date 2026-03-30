@@ -46,6 +46,7 @@ const elements = {
   authForm: document.getElementById("authForm"),
   authPassword: document.getElementById("authPassword"),
   authError: document.getElementById("authError"),
+  authCancelButton: document.getElementById("authCancelButton"),
   analysisPanel: document.querySelector(".analysis-panel"),
   watchlistBody: document.getElementById("watchlistBody"),
   watchlistMeta: document.getElementById("watchlistMeta"),
@@ -1892,6 +1893,12 @@ function bindEvents() {
 }
 
 function bindAuth() {
+  elements.authCancelButton.addEventListener("click", () => {
+    elements.authForm.reset();
+    elements.authError.hidden = true;
+    elements.authPassword.focus();
+  });
+
   elements.authPassword.addEventListener("input", () => {
     elements.authError.hidden = true;
   });
