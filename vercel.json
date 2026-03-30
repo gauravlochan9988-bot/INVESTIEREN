@@ -1,15 +1,10 @@
 {
   "version": 2,
-  "builds": [
-    { "src": "api/index.py", "use": "@vercel/python" },
-    { "src": "index.html", "use": "@vercel/static" },
-    { "src": "app.js", "use": "@vercel/static" },
-    { "src": "styles.css", "use": "@vercel/static" }
-  ],
-  "routes": [
-    { "src": "/static/(.*)", "dest": "/$1" },
-    { "src": "/api/(.*)", "dest": "/api/index.py" },
-    { "src": "/index.html", "dest": "/index.html" },
-    { "src": "/", "dest": "/index.html" }
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/index.html"
+    }
   ]
 }
