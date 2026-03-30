@@ -123,12 +123,16 @@ function persistSelectedSymbol(symbol) {
 }
 
 function showAppShell() {
+  elements.authOverlay.classList.add("hidden");
   elements.authOverlay.hidden = true;
+  elements.appShell.classList.remove("hidden");
   elements.appShell.hidden = false;
 }
 
 function showLoginOverlay() {
+  elements.appShell.classList.add("hidden");
   elements.appShell.hidden = true;
+  elements.authOverlay.classList.remove("hidden");
   elements.authOverlay.hidden = false;
   elements.authError.hidden = true;
   elements.authForm.reset();
