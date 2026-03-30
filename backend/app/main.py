@@ -54,6 +54,14 @@ def create_app() -> FastAPI:
     def root_index() -> FileResponse:
         return FileResponse(FRONTEND_DIR / "index.html")
 
+    @app.get("/styles.css")
+    def root_styles() -> FileResponse:
+        return FileResponse(FRONTEND_DIR / "styles.css", media_type="text/css")
+
+    @app.get("/app.js")
+    def root_script() -> FileResponse:
+        return FileResponse(FRONTEND_DIR / "app.js", media_type="application/javascript")
+
     @app.get("/api/health")
     def healthcheck() -> dict:
         return {"status": "ok", "environment": settings.app_env}
