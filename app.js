@@ -20,9 +20,6 @@ const state = {
 
 const ANALYSIS_TIMEOUT_MS = 5000;
 const LOADING_ERROR_MESSAGE = "Data loading failed";
-const AUTH_REQUIRED = false;
-const AUTH_PASSWORD = "9988";
-
 const KNOWN_SEARCH_HINTS = {
   "s&p": [
     { symbol: "SPY", name: "SPDR S&P 500 ETF Trust" },
@@ -39,20 +36,15 @@ const KNOWN_SEARCH_HINTS = {
 
 const STORAGE_KEYS = {
   selectedSymbol: "investieren:selectedSymbol",
-  authenticated: "investieren:authenticated",
 };
 
 const elements = {
   appShell: document.getElementById("appShell"),
-  authOverlay: document.getElementById("authOverlay"),
-  authForm: document.getElementById("authForm"),
-  authPassword: document.getElementById("authPassword"),
-  authError: document.getElementById("authError"),
   analysisPanel: document.querySelector(".analysis-panel"),
   watchlistBody: document.getElementById("watchlistBody"),
   watchlistMeta: document.getElementById("watchlistMeta"),
   refreshStocks: document.getElementById("refreshStocks"),
-  logoutButton: document.getElementById("logoutButton"),
+  resetViewButton: document.getElementById("resetViewButton"),
   brandHomeButton: document.getElementById("brandHomeButton"),
   searchInput: document.getElementById("searchInput"),
   searchSuggestions: document.getElementById("searchSuggestions"),
@@ -271,63 +263,19 @@ function withRefresh(path, forceRefresh = false) {
   return `${path}${path.includes("?") ? "&" : "?"}refresh=1`;
 }
 
-function isAuthenticated() {
-  try {
-    return window.sessionStorage.getItem(STORAGE_KEYS.authenticated) === "1";
-  } catch (error) {
-    return false;
-  }
-}
-
-function setAuthenticated(value) {
-  try {
-    if (value) {
-      window.sessionStorage.setItem(STORAGE_KEYS.authenticated, "1");
-      return;
-    }
-    window.sessionStorage.removeItem(STORAGE_KEYS.authenticated);
-  } catch (error) {
-    // Ignore storage failures.
-  }
-}
-
-function showLoginOverlay() {
-  if (!AUTH_REQUIRED) {
-    showAppShell();
-    return;
-  }
-  elements.appShell.hidden = true;
-  elements.authOverlay.hidden = false;
-  elements.authForm.reset();
-  elements.authError.hidden = true;
-  window.requestAnimationFrame(() => {
-    elements.authPassword.focus();
-  });
-}
-
 function showAppShell() {
-  elements.authOverlay.hidden = true;
   elements.appShell.hidden = false;
-  elements.authError.hidden = true;
 }
 
-function logoutToLogin() {
+function resetDashboardView() {
   if (state.analysisAbortController) {
     state.analysisAbortController.abort();
     state.analysisAbortController = null;
   }
-  if (!AUTH_REQUIRED) {
-    setLoading(false);
-    clearError();
-    renderHomeState();
-    showAppShell();
-    return;
-  }
-  setAuthenticated(false);
   setLoading(false);
   clearError();
   renderHomeState();
-  showLoginOverlay();
+  showAppShell();
 }
 
 function noTradeCopy(reason) {
@@ -1778,8 +1726,8 @@ async function deletePosition(positionId) {
 }
 
 function bindEvents() {
-  elements.logoutButton.addEventListener("click", () => {
-    logoutToLogin();
+  elements.resetViewButton.addEventListener("click", () => {
+    resetDashboardView();
   });
 
   elements.refreshStocks.addEventListener("click", async () => {
@@ -1905,36 +1853,6 @@ function bindEvents() {
   });
 }
 
-function bindAuth() {
-  if (!AUTH_REQUIRED) {
-    elements.authOverlay.hidden = true;
-    return;
-  }
-
-  elements.authPassword.addEventListener("input", () => {
-    elements.authError.hidden = true;
-  });
-
-  elements.authForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const password = elements.authPassword.value.trim();
-    if (password !== AUTH_PASSWORD) {
-      elements.authError.hidden = false;
-      elements.authPassword.select();
-      return;
-    }
-
-    setAuthenticated(true);
-    showAppShell();
-    if (!appBooted) {
-      await init();
-      return;
-    }
-    elements.authForm.reset();
-    elements.authError.hidden = true;
-  });
-}
-
 async function init() {
   if (appBooted) {
     return;
@@ -1967,14 +1885,5 @@ async function init() {
   }
 }
 
-bindAuth();
-
-if (!AUTH_REQUIRED) {
-  showAppShell();
-  init();
-} else if (isAuthenticated()) {
-  showAppShell();
-  init();
-} else {
-  showLoginOverlay();
-}
+showAppShell();
+init();

@@ -3,9 +3,6 @@ def test_root_serves_static_dashboard(client):
 
     assert response.status_code == 200
     assert "Investieren MVP" in response.text
-    assert 'id="authOverlay"' in response.text
-    assert "Enter password to open the dashboard" in response.text
-    assert "Unlock dashboard" in response.text
     assert "Search all stocks, ETFs or companies" in response.text
     assert "Tracked names" in response.text
     assert "Selected Asset" in response.text
@@ -13,7 +10,7 @@ def test_root_serves_static_dashboard(client):
     assert "Select a stock to start analysis" in response.text
     assert "Search or choose a stock from the watchlist to load live analysis." in response.text
     assert 'id="brandHomeButton"' in response.text
-    assert 'id="logoutButton"' in response.text
+    assert 'id="resetViewButton"' in response.text
     assert 'id="refreshStocks"' in response.text
     assert 'id="decisionPanel" class="decision-panel" hidden' in response.text
     assert 'id="actionPanel" class="action-panel" hidden' in response.text
@@ -48,10 +45,7 @@ def test_static_assets_are_available(client):
     assert "prioritizedWarnings" in response.text
     assert "analysis.no_data" in response.text
     assert "localStorage" in response.text
-    assert "sessionStorage" in response.text
-    assert 'const AUTH_PASSWORD = "9988"' in response.text
-    assert "showLoginOverlay" in response.text
     assert "showAppShell" in response.text
-    assert "logoutToLogin" in response.text
+    assert "resetDashboardView" in response.text
     assert "setAnalysisSectionsVisible" in response.text
     assert "focus names" in response.text
