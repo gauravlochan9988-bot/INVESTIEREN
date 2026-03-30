@@ -61,6 +61,18 @@ uvicorn backend.app:app --host 0.0.0.0 --port 10000
 uvicorn backend.app.main:app --host 0.0.0.0 --port 10000
 ```
 
+## Supabase database
+- Keep FastAPI on Render and point `DATABASE_URL` at your Supabase Postgres instance.
+- Recommended SQLAlchemy URL format:
+
+```bash
+DATABASE_URL=postgresql+psycopg://postgres:YOUR_PASSWORD@db.YOUR_PROJECT_REF.supabase.co:5432/postgres?sslmode=require
+```
+
+- If Supabase gives you a pooled host, use the pooler URL instead of `db.YOUR_PROJECT_REF...`.
+- On Render, add `DATABASE_URL` as an environment variable and redeploy the backend.
+- After switching databases, run the initial migration or let the app create the table on startup for the portfolio feature.
+
 ## API overview
 - `GET /api/health`
 - `GET /api/dashboard/watchlist`

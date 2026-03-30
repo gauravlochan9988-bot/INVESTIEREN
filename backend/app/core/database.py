@@ -12,6 +12,10 @@ def _engine_options(database_url: str) -> dict:
     options = {"future": True}
     if database_url.startswith("sqlite"):
         options["connect_args"] = {"check_same_thread": False}
+    else:
+        # Keep pooled Postgres connections healthy on hosted platforms like Supabase.
+        options["pool_pre_ping"] = True
+        options["pool_recycle"] = 300
     return options
 
 
