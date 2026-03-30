@@ -4,6 +4,9 @@ if (window.location.protocol === "file:") {
 
 const DEPLOYED_API_ORIGIN = "https://investieren-backend-cxvw.onrender.com";
 const LOCAL_API_HOSTS = new Set(["127.0.0.1", "localhost"]);
+const DEFAULT_API_TIMEOUT_MS = 5000;
+const REMOTE_API_TIMEOUT_MS = 20000;
+const HEALTH_API_TIMEOUT_MS = 8000;
 
 function resolveApiBaseUrl() {
   if (window.__API_BASE_URL__) {
@@ -21,6 +24,12 @@ function buildApiUrl(path) {
   }
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${resolveApiBaseUrl()}${normalizedPath}`;
+}
+
+function apiTimeout(ms = DEFAULT_API_TIMEOUT_MS) {
+  return resolveApiBaseUrl() === DEPLOYED_API_ORIGIN
+    ? Math.max(ms, REMOTE_API_TIMEOUT_MS)
+    : ms;
 }
 
 const state = {
@@ -151,12 +160,16 @@ class RequestTimeoutError extends Error {
 
 async function api(path, options = {}) {
   const {
-    timeoutMs = 5000,
+    timeoutMs = DEFAULT_API_TIMEOUT_MS,
     timeoutMessage = LOADING_ERROR_MESSAGE,
     signal: externalSignal,
     headers,
+    requestLabel,
     ...fetchOptions
   } = options;
+  const url = buildApiUrl(path);
+  const method = fetchOptions.method || "GET";
+  const effectiveTimeoutMs = apiTimeout(timeoutMs);
   const controller = new AbortController();
   let didTimeout = false;
   let didAbortExternally = false;
@@ -174,11 +187,14 @@ async function api(path, options = {}) {
   const timeoutId = window.setTimeout(() => {
     didTimeout = true;
     controller.abort("timeout");
-  }, timeoutMs);
+  }, effectiveTimeoutMs);
 
   let response;
   try {
-    response = await fetch(buildApiUrl(path), {
+    console.log(`[API] ${requestLabel || path} -> ${method} ${url}`, {
+      timeoutMs: effectiveTimeoutMs,
+    });
+    response = await fetch(url, {
       headers: { "Content-Type": "application/json", ...(headers || {}) },
       cache: "no-store",
       ...fetchOptions,
@@ -190,11 +206,21 @@ async function api(path, options = {}) {
       externalSignal.removeEventListener("abort", onAbort);
     }
     if (didTimeout) {
+      console.error(`[API] ${requestLabel || path} timed out`, {
+        method,
+        url,
+        timeoutMs: effectiveTimeoutMs,
+      });
       throw new RequestTimeoutError(timeoutMessage);
     }
     if (didAbortExternally || error.name === "AbortError") {
       throw error;
     }
+    console.error(`[API] ${requestLabel || path} network failure`, {
+      method,
+      url,
+      error,
+    });
     throw new Error(LOADING_ERROR_MESSAGE);
   }
 
@@ -214,8 +240,20 @@ async function api(path, options = {}) {
     } catch (error) {
       // Keep fallback message.
     }
+    console.error(`[API] ${requestLabel || path} failed`, {
+      method,
+      url,
+      status: response.status,
+      detail,
+    });
     throw new Error(detail);
   }
+
+  console.log(`[API] ${requestLabel || path} ok`, {
+    method,
+    url,
+    status: response.status,
+  });
 
   if (response.status === 204) {
     return null;
@@ -1069,7 +1107,11 @@ function topSearchResult() {
 }
 
 async function loadUniverse() {
-  const universe = await api("/api/search/universe");
+  const universe = await api("/api/search/universe", {
+    timeoutMs: 8000,
+    timeoutMessage: "Universe request timed out.",
+    requestLabel: "loadUniverse",
+  });
   state.universe = universe;
   universe.forEach((stock) => rememberSymbolMeta(stock.symbol, stock.name));
   renderSymbolOptions();
@@ -1079,8 +1121,9 @@ async function loadUniverse() {
 async function loadBackendHealth() {
   try {
     const health = await api("/api/health", {
-      timeoutMs: 4000,
+      timeoutMs: HEALTH_API_TIMEOUT_MS,
       timeoutMessage: "Backend health check timed out.",
+      requestLabel: "healthcheck",
     });
     const environment = health?.environment ? ` · ${health.environment}` : "";
     setBackendStatus(`Backend connected${environment}`, "ok");
@@ -1628,7 +1671,9 @@ function renderPortfolioUnavailable(message) {
 
 async function loadStocks(forceRefresh = false) {
   state.stocks = await api(withRefresh("/api/stocks", forceRefresh), {
-    timeoutMessage: LOADING_ERROR_MESSAGE,
+    timeoutMs: 12000,
+    timeoutMessage: "Stocks request timed out.",
+    requestLabel: "loadStocks",
   });
   renderWatchlist();
   renderSearchSuggestions();
@@ -1636,7 +1681,9 @@ async function loadStocks(forceRefresh = false) {
 
 async function loadPortfolio(forceRefresh = false) {
   const snapshot = await api(withRefresh("/api/portfolio", forceRefresh), {
-    timeoutMessage: LOADING_ERROR_MESSAGE,
+    timeoutMs: 10000,
+    timeoutMessage: "Portfolio request timed out.",
+    requestLabel: "loadPortfolio",
   });
   renderPortfolio(snapshot);
 }
@@ -1647,9 +1694,10 @@ async function loadHistory(symbol, forceRefresh = false, signal = null) {
     return state.historyCache.get(cacheKey);
   }
   const rawHistory = await api(withRefresh(`/api/stocks/${symbol}/history?range=1mo`, forceRefresh), {
-    timeoutMs: ANALYSIS_TIMEOUT_MS,
-    timeoutMessage: LOADING_ERROR_MESSAGE,
+    timeoutMs: 12000,
+    timeoutMessage: "Chart data request timed out.",
     signal,
+    requestLabel: `loadHistory:${symbol}`,
   });
   const history = Array.isArray(rawHistory)
     ? { points: rawHistory }
@@ -1698,9 +1746,10 @@ async function analyze(symbol, { forceRefresh = false } = {}) {
     const analysis = await api(withRefresh("/api/analyze", forceRefresh), {
       method: "POST",
       body: JSON.stringify({ symbol }),
-      timeoutMs: ANALYSIS_TIMEOUT_MS,
-      timeoutMessage: LOADING_ERROR_MESSAGE,
+      timeoutMs: 12000,
+      timeoutMessage: "Analysis request timed out.",
       signal: controller.signal,
+      requestLabel: `analyze:${symbol}`,
     });
 
     if (analysisId !== state.activeAnalysisId) {
