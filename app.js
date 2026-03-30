@@ -20,6 +20,7 @@ const state = {
 
 const ANALYSIS_TIMEOUT_MS = 5000;
 const LOADING_ERROR_MESSAGE = "Data loading failed";
+const AUTH_REQUIRED = false;
 const AUTH_PASSWORD = "9988";
 
 const KNOWN_SEARCH_HINTS = {
@@ -291,6 +292,10 @@ function setAuthenticated(value) {
 }
 
 function showLoginOverlay() {
+  if (!AUTH_REQUIRED) {
+    showAppShell();
+    return;
+  }
   elements.appShell.hidden = true;
   elements.authOverlay.hidden = false;
   elements.authForm.reset();
@@ -310,6 +315,13 @@ function logoutToLogin() {
   if (state.analysisAbortController) {
     state.analysisAbortController.abort();
     state.analysisAbortController = null;
+  }
+  if (!AUTH_REQUIRED) {
+    setLoading(false);
+    clearError();
+    renderHomeState();
+    showAppShell();
+    return;
   }
   setAuthenticated(false);
   setLoading(false);
@@ -1894,6 +1906,11 @@ function bindEvents() {
 }
 
 function bindAuth() {
+  if (!AUTH_REQUIRED) {
+    elements.authOverlay.hidden = true;
+    return;
+  }
+
   elements.authPassword.addEventListener("input", () => {
     elements.authError.hidden = true;
   });
@@ -1952,7 +1969,10 @@ async function init() {
 
 bindAuth();
 
-if (isAuthenticated()) {
+if (!AUTH_REQUIRED) {
+  showAppShell();
+  init();
+} else if (isAuthenticated()) {
   showAppShell();
   init();
 } else {
