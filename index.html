@@ -8,7 +8,7 @@
     <meta name="color-scheme" content="dark" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:8000 http://localhost:8000 https://investieren-backend-cxvw.onrender.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
     />
     <title>Investieren MVP</title>
     <link rel="stylesheet" href="styles.css" />
@@ -98,6 +98,7 @@
         </div>
 
         <div class="topbar-actions">
+          <div id="backendStatus" class="backend-status backend-status-loading" role="status" aria-live="polite">Connecting backend...</div>
           <button class="ghost-button topbar-action-button" id="logoutButton" type="button" aria-label="Log out" title="Log out">Logout</button>
           <button class="icon-button" id="refreshStocks" type="button" aria-label="Refresh dashboard" title="Refresh dashboard">⟳</button>
         </div>

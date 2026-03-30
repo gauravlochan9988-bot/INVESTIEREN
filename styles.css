@@ -618,6 +618,36 @@ select {
   justify-self: end;
 }
 
+.backend-status {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  color: rgba(243, 247, 251, 0.8);
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 0.84rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.backend-status-loading {
+  color: rgba(243, 247, 251, 0.72);
+}
+
+.backend-status-ok {
+  color: var(--positive);
+  border-color: rgba(37, 196, 125, 0.22);
+  background: rgba(37, 196, 125, 0.08);
+}
+
+.backend-status-error {
+  color: var(--negative);
+  border-color: rgba(255, 107, 114, 0.22);
+  background: rgba(255, 107, 114, 0.08);
+}
+
 .topbar-action-button {
   min-height: 58px;
   padding: 0 22px;

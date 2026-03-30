@@ -2,6 +2,27 @@ if (window.location.protocol === "file:") {
   window.location.replace("http://127.0.0.1:8000/");
 }
 
+const DEPLOYED_API_ORIGIN = "https://investieren-backend-cxvw.onrender.com";
+const LOCAL_API_HOSTS = new Set(["127.0.0.1", "localhost"]);
+
+function resolveApiBaseUrl() {
+  if (window.__API_BASE_URL__) {
+    return String(window.__API_BASE_URL__).replace(/\/$/, "");
+  }
+  if (LOCAL_API_HOSTS.has(window.location.hostname)) {
+    return `${window.location.protocol}//${window.location.host}`;
+  }
+  return DEPLOYED_API_ORIGIN;
+}
+
+function buildApiUrl(path) {
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${resolveApiBaseUrl()}${normalizedPath}`;
+}
+
 const state = {
   stocks: [],
   universe: [],
@@ -55,6 +76,7 @@ const elements = {
   watchlistBody: document.getElementById("watchlistBody"),
   watchlistMeta: document.getElementById("watchlistMeta"),
   refreshStocks: document.getElementById("refreshStocks"),
+  backendStatus: document.getElementById("backendStatus"),
   logoutButton: document.getElementById("logoutButton"),
   brandHomeButton: document.getElementById("brandHomeButton"),
   searchInput: document.getElementById("searchInput"),
@@ -156,7 +178,7 @@ async function api(path, options = {}) {
 
   let response;
   try {
-    response = await fetch(path, {
+    response = await fetch(buildApiUrl(path), {
       headers: { "Content-Type": "application/json", ...(headers || {}) },
       cache: "no-store",
       ...fetchOptions,
@@ -199,6 +221,14 @@ async function api(path, options = {}) {
     return null;
   }
   return response.json();
+}
+
+function setBackendStatus(message, tone = "loading") {
+  if (!elements.backendStatus) {
+    return;
+  }
+  elements.backendStatus.textContent = message;
+  elements.backendStatus.className = `backend-status backend-status-${tone}`;
 }
 
 function currency(value) {
@@ -1044,6 +1074,20 @@ async function loadUniverse() {
   universe.forEach((stock) => rememberSymbolMeta(stock.symbol, stock.name));
   renderSymbolOptions();
   renderWatchlist();
+}
+
+async function loadBackendHealth() {
+  try {
+    const health = await api("/api/health", {
+      timeoutMs: 4000,
+      timeoutMessage: "Backend health check timed out.",
+    });
+    const environment = health?.environment ? ` · ${health.environment}` : "";
+    setBackendStatus(`Backend connected${environment}`, "ok");
+  } catch (error) {
+    setBackendStatus("Backend unavailable", "error");
+    throw new Error(error.message || "Backend connection failed.");
+  }
 }
 
 function renderWatchlist() {
@@ -1937,6 +1981,8 @@ async function init() {
 
   try {
     setStatus("Booting dashboard...", "busy");
+    setBackendStatus("Connecting backend...", "loading");
+    await loadBackendHealth();
     await loadUniverse();
     const startupErrors = await loadDashboardPanels();
     persistSelectedSymbol(null);
