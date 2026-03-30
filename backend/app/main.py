@@ -56,11 +56,30 @@ def create_app() -> FastAPI:
         Base.metadata.create_all(bind=get_engine())
 
     @app.get("/")
-    def root() -> FileResponse:
+    def root():
+        if settings.app_env.lower() == "production":
+            return JSONResponse(
+                {
+                    "status": "ok",
+                    "service": "backend",
+                    "message": "Render hosts the FastAPI API. Open the frontend on Vercel.",
+                    "frontend_url": "https://investieren.vercel.app",
+                    "health_url": "/api/health",
+                }
+            )
         return FileResponse(FRONTEND_DIR / "index.html")
 
     @app.get("/index.html")
-    def root_index() -> FileResponse:
+    def root_index():
+        if settings.app_env.lower() == "production":
+            return JSONResponse(
+                {
+                    "status": "ok",
+                    "service": "backend",
+                    "message": "Frontend is served from Vercel in production.",
+                    "frontend_url": "https://investieren.vercel.app",
+                }
+            )
         return FileResponse(FRONTEND_DIR / "index.html")
 
     @app.get("/styles.css")
