@@ -369,6 +369,24 @@ def test_data_quality_returns_no_data_when_too_many_required_inputs_are_missing(
     assert "only 2/6 required inputs" in decision.reason
 
 
+def test_confidence_is_boosted_for_full_data_and_reduced_for_partial_data(analysis_service):
+    full_confidence = analysis_service._apply_data_quality_to_confidence(60.0, "FULL")
+    partial_confidence = analysis_service._apply_data_quality_to_confidence(60.0, "PARTIAL")
+    no_data_confidence = analysis_service._apply_data_quality_to_confidence(60.0, "NO_DATA")
+
+    assert full_confidence > 60.0
+    assert partial_confidence < 60.0
+    assert no_data_confidence == 0.0
+
+
+def test_partial_data_keeps_confidence_between_zero_and_one_hundred(analysis_service):
+    low = analysis_service._apply_data_quality_to_confidence(8.0, "PARTIAL")
+    high = analysis_service._apply_data_quality_to_confidence(98.0, "PARTIAL")
+
+    assert 0.0 <= low <= 100.0
+    assert 0.0 <= high <= 100.0
+
+
 def test_analyze_symbol_reuses_cached_response_without_reloading_history():
     provider = FakeMarketDataProvider()
     market_data_service = MarketDataService(

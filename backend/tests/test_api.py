@@ -203,6 +203,7 @@ def test_analyze_endpoint_returns_no_data_status_when_live_market_data_is_missin
     assert payload["no_data_reason"] == "No live market data available."
     assert payload["data_quality"] == "NO_DATA"
     assert payload["data_quality_reason"] == "No live market data available."
+    assert payload["confidence"] == 0.0
     assert payload["recommendation"] is None
     assert payload["signals"] is None
 
@@ -237,6 +238,7 @@ def test_analyze_endpoint_returns_partial_when_only_short_history_exists(client)
     assert payload["no_data"] is True
     assert payload["data_quality"] == "NO_DATA"
     assert "Not enough market history" in payload["data_quality_reason"]
+    assert payload["confidence"] == 0.0
 
 
 def test_strategy_query_returns_selected_strategy_without_frontend_overrides(client):

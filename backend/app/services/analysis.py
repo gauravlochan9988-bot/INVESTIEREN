@@ -504,9 +504,13 @@ class AnalysisService:
     def _apply_data_quality_to_confidence(
         self, confidence: float, data_quality: DataQuality
     ) -> float:
+        if data_quality == "NO_DATA":
+            return 0.0
         if data_quality == "FULL":
-            return round(self._clamp(confidence, 20, 95), 1)
-        return round(self._clamp(confidence - 12, 20, 95), 1)
+            boosted = confidence + 4
+            return round(self._clamp(boosted, 20, 95), 1)
+        reduced = max(confidence * 0.72, confidence - 18)
+        return round(self._clamp(reduced, 10, 85), 1)
 
     def _strategy_decision(self, strategy: Strategy, context: dict) -> dict[str, object]:
         if strategy == "simple":
@@ -999,7 +1003,7 @@ class AnalysisService:
             score=None,
             probability_up=None,
             probability_down=None,
-            confidence=None,
+            confidence=0.0,
             risk_level=None,
             data_quality="NO_DATA",
             data_quality_reason=message,
@@ -1042,7 +1046,7 @@ class AnalysisService:
             score=None,
             probability_up=None,
             probability_down=None,
-            confidence=None,
+            confidence=0.0,
             risk_level=None,
             data_quality="PARTIAL",
             data_quality_reason=message,
