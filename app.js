@@ -537,7 +537,7 @@ async function api(path, options = {}) {
 async function loadBackendHealth() {
   try {
     const payload = await api("/api/health");
-    setBackendStatus(`Backend ${payload.status} · ${payload.environment}`, "ok");
+    setBackendStatus("Backend connected", "ok");
   } catch (error) {
     setBackendStatus("Backend unavailable", "error");
     throw error;
