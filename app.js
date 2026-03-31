@@ -127,6 +127,10 @@ function scheduleLowPriorityTask(task, delayMs = 0) {
   window.setTimeout(task, delayMs);
 }
 
+function delay(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
 function isReadOnlyApiRequest(path, options = {}) {
   const method = (options.method || "GET").toUpperCase();
   return method === "GET" && String(path || "").startsWith("/api/");
@@ -1413,16 +1417,12 @@ async function loadSymbol(symbol, forceRefresh = false) {
         }
       });
 
-    const [overviewResult, analysisResult] = await Promise.allSettled([
+    const overviewResult = await Promise.allSettled([
       api(`/api/dashboard/symbol/${encodeURIComponent(normalized)}${overviewSuffix}`, {
         timeoutMs: 22000,
         retryCount: 1,
       }),
-      api(`/api/analysis/${encodeURIComponent(normalized)}?${analysisParams.toString()}`, {
-        timeoutMs: 30000,
-        retryCount: 1,
-      }),
-    ]);
+    ]).then((results) => results[0]);
 
     if (requestId !== state.activeRequest) {
       return;
@@ -1433,6 +1433,25 @@ async function loadSymbol(symbol, forceRefresh = false) {
     } else {
       console.error("[frontend] overview load failed", overviewResult.reason);
       renderOverviewFallback(normalized);
+    }
+
+    renderWatchlist(state.watchlist);
+
+    await delay(650);
+
+    if (requestId !== state.activeRequest) {
+      return;
+    }
+
+    const analysisResult = await Promise.allSettled([
+      api(`/api/analysis/${encodeURIComponent(normalized)}?${analysisParams.toString()}`, {
+        timeoutMs: 30000,
+        retryCount: 1,
+      }),
+    ]).then((results) => results[0]);
+
+    if (requestId !== state.activeRequest) {
+      return;
     }
 
     if (analysisResult.status === "fulfilled") {
@@ -1448,8 +1467,6 @@ async function loadSymbol(symbol, forceRefresh = false) {
     }
 
     void newsPromise;
-
-    renderWatchlist(state.watchlist);
 
     if (overviewResult.status === "rejected") {
       showError("Live overview is unavailable for this symbol right now.");
