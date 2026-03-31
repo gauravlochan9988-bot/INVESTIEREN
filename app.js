@@ -276,28 +276,30 @@ function confidenceHint(analysis) {
   return "Low conviction";
 }
 
-function scoreInfo(analysis) {
-  if (!analysis || analysis.no_data || analysis.score === null || analysis.score === undefined) {
+function dataQualityInfo(analysis) {
+  if (!analysis) {
     return {
       label: "--",
       tone: "text-slate-200",
-      reason: analysis?.no_data_reason || "No score available.",
+      reason: "No data quality available.",
     };
   }
 
-  const score = Number(analysis.score || 0);
-  const label = `${score > 0 ? "+" : ""}${score}`;
+  const label = analysis.data_quality || (analysis.no_data ? "PARTIAL" : "--");
   const tone =
-    score >= 35
+    label === "FULL"
       ? "text-emerald-300"
-      : score <= -35
-        ? "text-rose-300"
-        : "text-amber-300";
+      : label === "PARTIAL"
+        ? "text-amber-300"
+        : "text-slate-200";
 
   return {
     label,
     tone,
-    reason: `Confidence ${Math.round(Number(analysis.confidence || 0))}/100`,
+    reason:
+      analysis.data_quality_reason ||
+      analysis.no_data_reason ||
+      "No data quality note available.",
   };
 }
 
@@ -621,9 +623,9 @@ function renderAnalysis(analysis) {
     elements.riskValue.className = "mt-3 text-2xl font-semibold text-slate-200";
     elements.riskValue.textContent = "--";
     elements.timeframeValue.textContent = "--";
-    elements.coverageValue.className = "mt-3 text-2xl font-semibold text-slate-200";
-    elements.coverageValue.textContent = "--";
-    elements.coverageReason.textContent = reason;
+    elements.coverageValue.className = "mt-3 text-2xl font-semibold text-amber-300";
+    elements.coverageValue.textContent = analysis.data_quality || "PARTIAL";
+    elements.coverageReason.textContent = analysis.data_quality_reason || reason;
     elements.entryValue.textContent = "NO";
     elements.entryReason.textContent = reason;
     elements.exitValue.textContent = "NO";
@@ -657,10 +659,10 @@ function renderAnalysis(analysis) {
   elements.riskValue.className = `mt-3 text-2xl font-semibold ${toneClassForRisk(analysis.risk_level)}`;
   elements.riskValue.textContent = analysis.risk_level || "--";
   elements.timeframeValue.textContent = titleCase(analysis.timeframe);
-  const score = scoreInfo(analysis);
-  elements.coverageValue.className = `mt-3 text-2xl font-semibold ${score.tone}`;
-  elements.coverageValue.textContent = score.label;
-  elements.coverageReason.textContent = score.reason;
+  const dataQuality = dataQualityInfo(analysis);
+  elements.coverageValue.className = `mt-3 text-2xl font-semibold ${dataQuality.tone}`;
+  elements.coverageValue.textContent = dataQuality.label;
+  elements.coverageReason.textContent = dataQuality.reason;
   elements.entryValue.className = `mt-3 text-2xl font-semibold ${analysis.entry_signal ? "text-emerald-300" : "text-slate-200"}`;
   elements.entryValue.textContent = yesNoLabel(analysis.entry_signal);
   elements.entryReason.textContent = analysis.entry_reason || "No entry guidance.";

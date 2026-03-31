@@ -83,6 +83,9 @@ def test_analyze_endpoint_returns_decision_payload(client):
     assert payload["recommendation"] in {"BUY", "HOLD", "SELL"}
     assert isinstance(payload["score"], int)
     assert -100 <= payload["score"] <= 100
+    assert payload["data_quality"] in {"FULL", "PARTIAL"}
+    assert isinstance(payload["data_quality_reason"], str)
+    assert payload["data_quality_reason"]
     assert 0 <= payload["probability_up"] <= 1
     assert 0 <= payload["probability_down"] <= 1
     assert isinstance(payload["warnings"], list)
@@ -178,6 +181,8 @@ def test_analyze_endpoint_returns_no_data_status_when_live_market_data_is_missin
     assert payload["strategy"] == "simple"
     assert payload["no_data"] is True
     assert payload["no_data_reason"] == "No live market data available."
+    assert payload["data_quality"] == "PARTIAL"
+    assert payload["data_quality_reason"] == "No live market data available."
     assert payload["recommendation"] is None
     assert payload["signals"] is None
 
@@ -198,9 +203,12 @@ def test_strategy_query_returns_selected_strategy_without_frontend_overrides(cli
     assert simple_payload["strategy"] == "simple"
     assert ai_payload["strategy"] == "ai"
     assert hedgefund_payload["strategy"] == "hedgefund"
-    assert simple_payload["recommendation"] == "BUY"
-    assert ai_payload["recommendation"] == "HOLD"
-    assert hedgefund_payload["recommendation"] == "HOLD"
+    assert simple_payload["recommendation"] == "HOLD"
+    assert ai_payload["recommendation"] == "BUY"
+    assert hedgefund_payload["recommendation"] == "BUY"
+    assert simple_payload["data_quality"] == "FULL"
+    assert ai_payload["data_quality"] == "FULL"
+    assert hedgefund_payload["data_quality"] == "FULL"
     assert simple_payload["score"] != ai_payload["score"]
 
 

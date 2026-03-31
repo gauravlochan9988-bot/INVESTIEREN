@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from math import sqrt
+from math import isfinite, sqrt
 from typing import Sequence
 
 from app.core.exceptions import ExternalServiceError, NotFoundError, ValidationError
@@ -9,6 +9,7 @@ from app.schemas.analysis import (
     AnalysisAlert,
     AnalysisResponse,
     AnalysisSignals,
+    DataQuality,
     Recommendation,
     RiskLevel,
     SignalResult,
@@ -75,7 +76,7 @@ class AnalysisService:
                 return cached
         try:
             history = self.market_data_service.get_history(
-                normalized_symbol, "6mo", force_refresh=force_refresh
+                normalized_symbol, "1y", force_refresh=force_refresh
             )
             return self.analysis_cache.set(
                 cache_key,
@@ -165,6 +166,15 @@ class AnalysisService:
             volatility_30d=volatility_30d,
             news_snapshot=news_snapshot,
         )
+        data_quality, data_quality_reason = self._data_quality_snapshot(
+            latest_price=latest_price,
+            sma50=sma50,
+            sma200=sma200,
+            rsi14=rsi14,
+            momentum_5d=momentum_5d,
+            volatility_30d=volatility_30d,
+            news_snapshot=news_snapshot,
+        )
         context = {
             "latest_price": latest_price,
             "sma20": sma20,
@@ -184,6 +194,10 @@ class AnalysisService:
             "signals": signals,
         }
         decision = self._strategy_decision(strategy, context)
+        decision["confidence"] = self._apply_data_quality_to_confidence(
+            float(decision["confidence"]),
+            data_quality,
+        )
         probability_up = self._probability_from_strategy_score(
             strategy=strategy,
             score=decision["score"],
@@ -244,6 +258,8 @@ class AnalysisService:
             probability_down=probability_down,
             confidence=decision["confidence"],
             risk_level=decision["risk_level"],
+            data_quality=data_quality,
+            data_quality_reason=data_quality_reason,
             macro=macro_context,
             no_trade=False,
             no_trade_reason="Trade evaluation available.",
@@ -410,6 +426,51 @@ class AnalysisService:
 
         return alerts
 
+    def _data_quality_snapshot(
+        self,
+        *,
+        latest_price: float,
+        sma50: float,
+        sma200: float,
+        rsi14: float,
+        momentum_5d: float,
+        volatility_30d: float,
+        news_snapshot: NewsSentimentSnapshot,
+    ) -> tuple[DataQuality, str]:
+        available_inputs = {
+            "price / sma": all(
+                isfinite(value) and value > 0
+                for value in (latest_price, sma50, sma200)
+            ),
+            "rsi": isfinite(rsi14),
+            "momentum": isfinite(momentum_5d),
+            "volatility": isfinite(volatility_30d),
+            "news": news_snapshot.article_count > 0,
+        }
+        available_count = sum(1 for available in available_inputs.values() if available)
+        ratio = available_count / len(available_inputs)
+        quality: DataQuality = "FULL" if ratio >= 0.8 else "PARTIAL"
+        missing_inputs = [name for name, available in available_inputs.items() if not available]
+
+        if not missing_inputs:
+            return quality, f"Full data quality: {available_count}/5 inputs are available."
+        if quality == "FULL":
+            return (
+                quality,
+                f"Full data quality: {available_count}/5 inputs are available. Confidence is slightly tempered by missing {missing_inputs[0]}.",
+            )
+        return (
+            quality,
+            f"Partial data quality: {available_count}/5 inputs are available. Confidence is reduced because {', '.join(missing_inputs)} are missing.",
+        )
+
+    def _apply_data_quality_to_confidence(
+        self, confidence: float, data_quality: DataQuality
+    ) -> float:
+        if data_quality == "FULL":
+            return round(self._clamp(confidence, 20, 95), 1)
+        return round(self._clamp(confidence - 12, 20, 95), 1)
+
     def _strategy_decision(self, strategy: Strategy, context: dict) -> dict[str, object]:
         if strategy == "simple":
             return self._simple_strategy(context)
@@ -427,11 +488,6 @@ class AnalysisService:
             if news_snapshot.article_count and news_snapshot.news_score > 0.15
             else -1
             if news_snapshot.article_count and news_snapshot.news_score < -0.15
-            else 0,
-            "volatility": 1
-            if context["volatility_30d"] <= 0.18
-            else -1
-            if context["volatility_30d"] >= 0.32
             else 0,
         }
         score = sum(signal_scores.values())
@@ -506,12 +562,15 @@ class AnalysisService:
         signal_scores = context["factor_scores"]
         score = self._total_score(signal_scores)
         trend_up = context["latest_price"] > context["sma200"]
+        trend_down = context["latest_price"] < context["sma200"]
         momentum_up = context["momentum_5d"] > 0
         momentum_down = context["momentum_5d"] < 0
         if trend_up:
             recommendation: Recommendation = "BUY" if score >= 35 and momentum_up else "HOLD"
-        else:
+        elif trend_down:
             recommendation = "SELL" if score <= -35 and momentum_down else "HOLD"
+        else:
+            recommendation = "HOLD"
         conflicts = self._simple_conflicts(signal_scores)
         risk_level = self._weighted_strategy_risk(
             score=score,
@@ -558,8 +617,6 @@ class AnalysisService:
         if (
             latest_price >= sma200
             and latest_price >= sma50
-            and price_vs_sma50 >= 0.05
-            and price_vs_sma200 >= 0.10
         ):
             trend = 30
         elif latest_price >= sma200:
@@ -567,32 +624,28 @@ class AnalysisService:
         elif (
             latest_price < sma200
             and latest_price < sma50
-            and price_vs_sma50 <= -0.04
-            and price_vs_sma200 <= -0.08
         ):
             trend = -30
         else:
             trend = -15
         if rsi14 < 30:
-            rsi = 15
+            rsi = 20
         elif rsi14 > 70:
-            rsi = -15
+            rsi = -20
         else:
             rsi = 0
-        if momentum_5d >= 0.05:
-            momentum = 25
-        elif momentum_5d > 0:
-            momentum = 10
-        elif momentum_5d <= -0.05:
-            momentum = -25
+        if momentum_5d > 0:
+            momentum = 20
+        elif momentum_5d < 0:
+            momentum = -20
         else:
-            momentum = -10
+            momentum = 0
         if news_snapshot.article_count == 0 or abs(news_snapshot.news_score) < 0.15:
             news = 0
         else:
             news = 15 if news_snapshot.news_score > 0 else -15
         if volatility_30d <= 0.18:
-            volatility = 10
+            volatility = 15
         elif volatility_30d >= 0.32:
             volatility = -15
         else:
@@ -606,22 +659,18 @@ class AnalysisService:
         }
 
     def _ai_signal_scores(self, factor_scores: dict[str, int]) -> dict[str, int]:
-        trend = factor_scores["trend"]
-        if trend >= 30:
-            ai_trend = 35
-        elif trend > 0:
-            ai_trend = 20
-        elif trend <= -30:
-            ai_trend = -35
-        else:
-            ai_trend = -20
         return {
-            "trend": ai_trend,
+            "trend": factor_scores["trend"],
             "rsi": factor_scores["rsi"],
             "momentum": factor_scores["momentum"],
             "news": factor_scores["news"],
             "volatility": factor_scores["volatility"],
         }
+
+    def _has_mixed_signals(self, signal_scores: dict[str, int]) -> bool:
+        positives = [value for value in signal_scores.values() if value > 0]
+        negatives = [value for value in signal_scores.values() if value < 0]
+        return bool(positives and negatives)
 
     def _simple_conflicts(self, signal_scores: dict[str, int]) -> list[str]:
         positives = [name for name, value in signal_scores.items() if value > 0]
@@ -915,6 +964,8 @@ class AnalysisService:
             probability_down=None,
             confidence=None,
             risk_level=None,
+            data_quality="PARTIAL",
+            data_quality_reason=message,
             macro=None,
             no_trade=True,
             no_trade_reason=message,

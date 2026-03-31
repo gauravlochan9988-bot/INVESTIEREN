@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, computed_field
 
 Recommendation = Literal["BUY", "HOLD", "SELL"]
 RiskLevel = Literal["LOW", "MEDIUM", "HIGH"]
+DataQuality = Literal["FULL", "PARTIAL"]
 SignalStatus = Literal["BULLISH", "NEUTRAL", "BEARISH"]
 Timeframe = Literal["short_term", "mid_term", "unclear"]
 MacroTrend = Literal["bullish", "neutral", "bearish"]
@@ -68,6 +69,8 @@ class AnalysisResponse(BaseModel):
     probability_down: Optional[float] = None
     confidence: Optional[float] = None
     risk_level: Optional[RiskLevel] = None
+    data_quality: Optional[DataQuality] = None
+    data_quality_reason: Optional[str] = None
     macro: Optional[MacroContext] = None
     no_trade: bool
     no_trade_reason: str

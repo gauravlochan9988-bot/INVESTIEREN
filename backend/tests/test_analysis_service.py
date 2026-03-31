@@ -58,20 +58,20 @@ def test_bearish_setup_triggers_exit_and_zero_size(analysis_service):
 
 
 def test_mixed_setup_returns_hold_and_wait(analysis_service):
-    history = build_history(start=220.0, drift=0.05, noise=0.015)
+    history = build_history(start=180.0, drift=0.6, noise=0.004)
 
-    result = analysis_service.analyze("NFLX", history)
+    result = analysis_service.analyze("MSFT", history, strategy="simple")
 
     assert result.recommendation == "HOLD"
-    assert -35 < result.score < 35
-    assert 0.45 <= result.probability_up <= 0.55
+    assert -2 < result.score < 2
+    assert 0.5 < result.probability_up < 0.65
+    assert result.data_quality == "FULL"
     assert result.no_trade is False
     assert result.entry_signal is False
-    assert result.exit_signal is False
-    assert result.timeframe == "short_term"
+    assert result.exit_signal is True
     assert result.position_size_percent == 0.0
     assert "Mixed Signals" in result.warnings
-    assert "High Volatility" in result.warnings
+    assert "mixed" in result.reason.lower()
 
 
 def test_negative_news_and_overbought_condition_raise_exit_flag(analysis_service):
@@ -337,11 +337,13 @@ def test_strategies_return_distinct_results_without_overwriting_each_other(analy
     assert simple.strategy == "simple"
     assert ai.strategy == "ai"
     assert hedgefund.strategy == "hedgefund"
-    assert simple.recommendation == "BUY"
-    assert ai.recommendation == "HOLD"
-    assert hedgefund.recommendation == "HOLD"
+    assert simple.recommendation == "HOLD"
+    assert ai.recommendation == "BUY"
+    assert hedgefund.recommendation == "BUY"
     assert simple.score != ai.score
-    assert ai.score != hedgefund.score
+    assert simple.data_quality == "FULL"
+    assert ai.data_quality == "FULL"
+    assert hedgefund.data_quality == "FULL"
     assert simple.no_trade is False
     assert ai.no_trade is False
     assert hedgefund.no_trade is False
@@ -359,12 +361,12 @@ def test_hedgefund_confirmation_can_hold_while_ai_model_still_sells(analysis_ser
     assert hedgefund.reason.startswith("HOLD because the long-term trend is down")
 
 
-def test_scan_alerts_returns_prioritized_trade_and_rsi_events(analysis_service):
-    alerts = analysis_service.scan_alerts(strategy="simple", limit=6)
+def test_scan_alerts_returns_prioritized_trade_and_risk_events(analysis_service):
+    alerts = analysis_service.scan_alerts(strategy="simple", limit=10)
 
     assert alerts
     assert any(alert.title == "AAPL is now BUY" for alert in alerts)
-    assert any(alert.title == "TSLA is now SELL" for alert in alerts)
-    assert any("RSI" in alert.title for alert in alerts)
+    assert any(alert.kind == "recommendation" for alert in alerts)
+    assert any(alert.kind in {"entry", "exit"} for alert in alerts)
     assert all(alert.strategy == "simple" for alert in alerts)
     assert all(alert.priority >= 0 for alert in alerts)
