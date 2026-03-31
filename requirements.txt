@@ -1,1 +1,2 @@
 -r backend/requirements.txt
+psycopg2-binary
