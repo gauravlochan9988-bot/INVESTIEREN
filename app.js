@@ -56,6 +56,8 @@ const elements = {
   noTradeReason: document.getElementById("noTradeReason"),
   riskValue: document.getElementById("riskValue"),
   timeframeValue: document.getElementById("timeframeValue"),
+  coverageValue: document.getElementById("coverageValue"),
+  coverageReason: document.getElementById("coverageReason"),
   entryValue: document.getElementById("entryValue"),
   entryReason: document.getElementById("entryReason"),
   exitValue: document.getElementById("exitValue"),
@@ -175,6 +177,30 @@ function toneClassForRisk(risk) {
     return "text-rose-300";
   }
   return "text-amber-300";
+}
+
+function coverageInfo(analysis) {
+  if (!analysis || analysis.no_data) {
+    return {
+      label: "No Coverage",
+      tone: "text-rose-300",
+      reason: analysis?.no_data_reason || "This symbol does not have enough usable market data.",
+    };
+  }
+
+  if (analysis.signals && analysis.recommendation && analysis.risk_level && analysis.timeframe) {
+    return {
+      label: "Full Data",
+      tone: "text-emerald-300",
+      reason: "This symbol has enough live price and signal data for a full analysis.",
+    };
+  }
+
+  return {
+    label: "Partial Data",
+    tone: "text-amber-300",
+    reason: "Only part of the analysis inputs are available, so confidence is reduced.",
+  };
 }
 
 function yesNoLabel(flag) {
@@ -337,6 +363,9 @@ function renderAnalysisLoading(symbol) {
   elements.riskValue.className = "mt-3 text-2xl font-semibold text-white";
   elements.riskValue.textContent = "--";
   elements.timeframeValue.textContent = "--";
+  elements.coverageValue.className = "mt-3 text-2xl font-semibold text-white";
+  elements.coverageValue.textContent = "--";
+  elements.coverageReason.textContent = "Waiting for analysis.";
   elements.entryValue.textContent = "--";
   elements.entryReason.textContent = "Analysis is loading.";
   elements.exitValue.textContent = "--";
@@ -364,6 +393,9 @@ function renderAnalysis(analysis) {
     elements.riskValue.className = "mt-3 text-2xl font-semibold text-slate-200";
     elements.riskValue.textContent = "--";
     elements.timeframeValue.textContent = "--";
+    elements.coverageValue.className = "mt-3 text-2xl font-semibold text-rose-300";
+    elements.coverageValue.textContent = "No Coverage";
+    elements.coverageReason.textContent = reason;
     elements.entryValue.textContent = "NO";
     elements.entryReason.textContent = reason;
     elements.exitValue.textContent = "NO";
@@ -395,6 +427,10 @@ function renderAnalysis(analysis) {
   elements.riskValue.className = `mt-3 text-2xl font-semibold ${toneClassForRisk(analysis.risk_level)}`;
   elements.riskValue.textContent = analysis.risk_level || "--";
   elements.timeframeValue.textContent = titleCase(analysis.timeframe);
+  const coverage = coverageInfo(analysis);
+  elements.coverageValue.className = `mt-3 text-2xl font-semibold ${coverage.tone}`;
+  elements.coverageValue.textContent = coverage.label;
+  elements.coverageReason.textContent = coverage.reason;
   elements.entryValue.className = `mt-3 text-2xl font-semibold ${analysis.entry_signal ? "text-emerald-300" : "text-slate-200"}`;
   elements.entryValue.textContent = yesNoLabel(analysis.entry_signal);
   elements.entryReason.textContent = analysis.entry_reason || "No entry guidance.";
