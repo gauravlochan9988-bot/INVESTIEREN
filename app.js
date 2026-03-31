@@ -124,17 +124,17 @@ function biasLabel(analysis) {
   if (!analysis || analysis.no_data) {
     return "neutral setup";
   }
-  const probability = Number(analysis.probability_up || 0.5);
-  if (probability >= 0.68) {
+  const score = Number(analysis.score || 0);
+  if (score >= 55) {
     return "strong bullish bias";
   }
-  if (probability >= 0.56) {
+  if (score > 0) {
     return "weak bullish bias";
   }
-  if (probability <= 0.32) {
+  if (score <= -55) {
     return "strong bearish bias";
   }
-  if (probability <= 0.44) {
+  if (score < 0) {
     return "weak bearish bias";
   }
   return "neutral setup";
@@ -179,27 +179,28 @@ function toneClassForRisk(risk) {
   return "text-amber-300";
 }
 
-function coverageInfo(analysis) {
-  if (!analysis || analysis.no_data) {
+function scoreInfo(analysis) {
+  if (!analysis || analysis.no_data || analysis.score === null || analysis.score === undefined) {
     return {
-      label: "No Coverage",
-      tone: "text-rose-300",
-      reason: analysis?.no_data_reason || "This symbol does not have enough usable market data.",
+      label: "--",
+      tone: "text-slate-200",
+      reason: analysis?.no_data_reason || "No score available.",
     };
   }
 
-  if (analysis.signals && analysis.recommendation && analysis.risk_level && analysis.timeframe) {
-    return {
-      label: "Full Data",
-      tone: "text-emerald-300",
-      reason: "This symbol has enough live price and signal data for a full analysis.",
-    };
-  }
+  const score = Number(analysis.score || 0);
+  const label = `${score > 0 ? "+" : ""}${score}`;
+  const tone =
+    score >= 35
+      ? "text-emerald-300"
+      : score <= -35
+        ? "text-rose-300"
+        : "text-amber-300";
 
   return {
-    label: "Partial Data",
-    tone: "text-amber-300",
-    reason: "Only part of the analysis inputs are available, so confidence is reduced.",
+    label,
+    tone,
+    reason: `Confidence ${Math.round(Number(analysis.confidence || 0))}/100`,
   };
 }
 
@@ -393,8 +394,8 @@ function renderAnalysis(analysis) {
     elements.riskValue.className = "mt-3 text-2xl font-semibold text-slate-200";
     elements.riskValue.textContent = "--";
     elements.timeframeValue.textContent = "--";
-    elements.coverageValue.className = "mt-3 text-2xl font-semibold text-rose-300";
-    elements.coverageValue.textContent = "No Coverage";
+    elements.coverageValue.className = "mt-3 text-2xl font-semibold text-slate-200";
+    elements.coverageValue.textContent = "--";
     elements.coverageReason.textContent = reason;
     elements.entryValue.textContent = "NO";
     elements.entryReason.textContent = reason;
@@ -416,20 +417,20 @@ function renderAnalysis(analysis) {
   elements.recommendationCard.className = palette.card;
   elements.recommendationValue.className = `text-5xl font-black tracking-[-0.05em] ${palette.text}`;
   elements.recommendationValue.textContent = label;
-  elements.analysisSummary.textContent = analysis.summary || "No summary available.";
+  elements.analysisSummary.textContent = analysis.reason || analysis.summary || "No summary available.";
   elements.analysisGeneratedAt.textContent = analysis.generated_at
     ? `Updated ${new Date(analysis.generated_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
     : "Analysis ready";
   elements.biasValue.textContent = biasLabel(analysis);
   elements.noTradeReason.textContent =
-    analysis.no_trade_reason || analysis.summary || "Backend analysis loaded.";
+    analysis.reason || analysis.no_trade_reason || analysis.summary || "Backend analysis loaded.";
   elements.riskValue.className = `mt-3 text-2xl font-semibold ${toneClassForRisk(analysis.risk_level)}`;
   elements.riskValue.textContent = analysis.risk_level || "--";
   elements.timeframeValue.textContent = titleCase(analysis.timeframe);
-  const coverage = coverageInfo(analysis);
-  elements.coverageValue.className = `mt-3 text-2xl font-semibold ${coverage.tone}`;
-  elements.coverageValue.textContent = coverage.label;
-  elements.coverageReason.textContent = coverage.reason;
+  const score = scoreInfo(analysis);
+  elements.coverageValue.className = `mt-3 text-2xl font-semibold ${score.tone}`;
+  elements.coverageValue.textContent = score.label;
+  elements.coverageReason.textContent = score.reason;
   elements.entryValue.className = `mt-3 text-2xl font-semibold ${analysis.entry_signal ? "text-emerald-300" : "text-slate-200"}`;
   elements.entryValue.textContent = yesNoLabel(analysis.entry_signal);
   elements.entryReason.textContent = analysis.entry_reason || "No entry guidance.";

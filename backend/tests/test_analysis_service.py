@@ -25,12 +25,13 @@ def test_buy_setup_can_still_block_fresh_entry_when_overbought(analysis_service)
     result = analysis_service.analyze("AAPL", history)
 
     assert result.recommendation == "BUY"
-    assert result.probability_up >= 0.65
-    assert result.risk_level == "MEDIUM"
+    assert result.score >= 35
+    assert result.probability_up >= 0.68
+    assert result.risk_level == "HIGH"
     assert result.no_trade is False
-    assert result.entry_signal is True
+    assert result.entry_signal is False
     assert result.exit_signal is False
-    assert result.position_size_percent > 0
+    assert result.position_size_percent == 0.0
     assert result.timeframe == "mid_term"
     assert "Overbought" in result.warnings
     assert result.macro.macro_score >= 0
@@ -44,7 +45,8 @@ def test_bearish_setup_triggers_exit_and_zero_size(analysis_service):
     result = analysis_service.analyze("TSLA", history)
 
     assert result.recommendation == "SELL"
-    assert result.probability_down >= 0.65
+    assert result.score <= -35
+    assert result.probability_down >= 0.68
     assert result.risk_level == "HIGH"
     assert isinstance(result.no_trade, bool)
     assert result.entry_signal is False
@@ -56,19 +58,20 @@ def test_bearish_setup_triggers_exit_and_zero_size(analysis_service):
 
 
 def test_mixed_setup_returns_hold_and_wait(analysis_service):
-    history = build_history(start=115.0, drift=0.7, noise=0.004)
+    history = build_history(start=220.0, drift=0.05, noise=0.015)
 
-    result = analysis_service.analyze("NVDA", history)
+    result = analysis_service.analyze("NFLX", history)
 
     assert result.recommendation == "HOLD"
+    assert -35 < result.score < 35
     assert 0.45 <= result.probability_up <= 0.55
     assert result.no_trade is False
     assert result.entry_signal is False
     assert result.exit_signal is False
-    assert result.timeframe == "mid_term"
+    assert result.timeframe == "short_term"
     assert result.position_size_percent == 0.0
     assert "Mixed Signals" in result.warnings
-    assert "Overbought" in result.warnings
+    assert "High Volatility" in result.warnings
 
 
 def test_negative_news_and_overbought_condition_raise_exit_flag(analysis_service):
@@ -77,7 +80,8 @@ def test_negative_news_and_overbought_condition_raise_exit_flag(analysis_service
     result = analysis_service.analyze("MSFT", history)
 
     assert result.recommendation == "HOLD"
-    assert result.risk_level == "MEDIUM"
+    assert result.score < 35
+    assert result.risk_level == "HIGH"
     assert result.no_trade is False
     assert "trade evaluation available" in result.no_trade_reason.lower()
     assert result.entry_signal is False
@@ -95,27 +99,29 @@ def test_high_risk_hold_does_not_automatically_become_no_trade(analysis_service)
     result = analysis_service.analyze("AMZN", history)
 
     assert result.recommendation == "BUY"
+    assert result.score >= 35
     assert result.risk_level == "HIGH"
     assert result.no_trade is False
     assert result.entry_signal is False
 
 
 def test_cleaner_setup_allows_entry_with_measured_size(analysis_service):
-    history = build_history(start=100.0, drift=1.1, noise=0.003)
+    history = build_history(start=160.0, drift=0.3, noise=0.003)
 
-    result = analysis_service.analyze("AAPL", history)
+    result = analysis_service.analyze("SAP.DE", history)
 
     assert result.recommendation == "BUY"
+    assert result.score >= 35
     assert result.no_trade is False
     assert result.entry_signal is True
     assert result.exit_signal is False
-    assert result.risk_level == "MEDIUM"
-    assert 6 <= result.position_size_percent <= 12
+    assert result.risk_level == "LOW"
+    assert 12 <= result.position_size_percent <= 20
     assert result.stop_loss_level > 0
     assert result.timeframe == "mid_term"
     assert result.macro.market_trend in {"bullish", "neutral"}
     assert result.summary.startswith("BUY because")
-    assert "Overbought" in result.warnings
+    assert result.warnings == []
 
 
 def test_bearish_macro_context_tightens_risk_and_entry():

@@ -48,6 +48,7 @@ class AnalysisResponse(BaseModel):
     no_data: bool = False
     no_data_reason: Optional[str] = None
     recommendation: Optional[Recommendation] = None
+    score: Optional[int] = None
     probability_up: Optional[float] = None
     probability_down: Optional[float] = None
     confidence: Optional[float] = None

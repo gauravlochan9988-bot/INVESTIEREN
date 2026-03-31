@@ -80,6 +80,8 @@ def test_analyze_endpoint_returns_decision_payload(client):
     assert payload["no_data"] is False
     assert payload["no_data_reason"] is None
     assert payload["recommendation"] in {"BUY", "HOLD", "SELL"}
+    assert isinstance(payload["score"], int)
+    assert -100 <= payload["score"] <= 100
     assert 0 <= payload["probability_up"] <= 1
     assert 0 <= payload["probability_down"] <= 1
     assert isinstance(payload["warnings"], list)

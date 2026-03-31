@@ -84,8 +84,9 @@ class AnalysisService:
             )
 
         latest_price = closes[-1]
-        sma20 = self._sma(closes, 20)
-        sma50 = self._sma(closes, 50)
+        sma20 = self._sma(closes, min(20, len(closes)))
+        sma50 = self._sma(closes, min(50, len(closes)))
+        sma200 = self._sma(closes, min(200, len(closes)))
         rsi14 = self._rsi(closes, RSI_PERIOD)
         momentum_5d = self._momentum(closes, MOMENTUM_LOOKBACK)
         volatility_30d = self._volatility(closes, VOLATILITY_WINDOW)
@@ -116,28 +117,37 @@ class AnalysisService:
             volatility_30d=volatility_30d,
             max_drawdown=max_drawdown,
         )
-        simple_scores = self._simple_signal_scores(
+        factor_scores = self._simple_signal_scores(
             latest_price=latest_price,
             sma50=sma50,
+            sma200=sma200,
             rsi14=rsi14,
             momentum_5d=momentum_5d,
+            volatility_30d=volatility_30d,
             news_snapshot=news_snapshot,
         )
-        score = sum(simple_scores.values())
-        conflicts = self._simple_conflicts(simple_scores)
-        probability_up = self._probability_from_score(score)
+        score = self._total_score(factor_scores)
+        trend_up = latest_price > sma200
+        momentum_up = factor_scores["momentum"] > 0
+        momentum_down = factor_scores["momentum"] < 0
+        conflicts = self._simple_conflicts(factor_scores)
+        recommendation = self._recommendation_from_score(
+            score=score,
+            trend_up=trend_up,
+            momentum_up=momentum_up,
+            momentum_down=momentum_down,
+        )
+        probability_up = self._probability_from_score(score, recommendation)
         probability_down = round(1 - probability_up, 4)
-        recommendation = self._recommendation_from_score(score)
         risk_level = self._simple_risk_level(
-            volatility_30d=volatility_30d,
-            drawdown_risk=drawdown_risk,
-            rsi14=rsi14,
+            volatility_score=factor_scores["volatility"],
+            conflicts=conflicts,
+            score=score,
         )
         confidence = self._simple_confidence(
             score=score,
             risk_level=risk_level,
             conflicts=conflicts,
-            volatility_30d=volatility_30d,
         )
         timeframe = self._timeframe(
             signal_map=signal_map,
@@ -176,6 +186,7 @@ class AnalysisService:
             volatility_30d=volatility_30d,
         )
         position_size_percent, position_size_reason = self._simple_position_size(
+            entry_signal=entry_signal,
             recommendation=recommendation,
             risk_level=risk_level,
             confidence=confidence,
@@ -185,8 +196,11 @@ class AnalysisService:
             confidence=confidence,
             risk_level=risk_level,
             score=score,
-            signal_scores=simple_scores,
+            signal_scores=factor_scores,
             warnings=warnings,
+            trend_up=trend_up,
+            momentum_up=momentum_up,
+            momentum_down=momentum_down,
         )
 
         return AnalysisResponse(
@@ -194,6 +208,7 @@ class AnalysisService:
             no_data=False,
             no_data_reason=None,
             recommendation=recommendation,
+            score=score,
             probability_up=probability_up,
             probability_down=probability_down,
             confidence=confidence,
@@ -221,67 +236,118 @@ class AnalysisService:
         *,
         latest_price: float,
         sma50: float,
+        sma200: float,
         rsi14: float,
         momentum_5d: float,
+        volatility_30d: float,
         news_snapshot: NewsSentimentSnapshot,
     ) -> dict[str, int]:
-        trend = 1 if latest_price >= sma50 else -1
+        price_vs_sma50 = ((latest_price - sma50) / sma50) if sma50 else 0.0
+        price_vs_sma200 = ((latest_price - sma200) / sma200) if sma200 else 0.0
+
+        if (
+            latest_price >= sma200
+            and latest_price >= sma50
+            and price_vs_sma50 >= 0.05
+            and price_vs_sma200 >= 0.10
+        ):
+            trend = 30
+        elif latest_price >= sma200:
+            trend = 15
+        elif (
+            latest_price < sma200
+            and latest_price < sma50
+            and price_vs_sma50 <= -0.04
+            and price_vs_sma200 <= -0.08
+        ):
+            trend = -30
+        elif latest_price >= sma50:
+            trend = -15
+        else:
+            trend = -15
         if rsi14 < 30:
-            rsi = 1
+            rsi = 15
         elif rsi14 > 70:
-            rsi = -1
+            rsi = -15
         else:
             rsi = 0
-        momentum = 1 if momentum_5d > 0 else -1
+        if momentum_5d >= 0.05:
+            momentum = 25
+        elif momentum_5d > 0:
+            momentum = 10
+        elif momentum_5d <= -0.05:
+            momentum = -25
+        else:
+            momentum = -10
         if news_snapshot.article_count == 0 or abs(news_snapshot.news_score) < 0.15:
             news = 0
         else:
-            news = 1 if news_snapshot.news_score > 0 else -1
+            news = 15 if news_snapshot.news_score > 0 else -15
+        if volatility_30d <= 0.18:
+            volatility = 10
+        elif volatility_30d >= 0.32:
+            volatility = -15
+        else:
+            volatility = 0
         return {
             "trend": trend,
             "rsi": rsi,
             "momentum": momentum,
             "news": news,
+            "volatility": volatility,
         }
 
     def _simple_conflicts(self, signal_scores: dict[str, int]) -> list[str]:
         positives = [name for name, value in signal_scores.items() if value > 0]
         negatives = [name for name, value in signal_scores.items() if value < 0]
+        conflicts: list[str] = []
         if positives and negatives:
-            return [f"{positives[0].title()} vs {negatives[0].title()}"]
-        return []
+            conflicts.append(f"{positives[0].title()} vs {negatives[0].title()}")
+        if signal_scores["trend"] > 0 and signal_scores["rsi"] < 0:
+            conflicts.append("Trend vs RSI")
+        if signal_scores["trend"] > 0 and signal_scores["momentum"] < 0:
+            conflicts.append("Trend vs Momentum")
+        if signal_scores["trend"] < 0 and signal_scores["momentum"] > 0:
+            conflicts.append("Trend vs Momentum")
+        return conflicts[:3]
 
-    def _recommendation_from_score(self, score: int) -> Recommendation:
-        if score >= 2:
-            return "BUY"
-        if score <= -2:
+    def _total_score(self, signal_scores: dict[str, int]) -> int:
+        return int(self._clamp(sum(signal_scores.values()), -100, 100))
+
+    def _recommendation_from_score(
+        self,
+        score: int,
+        *,
+        trend_up: bool,
+        momentum_up: bool,
+        momentum_down: bool,
+    ) -> Recommendation:
+        if trend_up:
+            if score >= 35 and momentum_up:
+                return "BUY"
+            return "HOLD"
+        if score <= -35 and momentum_down:
             return "SELL"
         return "HOLD"
 
-    def _probability_from_score(self, score: int) -> float:
-        mapping = {
-            -4: 0.15,
-            -3: 0.25,
-            -2: 0.35,
-            -1: 0.45,
-            0: 0.50,
-            1: 0.55,
-            2: 0.65,
-            3: 0.75,
-            4: 0.85,
-        }
-        return mapping.get(score, 0.50)
+    def _probability_from_score(self, score: int, recommendation: Recommendation) -> float:
+        probability_up = 0.5 + (score / 200)
+        if recommendation == "BUY":
+            probability_up = max(probability_up, 0.68)
+        elif recommendation == "SELL":
+            probability_up = min(probability_up, 0.32)
+        return round(self._clamp(probability_up, 0.05, 0.95), 4)
 
     def _simple_risk_level(
         self,
         *,
-        volatility_30d: float,
-        drawdown_risk: float,
-        rsi14: float,
+        volatility_score: int,
+        conflicts: Sequence[str],
+        score: int,
     ) -> RiskLevel:
-        if volatility_30d >= 0.34 or drawdown_risk >= 0.65:
+        if volatility_score < 0 or conflicts:
             return "HIGH"
-        if volatility_30d >= 0.22 or abs(rsi14 - 50) >= 20:
+        if abs(score) < 35:
             return "MEDIUM"
         return "LOW"
 
@@ -291,17 +357,14 @@ class AnalysisService:
         score: int,
         risk_level: RiskLevel,
         conflicts: Sequence[str],
-        volatility_30d: float,
     ) -> float:
-        confidence = 45 + (abs(score) * 14)
+        confidence = 35 + (abs(score) * 0.6)
         if conflicts:
-            confidence -= 8
-        if volatility_30d >= 0.30:
-            confidence -= 8
-        if risk_level == "MEDIUM":
             confidence -= 10
+        if risk_level == "MEDIUM":
+            confidence -= 5
         elif risk_level == "HIGH":
-            confidence -= 20
+            confidence -= 15
         return round(self._clamp(confidence, 20, 95), 1)
 
     def _simple_warnings(
@@ -331,7 +394,7 @@ class AnalysisService:
             warnings.append("Drawdown Risk")
         if risk_level == "HIGH" and confidence <= 45:
             warnings.append("High Risk / Lower Confidence")
-        if score == 0:
+        if abs(score) < 15:
             warnings.append("No Clear Edge")
         return warnings[:MAX_WARNINGS]
 
@@ -349,9 +412,9 @@ class AnalysisService:
             return False, "Fresh entry is not ideal because volatility and downside risk are elevated."
         if confidence < 55:
             return False, "Fresh entry is not ideal because conviction is still limited."
-        if score >= 3:
+        if score >= 55:
             return True, "Multiple positive signals align, so a fresh entry looks reasonable."
-        return True, "The signal score supports a measured buy entry."
+        return True, "The multi-factor score supports a measured buy entry."
 
     def _simple_exit_decision(
         self,
@@ -372,12 +435,15 @@ class AnalysisService:
     def _simple_position_size(
         self,
         *,
+        entry_signal: bool,
         recommendation: Recommendation,
         risk_level: RiskLevel,
         confidence: float,
     ) -> tuple[float, str]:
         if recommendation != "BUY":
             return 0.0, "No fresh allocation is suggested unless the setup turns into a buy."
+        if not entry_signal:
+            return 0.0, "No fresh allocation is suggested until buy confirmation and risk improve."
         if risk_level == "LOW":
             minimum, maximum = 12.0, 20.0
         elif risk_level == "MEDIUM":
@@ -403,20 +469,25 @@ class AnalysisService:
         score: int,
         signal_scores: dict[str, int],
         warnings: Sequence[str],
+        trend_up: bool,
+        momentum_up: bool,
+        momentum_down: bool,
     ) -> str:
         positive = [name for name, value in signal_scores.items() if value > 0]
         negative = [name for name, value in signal_scores.items() if value < 0]
         if recommendation == "BUY":
-            drivers = ", ".join(positive[:2]) or "positive signals"
-            return f"BUY because {drivers} are supportive. Confidence {confidence:.0f}/100 with {risk_level.lower()} risk."
+            drivers = ", ".join(positive[:2]) or "positive factors"
+            return f"BUY because {drivers} align and trend plus momentum confirm. Confidence {confidence:.0f}/100."
         if recommendation == "SELL":
-            drivers = ", ".join(negative[:2]) or "negative signals"
-            return f"SELL because {drivers} are weak. Confidence {confidence:.0f}/100 with {risk_level.lower()} risk."
+            drivers = ", ".join(negative[:2]) or "negative factors"
+            return f"SELL because {drivers} align and trend plus momentum confirm. Confidence {confidence:.0f}/100."
+        if trend_up and not momentum_up and score >= 35:
+            return f"HOLD because the long-term trend is up but momentum does not confirm the buy. Confidence {confidence:.0f}/100."
+        if (not trend_up) and not momentum_down and score <= -35:
+            return f"HOLD because the long-term trend is down but momentum does not confirm the sell. Confidence {confidence:.0f}/100."
         if positive and negative:
-            return f"HOLD because signals are mixed between {positive[0]} and {negative[0]}. Confidence {confidence:.0f}/100 with {risk_level.lower()} risk."
-        if score == 0:
-            return f"HOLD because the setup has no clear edge. Confidence {confidence:.0f}/100 with {risk_level.lower()} risk."
-        return f"HOLD because the signal score is not strong enough for a trade. Confidence {confidence:.0f}/100 with {risk_level.lower()} risk."
+            return f"HOLD because factors are mixed between {positive[0]} and {negative[0]}. Confidence {confidence:.0f}/100."
+        return f"HOLD because the multi-factor score is not strong enough for a trade. Confidence {confidence:.0f}/100."
 
     def _no_data_response(self, symbol: str, reason: str) -> AnalysisResponse:
         normalized_symbol = symbol.strip().upper()
@@ -426,6 +497,7 @@ class AnalysisService:
             no_data=True,
             no_data_reason=message,
             recommendation=None,
+            score=None,
             probability_up=None,
             probability_down=None,
             confidence=None,
