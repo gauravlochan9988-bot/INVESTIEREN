@@ -31,6 +31,26 @@ body {
   letter-spacing: 0.02em;
 }
 
+#appShell article,
+#appShell section,
+#appShell aside,
+#appShell header,
+#appShell form,
+#appShell div {
+  min-width: 0;
+}
+
+#appShell p,
+#appShell h1,
+#appShell h2,
+#appShell h3,
+#appShell span,
+#appShell dd,
+#appShell dt,
+#appShell button {
+  overflow-wrap: anywhere;
+}
+
 #watchlistBody,
 #newsList {
   scrollbar-width: thin;

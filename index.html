@@ -153,8 +153,8 @@
 
         <div id="errorBanner" class="mb-4 hidden rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
 
-        <main class="grid flex-1 gap-5 xl:grid-cols-[320px_minmax(0,1fr)_360px]">
-          <aside class="rounded-[28px] border border-white/10 bg-slate-900/85 p-5 shadow-2xl shadow-black/20">
+        <main class="grid flex-1 gap-5 xl:grid-cols-[minmax(280px,320px)_minmax(0,1fr)_minmax(300px,360px)]">
+          <aside class="min-w-0 rounded-[28px] border border-white/10 bg-slate-900/85 p-5 shadow-2xl shadow-black/20">
             <div class="mb-5 flex items-end justify-between">
               <div>
                 <p class="text-[11px] uppercase tracking-[0.35em] text-slate-500">Watchlist</p>
@@ -165,13 +165,13 @@
             <div id="watchlistBody" class="space-y-3"></div>
           </aside>
 
-          <section class="space-y-5">
-            <div class="rounded-[28px] border border-white/10 bg-slate-900/85 p-5 shadow-2xl shadow-black/20">
+          <section class="min-w-0 space-y-5">
+            <div class="min-w-0 rounded-[28px] border border-white/10 bg-slate-900/85 p-5 shadow-2xl shadow-black/20">
               <div class="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
                   <p class="text-[11px] uppercase tracking-[0.35em] text-slate-500">Selected Symbol</p>
-                  <h2 id="selectedSymbolName" class="mt-2 text-3xl font-semibold tracking-tight">AAPL</h2>
-                  <p id="selectedCompanyName" class="mt-1 text-sm text-slate-400">Apple Inc</p>
+                  <h2 id="selectedSymbolName" class="mt-2 break-words text-2xl font-semibold tracking-tight xl:text-3xl">AAPL</h2>
+                  <p id="selectedCompanyName" class="mt-1 break-words text-sm text-slate-400">Apple Inc</p>
                 </div>
                 <div id="changeBadge" class="inline-flex w-fit rounded-full bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-300">
                   +0.00%
@@ -202,9 +202,9 @@
               </div>
             </div>
 
-            <section class="rounded-[28px] border border-white/10 bg-slate-900/85 p-5 shadow-2xl shadow-black/20">
-              <div class="mb-5 flex items-start justify-between gap-4">
-                <div>
+            <section class="min-w-0 rounded-[28px] border border-white/10 bg-slate-900/85 p-5 shadow-2xl shadow-black/20">
+              <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
+                <div class="min-w-0">
                   <p class="text-[11px] uppercase tracking-[0.35em] text-slate-500">Trade Decision</p>
                   <h3 class="mt-2 text-xl font-semibold">Recommendation & risk</h3>
                 </div>
@@ -216,49 +216,49 @@
                 </span>
               </div>
 
-              <div class="grid gap-4 xl:grid-cols-[1.4fr_0.9fr]">
+              <div class="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,0.9fr)]">
                 <article
                   id="recommendationCard"
-                  class="rounded-[28px] border border-white/10 bg-slate-950/70 p-5"
+                  class="min-w-0 rounded-[28px] border border-white/10 bg-slate-950/70 p-5"
                 >
                   <p class="text-[11px] uppercase tracking-[0.35em] text-slate-500">Recommendation</p>
                   <div class="mt-4 flex flex-wrap items-end justify-between gap-4">
-                    <div>
-                      <p id="recommendationValue" class="text-5xl font-black tracking-[-0.05em] text-white">
+                    <div class="min-w-0 flex-1">
+                      <p id="recommendationValue" class="break-words text-4xl font-black tracking-[-0.05em] text-white xl:text-5xl">
                         Loading
                       </p>
-                      <p id="analysisSummary" class="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
+                      <p id="analysisSummary" class="mt-4 max-w-2xl break-words text-sm leading-7 text-slate-300">
                         Loading analysis for the selected symbol.
                       </p>
                     </div>
-                    <div class="min-w-[190px] rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div class="min-w-0 w-full rounded-2xl border border-white/10 bg-white/5 p-4 md:max-w-[260px]">
                       <p class="text-[11px] uppercase tracking-[0.24em] text-slate-500">Bias</p>
-                      <p id="biasValue" class="mt-3 text-lg font-semibold text-white">Neutral setup</p>
-                      <p id="noTradeReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting for analysis.</p>
+                      <p id="biasValue" class="mt-3 break-words text-lg font-semibold text-white">Neutral setup</p>
+                      <p id="noTradeReason" class="mt-2 break-words text-sm leading-6 text-slate-400">Waiting for analysis.</p>
                     </div>
                   </div>
                 </article>
 
-                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                  <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                <div class="min-w-0 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  <article class="min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                     <p class="text-[11px] uppercase tracking-[0.24em] text-slate-500">Risk Level</p>
                     <p id="riskValue" class="mt-3 text-2xl font-semibold text-white">--</p>
                   </article>
-                  <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                  <article class="min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                     <p class="text-[11px] uppercase tracking-[0.24em] text-slate-500">Timeframe</p>
                     <p id="timeframeValue" class="mt-3 text-2xl font-semibold text-white">--</p>
                   </article>
-                  <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                  <article class="min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                     <p class="text-[11px] uppercase tracking-[0.24em] text-slate-500">Coverage</p>
                     <p id="coverageValue" class="mt-3 text-2xl font-semibold text-white">--</p>
                     <p id="coverageReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting for analysis.</p>
                   </article>
-                  <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                  <article class="min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                     <p class="text-[11px] uppercase tracking-[0.24em] text-slate-500">Entry</p>
                     <p id="entryValue" class="mt-3 text-2xl font-semibold text-white">--</p>
                     <p id="entryReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting for analysis.</p>
                   </article>
-                  <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                  <article class="min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                     <p class="text-[11px] uppercase tracking-[0.24em] text-slate-500">Exit</p>
                     <p id="exitValue" class="mt-3 text-2xl font-semibold text-white">--</p>
                     <p id="exitReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting for analysis.</p>
@@ -266,18 +266,18 @@
                 </div>
               </div>
 
-              <div class="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr_1.3fr]">
-                <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+              <div class="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)]">
+                <article class="min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <p class="text-[11px] uppercase tracking-[0.24em] text-slate-500">Position Size</p>
                   <p id="positionSizeValue" class="mt-3 text-2xl font-semibold text-white">--</p>
                   <p id="positionSizeReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting for analysis.</p>
                 </article>
-                <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                <article class="min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <p class="text-[11px] uppercase tracking-[0.24em] text-slate-500">Stop Loss</p>
                   <p id="stopLossValue" class="mt-3 text-2xl font-semibold text-white">--</p>
                   <p id="stopLossReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting for analysis.</p>
                 </article>
-                <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                <article class="min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <p class="text-[11px] uppercase tracking-[0.24em] text-slate-500">Warnings</p>
                   <div id="warningsList" class="mt-3 flex min-h-[44px] flex-wrap gap-2">
                     <span class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-400">Waiting for analysis</span>
@@ -286,9 +286,9 @@
               </div>
             </section>
 
-            <div class="rounded-[28px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20">
-              <div class="mb-4 flex items-center justify-between px-1">
-                <div>
+            <div class="min-w-0 rounded-[28px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20">
+              <div class="mb-4 flex flex-wrap items-center justify-between gap-3 px-1">
+                <div class="min-w-0">
                   <p class="text-[11px] uppercase tracking-[0.35em] text-slate-500">Chart</p>
                   <h3 class="mt-2 text-xl font-semibold">TradingView</h3>
                 </div>
@@ -298,8 +298,8 @@
             </div>
           </section>
 
-          <aside class="space-y-5">
-            <section class="rounded-[28px] border border-white/10 bg-slate-900/85 p-5 shadow-2xl shadow-black/20">
+          <aside class="min-w-0 space-y-5">
+            <section class="min-w-0 rounded-[28px] border border-white/10 bg-slate-900/85 p-5 shadow-2xl shadow-black/20">
               <p class="text-[11px] uppercase tracking-[0.35em] text-slate-500">Company Snapshot</p>
               <div class="mt-5 flex items-center gap-4">
                 <img
