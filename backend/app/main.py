@@ -11,7 +11,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .api.router import api_router
 from .core.config import get_settings
-from .core.database import get_engine
+from .core.database import get_database_url, get_engine, set_runtime_database_url
 from .core.exceptions import AppError, ExternalServiceError, NotFoundError, ValidationError
 from .models import Base
 
@@ -54,7 +54,8 @@ def create_app() -> FastAPI:
 
     @app.on_event("startup")
     def ensure_database_tables() -> None:
-        parsed = urlparse(settings.database_url)
+        database_url = get_database_url()
+        parsed = urlparse(database_url)
         print(
             "database_target",
             {
@@ -64,7 +65,20 @@ def create_app() -> FastAPI:
                 "port": parsed.port,
             },
         )
-        Base.metadata.create_all(bind=get_engine())
+        try:
+            Base.metadata.create_all(bind=get_engine())
+        except Exception as exc:
+            fallback_url = "sqlite+pysqlite:////tmp/investieren.db"
+            print(
+                "database_fallback",
+                {
+                    "reason": type(exc).__name__,
+                    "message": str(exc),
+                    "fallback": fallback_url,
+                },
+            )
+            set_runtime_database_url(fallback_url)
+            Base.metadata.create_all(bind=get_engine())
 
     @app.get("/")
     def root():
