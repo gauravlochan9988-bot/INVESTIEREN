@@ -597,15 +597,15 @@ body {
   #appShell > div {
     max-width: none !important;
     width: 100%;
-    padding-inline: 1.25rem;
+    padding-inline: 1rem;
   }
 
   #dashboardWorkspace {
-    grid-template-columns: minmax(260px, 20%) minmax(0, 55%) minmax(320px, 25%) !important;
+    grid-template-columns: minmax(220px, 18%) minmax(0, 57%) minmax(320px, 25%) !important;
     grid-auto-rows: auto;
     align-items: start;
-    column-gap: 1.25rem;
-    row-gap: 1.25rem;
+    column-gap: 1rem;
+    row-gap: 1rem;
   }
 
   #analysisCenterColumn {
@@ -614,44 +614,57 @@ body {
 
   #watchlistSection {
     grid-column: 1;
-    grid-row: 1 / span 3;
+    grid-row: 1 / span 4;
     position: sticky;
-    top: 1.25rem;
+    top: 0.9rem;
     align-self: start;
-    max-height: calc(100vh - 1.75rem);
+    max-height: calc(100vh - 1.1rem);
     overflow: auto;
+    padding: 1rem !important;
+    background:
+      linear-gradient(180deg, rgba(17, 24, 39, 0.92), rgba(15, 23, 36, 0.82));
   }
 
   #selectedSymbolSection {
     grid-column: 2;
     grid-row: 1;
+    padding: 1.15rem !important;
   }
 
   #chartSection {
     grid-column: 2;
     grid-row: 2;
+    padding: 1rem !important;
+  }
+
+  #alertsSection {
+    grid-column: 2;
+    grid-row: 3;
+    padding: 1rem !important;
   }
 
   #companySection {
     grid-column: 2;
-    grid-row: 3;
+    grid-row: 4;
   }
 
   #tradeDecisionSection {
     grid-column: 3;
-    grid-row: 1 / span 3;
+    grid-row: 1 / span 4;
     position: sticky;
-    top: 1.25rem;
+    top: 0.9rem;
     align-self: start;
+    padding: 1.05rem !important;
   }
 
   #tradeDecisionSection .signal-hero {
     min-height: 0;
+    padding: 1.15rem !important;
   }
 
   #recommendationValue {
-    font-size: clamp(4rem, 5vw, 5.5rem) !important;
-    line-height: 0.9;
+    font-size: clamp(4.5rem, 5vw, 6rem) !important;
+    line-height: 0.82;
   }
 
   #tradeDecisionSection .grid {
@@ -673,11 +686,45 @@ body {
   #topbarUtilityActions {
     max-width: 100%;
   }
+
+  #tradeDecisionSection .mt-4.flex.flex-wrap.items-center.gap-3 {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
+  #tradeDecisionSection .mt-4.flex.flex-wrap.items-center.gap-3 > div {
+    width: 100%;
+  }
+
+  #tradeDecisionSection .mt-4.flex.flex-wrap.items-center.gap-3 > div:last-child {
+    min-height: 0;
+  }
+
+  #tradeDecisionSection .dashboard-card p.text-2xl {
+    font-size: 1.55rem;
+  }
+
+  #tradingviewChart {
+    min-height: 640px;
+    height: min(72vh, 760px) !important;
+  }
+
+  #watchlistSection h2,
+  #watchlistSection h3 {
+    font-size: 1rem;
+  }
+
+  #watchlistSection .text-xs {
+    letter-spacing: 0.18em;
+  }
 }
 
 @media (min-width: 1280px) {
   .dashboard-topbar {
-    padding-inline: 1.5rem !important;
+    padding: 0.8rem 1rem !important;
+    gap: 0.85rem;
+    border-radius: 22px !important;
   }
 
   .dashboard-panel {
@@ -693,7 +740,8 @@ body {
   }
 
   #searchForm .action-primary {
-    min-width: 118px;
+    min-width: 104px;
+    padding-block: 0.9rem;
   }
 
   #warningsList {
@@ -702,6 +750,44 @@ body {
 
   #selectedSymbolName {
     letter-spacing: -0.04em;
+  }
+
+  #brandHomeButton {
+    gap: 0.8rem;
+  }
+
+  #brandHomeButton > div {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 1rem;
+  }
+
+  #brandHomeButton h1 {
+    font-size: 1.35rem;
+  }
+
+  #brandHomeButton p {
+    font-size: 0.72rem;
+  }
+
+  #searchInput {
+    padding-block: 0.95rem !important;
+  }
+
+  #backendStatus {
+    padding-block: 0.6rem;
+  }
+
+  #topbarUtilityActions,
+  #mobileFavoriteButton,
+  #mobileAlertButton,
+  #mobilePortfolioButton {
+    display: none !important;
+  }
+
+  #refreshButton,
+  #logoutButton {
+    padding-block: 0.9rem;
   }
 }
 
