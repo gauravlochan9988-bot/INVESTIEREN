@@ -36,6 +36,7 @@ const state = {
   latestAnalysis: null,
   favoriteSymbols: new Set(),
   alertsRetryId: null,
+  alertsRetryAttempt: 0,
 };
 
 const elements = {
@@ -504,6 +505,8 @@ function renderAlertsLoading() {
 }
 
 function renderAlerts(alerts) {
+  state.alertsRetryAttempt = 0;
+  window.clearTimeout(state.alertsRetryId);
   writeCachedJson(STORAGE_KEYS.cachedAlerts, alerts);
   elements.alertsMeta.textContent = `${alerts.length} live alerts`;
 
@@ -548,11 +551,18 @@ function renderAlertsWarning(message) {
 }
 
 function queueAlertsRetry(forceRefresh = false, delayMs = 2500) {
+  const nextAttempt = state.alertsRetryAttempt + 1;
+  if (nextAttempt > 5) {
+    elements.alertsMeta.textContent = "Tap refresh to retry alerts";
+    return;
+  }
+  state.alertsRetryAttempt = nextAttempt;
   window.clearTimeout(state.alertsRetryId);
   state.alertsRetryId = window.setTimeout(() => {
     loadAlerts(forceRefresh).catch((error) => {
       console.error("[frontend] alerts retry failed", error);
-      renderAlertsWarning("Retrying alerts...");
+      renderAlertsWarning(`Retrying alerts... (${state.alertsRetryAttempt}/5)`);
+      queueAlertsRetry(forceRefresh, Math.min(delayMs * 1.6, 8000));
     });
   }, delayMs);
 }
