@@ -615,6 +615,8 @@ function showLoginOverlay() {
 async function api(path, options = {}) {
   const url = buildApiUrl(path);
   const timeoutMs = options.timeoutMs ?? 15000;
+  const retryCount = options.retryCount ?? 0;
+  const retryDelayMs = options.retryDelayMs ?? 1200;
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
 
@@ -632,11 +634,28 @@ async function api(path, options = {}) {
       signal: controller.signal,
     });
   } catch (error) {
+    const canRetry = retryCount > 0 && (!options.method || options.method === "GET");
     if (error.name === "AbortError") {
       console.error("[frontend] API timeout", { path, timeoutMs });
+      if (canRetry) {
+        await new Promise((resolve) => window.setTimeout(resolve, retryDelayMs));
+        return api(path, {
+          ...options,
+          timeoutMs: Math.round(timeoutMs * 1.5),
+          retryCount: retryCount - 1,
+        });
+      }
       throw new Error("Request timed out.");
     }
     console.error("[frontend] API network error", { path, error: error.message });
+    if (canRetry) {
+      await new Promise((resolve) => window.setTimeout(resolve, retryDelayMs));
+      return api(path, {
+        ...options,
+        timeoutMs: Math.round(timeoutMs * 1.25),
+        retryCount: retryCount - 1,
+      });
+    }
     throw error;
   } finally {
     window.clearTimeout(timeoutId);
@@ -662,7 +681,10 @@ async function api(path, options = {}) {
 
 async function loadBackendHealth() {
   try {
-    const payload = await api("/api/health");
+    const payload = await api("/api/health", {
+      timeoutMs: 20000,
+      retryCount: 1,
+    });
     const database = payload?.database || {};
     if (database.fallback_active) {
       setBackendStatus("Connected · DB fallback", "warning");
@@ -670,6 +692,10 @@ async function loadBackendHealth() {
     }
     if (database.backend === "supabase") {
       setBackendStatus("Connected · Supabase", "ok");
+      return;
+    }
+    if (database.backend === "postgres") {
+      setBackendStatus("Connected · Postgres", "ok");
       return;
     }
     setBackendStatus("Connected", "ok");
@@ -897,7 +923,10 @@ async function loadWatchlist(forceRefresh = false) {
   renderLoadingWatchlist();
   elements.watchlistMeta.textContent = "Syncing Finnhub...";
   const suffix = forceRefresh ? "?refresh=1" : "";
-  const items = await api(`/api/dashboard/watchlist${suffix}`);
+  const items = await api(`/api/dashboard/watchlist${suffix}`, {
+    timeoutMs: 25000,
+    retryCount: 1,
+  });
   state.watchlist = items;
   writeCachedJson(STORAGE_KEYS.cachedWatchlist, items);
   renderWatchlist(items);
@@ -920,8 +949,14 @@ async function loadSymbol(symbol, forceRefresh = false) {
     }
     const overviewSuffix = forceRefresh ? "?refresh=1" : "";
     const [overviewResult, analysisResult] = await Promise.allSettled([
-      api(`/api/dashboard/symbol/${encodeURIComponent(normalized)}${overviewSuffix}`, { timeoutMs: 12000 }),
-      api(`/api/analysis/${encodeURIComponent(normalized)}?${analysisParams.toString()}`, { timeoutMs: 18000 }),
+      api(`/api/dashboard/symbol/${encodeURIComponent(normalized)}${overviewSuffix}`, {
+        timeoutMs: 22000,
+        retryCount: 1,
+      }),
+      api(`/api/analysis/${encodeURIComponent(normalized)}?${analysisParams.toString()}`, {
+        timeoutMs: 30000,
+        retryCount: 1,
+      }),
     ]);
 
     if (requestId !== state.activeRequest) {
@@ -972,9 +1007,6 @@ async function bootDashboard(forceRefresh = false) {
       loadSymbol(state.selectedSymbol, forceRefresh),
     ]);
 
-    if (healthResult.status === "rejected") {
-      throw healthResult.reason;
-    }
     if (watchlistResult.status === "rejected") {
       throw watchlistResult.reason;
     }
@@ -986,7 +1018,7 @@ async function bootDashboard(forceRefresh = false) {
       if (fallback !== state.selectedSymbol) {
         await loadSymbol(fallback, forceRefresh);
       } else if (symbolResult.status === "rejected") {
-        throw symbolResult.reason;
+        showError(symbolResult.reason?.message || "Selected symbol could not load yet.");
       }
     }
   } catch (error) {
