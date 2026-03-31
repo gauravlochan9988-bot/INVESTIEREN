@@ -814,6 +814,7 @@ body {
     padding: 0.68rem 0.9rem !important;
     gap: 0.7rem;
     border-radius: 22px !important;
+    grid-template-columns: 64px minmax(420px, 1fr) auto !important;
   }
 
   .dashboard-panel {
@@ -842,13 +843,20 @@ body {
   }
 
   #brandHomeButton {
+    width: 56px;
+    min-width: 56px;
     gap: 0.8rem;
+    justify-content: center;
   }
 
   #brandHomeButton > div {
     width: 2.75rem;
     height: 2.75rem;
     border-radius: 1rem;
+  }
+
+  #brandHomeButton > div + div {
+    display: none;
   }
 
   #brandHomeButton h1 {
