@@ -54,37 +54,39 @@
             </div>
           </div>
 
-          <div class="space-y-5 auth-copy-text">
-            <p class="text-base text-slate-300 auth-byline">by Gaurav Lochan</p>
-            <h1 class="max-w-xl text-4xl font-semibold leading-[0.95] tracking-tight sm:text-6xl auth-title">
-              Secure access
-            </h1>
-          </div>
-
-          <form id="authForm" class="w-full max-w-md space-y-5 auth-form-panel" novalidate>
-            <div class="space-y-2">
-              <label for="authPassword" class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-                Password
-              </label>
-              <input
-                id="authPassword"
-                name="password"
-                type="password"
-                placeholder="Password"
-                autocomplete="current-password"
-                class="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base text-white outline-none transition focus:border-emerald-400/60 focus:bg-white/10"
-                required
-              />
+          <div class="auth-bottom-card">
+            <div class="space-y-5 auth-copy-text">
+              <p class="text-base text-slate-300 auth-byline">by Gaurav Lochan</p>
+              <h1 class="max-w-xl text-4xl font-semibold leading-[0.95] tracking-tight sm:text-6xl auth-title">
+                Secure access
+              </h1>
             </div>
 
-            <button
-              type="submit"
-              class="rounded-2xl bg-gradient-to-r from-cyan-300 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px]"
-            >
-              Access Dashboard
-            </button>
-            <p id="authError" class="text-sm text-rose-400" hidden>Wrong password</p>
-          </form>
+            <form id="authForm" class="w-full max-w-md space-y-5 auth-form-panel" novalidate>
+              <div class="space-y-2">
+                <label for="authPassword" class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                  Password
+                </label>
+                <input
+                  id="authPassword"
+                  name="password"
+                  type="password"
+                  placeholder="Password"
+                  autocomplete="current-password"
+                  class="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base text-white outline-none transition focus:border-emerald-400/60 focus:bg-white/10"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                class="rounded-2xl bg-gradient-to-r from-cyan-300 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px]"
+              >
+                Access Dashboard
+              </button>
+              <p id="authError" class="text-sm text-rose-400" hidden>Wrong password</p>
+            </form>
+          </div>
         </div>
 
       </section>
