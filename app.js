@@ -143,6 +143,14 @@ function titleCase(value) {
   return sentenceCase(value).replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function isMobileViewport() {
+  return window.matchMedia("(max-width: 768px)").matches;
+}
+
+function renderSkeleton(element, className) {
+  element.innerHTML = `<span class="mobile-skeleton ${className}"></span>`;
+}
+
 function biasLabel(analysis) {
   if (!analysis || analysis.no_data) {
     return "neutral setup";
@@ -438,6 +446,27 @@ function renderAnalysisLoading(symbol) {
   elements.stopLossReason.textContent = "Analysis is loading.";
   elements.warningsList.innerHTML =
     '<span class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-400">Loading analysis</span>';
+
+  if (isMobileViewport()) {
+    renderSkeleton(elements.recommendationValue, "h-8 w-36");
+    renderSkeleton(elements.confidenceValue, "h-7 w-20");
+    renderSkeleton(elements.confidenceHint, "h-4 w-28");
+    elements.analysisSummary.innerHTML = `
+      <span class="mobile-skeleton h-4 w-full"></span>
+      <span class="mobile-skeleton mt-2 h-4 w-10/12"></span>
+    `;
+    renderSkeleton(elements.noTradeReason, "h-4 w-full");
+    renderSkeleton(elements.coverageReason, "h-4 w-24");
+    renderSkeleton(elements.entryReason, "h-4 w-28");
+    renderSkeleton(elements.exitReason, "h-4 w-28");
+    renderSkeleton(elements.positionSizeReason, "h-4 w-24");
+    renderSkeleton(elements.stopLossReason, "h-4 w-32");
+    elements.warningsList.innerHTML = `
+      <span class="mobile-skeleton h-8 w-24 rounded-full"></span>
+      <span class="mobile-skeleton h-8 w-28 rounded-full"></span>
+      <span class="mobile-skeleton h-8 w-20 rounded-full"></span>
+    `;
+  }
 }
 
 function alertToneClasses(tone) {
