@@ -612,7 +612,9 @@ body {
   }
 
   #analysisCenterColumn {
-    display: contents;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
   }
 
   #watchlistSection {
@@ -635,35 +637,34 @@ body {
 
   #selectedSymbolSection {
     grid-column: 2;
-    grid-row: 1;
     padding: 1.15rem !important;
   }
 
   #chartSection {
     grid-column: 2;
-    grid-row: 2;
     padding: 1rem !important;
   }
 
   #alertsSection {
     grid-column: 2;
-    grid-row: 3;
     padding: 1rem !important;
   }
 
-  #companySection {
+  #decisionRail {
     grid-column: 3;
-    grid-row: 2 / span 2;
+    grid-row: 1 / span 4;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    min-width: 0;
   }
 
   #tradeDecisionSection {
-    grid-column: 3;
-    grid-row: 1;
     position: sticky;
     top: 0.9rem;
     align-self: start;
     padding: 1.05rem !important;
-    width: 420px;
+    width: 100%;
   }
 
   #tradeDecisionSection .signal-hero {
@@ -712,6 +713,11 @@ body {
 
   #tradeDecisionSection .dashboard-card p.text-2xl {
     font-size: 1.55rem;
+  }
+
+  #tradeDecisionSection .mt-4.grid,
+  #tradeDecisionSection .sm\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
   #tradingviewChart {
@@ -868,10 +874,6 @@ body {
     padding-bottom: 10px;
   }
 
-  #alertsSection {
-    order: 4;
-  }
-
   #appShell main {
     display: flex;
     flex-direction: column;
@@ -879,12 +881,16 @@ body {
     gap: 12px;
   }
 
+  #decisionRail {
+    display: contents;
+  }
+
   #watchlistSection {
-    order: 4;
+    order: 5;
   }
 
   #companySection {
-    order: 3;
+    order: 5;
   }
 
   #selectedSymbolSection {
@@ -897,6 +903,10 @@ body {
 
   #chartSection {
     order: 3;
+  }
+
+  #alertsSection {
+    order: 4;
   }
 
   #appShell main .grid {
