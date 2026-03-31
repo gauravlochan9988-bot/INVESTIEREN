@@ -35,6 +35,7 @@ const state = {
   activeRequest: 0,
   latestAnalysis: null,
   favoriteSymbols: new Set(),
+  alertsRetryId: null,
 };
 
 const elements = {
@@ -512,6 +513,26 @@ function renderAlerts(alerts) {
     .join("");
 }
 
+function renderAlertsWarning(message) {
+  elements.alertsMeta.textContent = message;
+  elements.alertsList.innerHTML = `
+    <article class="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
+      <p class="text-sm font-semibold text-white">Alerts are warming up</p>
+      <p class="mt-2 text-sm leading-6 text-slate-300">The backend is still syncing signals. Try again in a moment.</p>
+    </article>
+  `;
+}
+
+function queueAlertsRetry(forceRefresh = false, delayMs = 2500) {
+  window.clearTimeout(state.alertsRetryId);
+  state.alertsRetryId = window.setTimeout(() => {
+    loadAlerts(forceRefresh).catch((error) => {
+      console.error("[frontend] alerts retry failed", error);
+      renderAlertsWarning("Retrying alerts...");
+    });
+  }, delayMs);
+}
+
 function renderAnalysis(analysis) {
   state.latestAnalysis = analysis;
   const strategy = analysis?.strategy || state.selectedStrategy;
@@ -888,7 +909,12 @@ async function loadBackendHealth() {
 }
 
 async function loadAlerts(forceRefresh = false) {
-  renderAlertsLoading();
+  const cachedAlerts = readCachedJson(STORAGE_KEYS.cachedAlerts);
+  if (forceRefresh || !Array.isArray(cachedAlerts) || !cachedAlerts.length) {
+    renderAlertsLoading();
+  } else {
+    elements.alertsMeta.textContent = "Refreshing alerts...";
+  }
   const params = new URLSearchParams({
     strategy: state.selectedStrategy,
     limit: "6",
@@ -898,7 +924,7 @@ async function loadAlerts(forceRefresh = false) {
   }
   const alerts = await api(`/api/alerts?${params.toString()}`, {
     timeoutMs: 22000,
-    retryCount: 1,
+    retryCount: 2,
   });
   renderAlerts(alerts);
   return alerts;
@@ -1214,7 +1240,14 @@ async function bootDashboard(forceRefresh = false) {
 
     loadAlerts(forceRefresh).catch((error) => {
       console.error("[frontend] alerts load failed", error);
-      elements.alertsMeta.textContent = "Alerts unavailable";
+      const cachedAlerts = readCachedJson(STORAGE_KEYS.cachedAlerts);
+      if (Array.isArray(cachedAlerts) && cachedAlerts.length) {
+        renderAlerts(cachedAlerts);
+        elements.alertsMeta.textContent = "Showing cached alerts";
+      } else {
+        renderAlertsWarning("Retrying alerts...");
+      }
+      queueAlertsRetry(forceRefresh);
     });
 
     if (watchlistResult.status === "rejected") {
@@ -1297,7 +1330,14 @@ function bindApp() {
       if (isAuthenticated()) {
         loadAlerts(true).catch((error) => {
           console.error("[frontend] alerts refresh failed", error);
-          elements.alertsMeta.textContent = "Alerts unavailable";
+          const cachedAlerts = readCachedJson(STORAGE_KEYS.cachedAlerts);
+          if (Array.isArray(cachedAlerts) && cachedAlerts.length) {
+            renderAlerts(cachedAlerts);
+            elements.alertsMeta.textContent = "Showing cached alerts";
+          } else {
+            renderAlertsWarning("Retrying alerts...");
+          }
+          queueAlertsRetry(true);
         });
         await loadSymbol(state.selectedSymbol, true);
       }
