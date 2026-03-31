@@ -572,19 +572,31 @@ function renderWatchlist(items) {
     card.type = "button";
     card.dataset.symbol = item.symbol;
     card.className = [
-      "w-full rounded-2xl border p-4 text-left transition",
+      "w-full rounded-3xl border p-4 text-left transition",
       active
         ? "border-cyan-300/40 bg-cyan-300/10 shadow-lg shadow-cyan-500/10"
-        : "border-white/10 bg-slate-950/50 hover:bg-slate-900",
+        : "border-white/10 bg-slate-950/50 hover:bg-slate-900/90",
     ].join(" ");
     card.innerHTML = `
       <div class="flex items-start justify-between gap-4">
-        <div>
-          <p class="text-sm font-semibold tracking-tight">${item.symbol}</p>
-          <p class="mt-1 text-xs text-slate-400">${item.name}</p>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-3">
+            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-sm font-bold text-white/90">
+              ${item.symbol.slice(0, 2)}
+            </div>
+            <div class="min-w-0">
+              <p class="truncate text-sm font-semibold tracking-tight">${item.symbol}</p>
+              <p class="mt-1 truncate text-xs text-slate-400">${item.name}</p>
+            </div>
+          </div>
+          <div class="mt-4 flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-slate-500">
+            <span>Live Quote</span>
+            <span class="h-1 w-1 rounded-full bg-slate-600"></span>
+            <span>${active ? "Selected" : "Watchlist"}</span>
+          </div>
         </div>
-        <div class="text-right">
-          <p class="text-sm font-semibold">${currency(item.price)}</p>
+        <div class="shrink-0 text-right">
+          <p class="text-sm font-semibold text-white">${currency(item.price)}</p>
           <p class="mt-1 text-xs font-medium ${tone}">${percent(item.change_percent)}</p>
         </div>
       </div>
