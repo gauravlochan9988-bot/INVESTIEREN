@@ -58,6 +58,7 @@ body {
 
 #appShell {
   position: relative;
+  overflow-x: auto;
 }
 
 #appShell::before {
@@ -597,11 +598,13 @@ body {
   #appShell > div {
     max-width: none !important;
     width: 100%;
+    min-width: 1200px;
     padding-inline: 1rem;
   }
 
   #dashboardWorkspace {
-    grid-template-columns: minmax(220px, 18%) minmax(0, 57%) minmax(320px, 25%) !important;
+    min-width: 1200px;
+    grid-template-columns: 280px minmax(0, 1fr) 360px !important;
     grid-auto-rows: auto;
     align-items: start;
     column-gap: 1rem;
@@ -623,6 +626,7 @@ body {
     padding: 1rem !important;
     background:
       linear-gradient(180deg, rgba(17, 24, 39, 0.92), rgba(15, 23, 36, 0.82));
+    width: 280px;
   }
 
   #selectedSymbolSection {
@@ -655,6 +659,7 @@ body {
     top: 0.9rem;
     align-self: start;
     padding: 1.05rem !important;
+    width: 360px;
   }
 
   #tradeDecisionSection .signal-hero {
