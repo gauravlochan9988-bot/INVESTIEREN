@@ -180,6 +180,22 @@
 
         <div id="errorBanner" class="mb-4 hidden rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
 
+        <section class="dashboard-panel mb-5 rounded-[28px] border border-white/10 bg-slate-900/85 p-5 shadow-2xl shadow-black/20">
+          <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p class="text-xs font-medium text-slate-500">Alerts</p>
+              <h2 class="mt-2 text-xl font-semibold">Strong signals</h2>
+            </div>
+            <span id="alertsMeta" class="text-xs text-slate-500">Scanning watchlist...</span>
+          </div>
+          <div id="alertsList" class="grid gap-3 lg:grid-cols-3">
+            <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+              <p class="text-sm font-semibold text-white">Scanning signals</p>
+              <p class="mt-2 text-sm leading-6 text-slate-400">The app is checking your strongest BUY, SELL and RSI setups.</p>
+            </article>
+          </div>
+        </section>
+
         <main class="grid flex-1 gap-5 xl:grid-cols-[minmax(280px,320px)_minmax(0,1fr)_minmax(300px,360px)]">
           <aside class="dashboard-panel min-w-0 rounded-[28px] border border-white/10 bg-slate-900/85 p-5 shadow-2xl shadow-black/20">
             <div class="mb-5 flex items-end justify-between">

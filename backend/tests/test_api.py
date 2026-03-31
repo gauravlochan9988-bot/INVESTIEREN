@@ -217,6 +217,17 @@ def test_healthcheck_exposes_active_database_status(client):
     assert payload["database"]["healthy"] is True
 
 
+def test_alerts_endpoint_returns_live_signal_events(client):
+    response = client.get("/api/alerts", params={"strategy": "simple", "limit": 6})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload
+    assert any(item["title"] == "AAPL is now BUY" for item in payload)
+    assert any(item["kind"] == "rsi" for item in payload)
+    assert all(item["strategy"] == "simple" for item in payload)
+
+
 def test_portfolio_crud_flow(client, sample_position_payload):
     create_response = client.post("/api/portfolio/positions", json=sample_position_payload)
 

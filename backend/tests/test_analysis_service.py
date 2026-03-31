@@ -288,3 +288,14 @@ def test_hedgefund_confirmation_can_hold_while_ai_model_still_sells(analysis_ser
     assert ai.recommendation == "SELL"
     assert hedgefund.recommendation == "HOLD"
     assert hedgefund.reason.startswith("HOLD because the long-term trend is down")
+
+
+def test_scan_alerts_returns_prioritized_trade_and_rsi_events(analysis_service):
+    alerts = analysis_service.scan_alerts(strategy="simple", limit=6)
+
+    assert alerts
+    assert any(alert.title == "AAPL is now BUY" for alert in alerts)
+    assert any(alert.title == "TSLA is now SELL" for alert in alerts)
+    assert any("RSI" in alert.title for alert in alerts)
+    assert all(alert.strategy == "simple" for alert in alerts)
+    assert all(alert.priority >= 0 for alert in alerts)

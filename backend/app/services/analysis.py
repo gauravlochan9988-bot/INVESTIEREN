@@ -6,6 +6,7 @@ from typing import Sequence
 
 from app.core.exceptions import ExternalServiceError, NotFoundError, ValidationError
 from app.schemas.analysis import (
+    AnalysisAlert,
     AnalysisResponse,
     AnalysisSignals,
     Recommendation,
@@ -234,6 +235,139 @@ class AnalysisService:
             generated_at=datetime.now(timezone.utc),
             signals=signals,
         )
+
+    def scan_alerts(
+        self,
+        *,
+        strategy: Strategy = "hedgefund",
+        symbols: Sequence[str] | None = None,
+        force_refresh: bool = False,
+        limit: int = 6,
+    ) -> list[AnalysisAlert]:
+        universe = list(symbols or self.market_data_service.allowed_symbols.keys())
+        alerts: list[AnalysisAlert] = []
+
+        for symbol in universe:
+            analysis = self.analyze_symbol(symbol, force_refresh=force_refresh, strategy=strategy)
+            if analysis.no_data or analysis.recommendation is None or analysis.signals is None:
+                continue
+            alerts.extend(self._alerts_from_analysis(analysis))
+
+        alerts.sort(key=lambda item: (-item.priority, item.symbol, item.title))
+        if len(alerts) <= limit:
+            return alerts
+
+        selected_keys: set[tuple[str, str, str]] = set()
+        selected: list[AnalysisAlert] = []
+
+        def include_first(predicate) -> None:
+            for alert in alerts:
+                key = (alert.symbol, alert.kind, alert.title)
+                if key in selected_keys or not predicate(alert):
+                    continue
+                selected.append(alert)
+                selected_keys.add(key)
+                return
+
+        include_first(lambda alert: alert.kind == "recommendation" and alert.tone == "bullish")
+        include_first(lambda alert: alert.kind == "recommendation" and alert.tone == "bearish")
+        include_first(lambda alert: alert.kind == "rsi")
+
+        for alert in alerts:
+            if len(selected) >= limit:
+                break
+            key = (alert.symbol, alert.kind, alert.title)
+            if key in selected_keys:
+                continue
+            selected.append(alert)
+            selected_keys.add(key)
+
+        selected.sort(key=lambda item: (-item.priority, item.symbol, item.title))
+        return selected[:limit]
+
+    def _alerts_from_analysis(self, analysis: AnalysisResponse) -> list[AnalysisAlert]:
+        alerts: list[AnalysisAlert] = []
+        symbol = analysis.symbol
+        confidence = int(round(float(analysis.confidence or 0)))
+        rsi_value = analysis.signals.rsi.value
+
+        if analysis.recommendation == "BUY":
+            alerts.append(
+                AnalysisAlert(
+                    symbol=symbol,
+                    strategy=analysis.strategy,
+                    kind="recommendation",
+                    tone="bullish",
+                    title=f"{symbol} is now BUY",
+                    message=f"{symbol} shows a buy setup with {confidence}% confidence.",
+                    priority=100 + confidence,
+                )
+            )
+        elif analysis.recommendation == "SELL":
+            alerts.append(
+                AnalysisAlert(
+                    symbol=symbol,
+                    strategy=analysis.strategy,
+                    kind="recommendation",
+                    tone="bearish",
+                    title=f"{symbol} is now SELL",
+                    message=f"{symbol} shows a sell setup with {confidence}% confidence.",
+                    priority=100 + confidence,
+                )
+            )
+
+        if rsi_value < 30:
+            alerts.append(
+                AnalysisAlert(
+                    symbol=symbol,
+                    strategy=analysis.strategy,
+                    kind="rsi",
+                    tone="bullish",
+                    title=f"{symbol} RSI below 30",
+                    message=f"Oversold at RSI {rsi_value:.1f}. Bounce potential is building.",
+                    priority=80 + int(round(30 - rsi_value)),
+                )
+            )
+        elif rsi_value > 70:
+            alerts.append(
+                AnalysisAlert(
+                    symbol=symbol,
+                    strategy=analysis.strategy,
+                    kind="rsi",
+                    tone="bearish",
+                    title=f"{symbol} RSI above 70",
+                    message=f"Overbought at RSI {rsi_value:.1f}. Pullback risk is elevated.",
+                    priority=80 + int(round(rsi_value - 70)),
+                )
+            )
+
+        if analysis.entry_signal:
+            alerts.append(
+                AnalysisAlert(
+                    symbol=symbol,
+                    strategy=analysis.strategy,
+                    kind="entry",
+                    tone="bullish",
+                    title=f"{symbol} entry confirmed",
+                    message=analysis.entry_reason,
+                    priority=70 + confidence,
+                )
+            )
+
+        if analysis.exit_signal:
+            alerts.append(
+                AnalysisAlert(
+                    symbol=symbol,
+                    strategy=analysis.strategy,
+                    kind="exit",
+                    tone="bearish",
+                    title=f"{symbol} exit signal active",
+                    message=analysis.exit_reason,
+                    priority=70 + confidence,
+                )
+            )
+
+        return alerts
 
     def _strategy_decision(self, strategy: Strategy, context: dict) -> dict[str, object]:
         if strategy == "simple":

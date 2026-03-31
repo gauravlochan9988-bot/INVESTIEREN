@@ -12,6 +12,7 @@ const STORAGE_KEYS = {
   cachedWatchlist: "investieren:cachedWatchlist",
   cachedOverview: "investieren:cachedOverview",
   cachedAnalysis: "investieren:cachedAnalysis",
+  cachedAlerts: "investieren:cachedAlerts",
 };
 
 const STRATEGY_LABELS = {
@@ -43,6 +44,8 @@ const elements = {
   appShell: document.getElementById("appShell"),
   backendStatus: document.getElementById("backendStatus"),
   errorBanner: document.getElementById("errorBanner"),
+  alertsMeta: document.getElementById("alertsMeta"),
+  alertsList: document.getElementById("alertsList"),
   strategyButtons: Array.from(document.querySelectorAll(".strategy-button")),
   logoutButton: document.getElementById("logoutButton"),
   refreshButton: document.getElementById("refreshButton"),
@@ -433,6 +436,74 @@ function renderAnalysisLoading(symbol) {
     '<span class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-400">Loading analysis</span>';
 }
 
+function alertToneClasses(tone) {
+  if (tone === "bullish") {
+    return {
+      card: "border-emerald-400/20 bg-emerald-500/10",
+      badge: "border border-emerald-400/20 bg-emerald-400/15 text-emerald-200",
+    };
+  }
+  if (tone === "bearish") {
+    return {
+      card: "border-rose-400/20 bg-rose-500/10",
+      badge: "border border-rose-400/20 bg-rose-400/15 text-rose-200",
+    };
+  }
+  return {
+    card: "border-white/10 bg-slate-950/60",
+    badge: "border border-white/10 bg-white/5 text-slate-200",
+  };
+}
+
+function renderAlertsLoading() {
+  elements.alertsMeta.textContent = "Scanning watchlist...";
+  elements.alertsList.innerHTML = Array.from({ length: 3 })
+    .map(
+      () => `
+        <article class="animate-pulse rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+          <div class="h-4 w-24 rounded bg-white/10"></div>
+          <div class="mt-3 h-6 w-40 rounded bg-white/10"></div>
+          <div class="mt-3 h-4 w-full rounded bg-white/10"></div>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderAlerts(alerts) {
+  writeCachedJson(STORAGE_KEYS.cachedAlerts, alerts);
+  elements.alertsMeta.textContent = `${alerts.length} live alerts`;
+
+  if (!alerts.length) {
+    elements.alertsList.innerHTML = `
+      <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+        <p class="text-sm font-semibold text-white">No strong alerts right now</p>
+        <p class="mt-2 text-sm leading-6 text-slate-400">The app is watching your watchlist for BUY, SELL and RSI trigger events.</p>
+      </article>
+    `;
+    return;
+  }
+
+  elements.alertsList.innerHTML = alerts
+    .map((alert) => {
+      const tone = alertToneClasses(alert.tone);
+      return `
+        <article class="rounded-2xl border p-4 ${tone.card}">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-white">${alert.title}</p>
+              <p class="mt-2 text-sm leading-6 text-slate-300">${alert.message}</p>
+            </div>
+            <span class="shrink-0 rounded-full px-3 py-2 text-[11px] font-semibold ${tone.badge}">
+              ${STRATEGY_LABELS[alert.strategy] || titleCase(alert.strategy)}
+            </span>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
 function renderAnalysis(analysis) {
   state.latestAnalysis = analysis;
   const strategy = analysis?.strategy || state.selectedStrategy;
@@ -561,6 +632,7 @@ function hydrateDashboardFromCache() {
   const cachedWatchlist = readCachedJson(STORAGE_KEYS.cachedWatchlist);
   const cachedOverview = readCachedJson(STORAGE_KEYS.cachedOverview);
   const cachedAnalysis = readCachedJson(STORAGE_KEYS.cachedAnalysis);
+  const cachedAlerts = readCachedJson(STORAGE_KEYS.cachedAlerts);
 
   if (Array.isArray(cachedWatchlist) && cachedWatchlist.length) {
     state.watchlist = cachedWatchlist;
@@ -578,6 +650,10 @@ function hydrateDashboardFromCache() {
     cachedAnalysis.strategy === state.selectedStrategy
   ) {
     renderAnalysis(cachedAnalysis);
+  }
+
+  if (Array.isArray(cachedAlerts) && cachedAlerts.length) {
+    renderAlerts(cachedAlerts);
   }
 }
 
@@ -703,6 +779,23 @@ async function loadBackendHealth() {
     setBackendStatus("Backend offline", "error");
     throw error;
   }
+}
+
+async function loadAlerts(forceRefresh = false) {
+  renderAlertsLoading();
+  const params = new URLSearchParams({
+    strategy: state.selectedStrategy,
+    limit: "6",
+  });
+  if (forceRefresh) {
+    params.set("refresh", "1");
+  }
+  const alerts = await api(`/api/alerts?${params.toString()}`, {
+    timeoutMs: 22000,
+    retryCount: 1,
+  });
+  renderAlerts(alerts);
+  return alerts;
 }
 
 function renderLoadingWatchlist() {
@@ -999,6 +1092,7 @@ async function bootDashboard(forceRefresh = false) {
   if (!forceRefresh) {
     hydrateDashboardFromCache();
   }
+  renderAlertsLoading();
   try {
     setBackendStatus("Connecting backend...", "loading");
     const [healthResult, watchlistResult, symbolResult] = await Promise.allSettled([
@@ -1006,6 +1100,11 @@ async function bootDashboard(forceRefresh = false) {
       loadWatchlist(forceRefresh),
       loadSymbol(state.selectedSymbol, forceRefresh),
     ]);
+
+    loadAlerts(forceRefresh).catch((error) => {
+      console.error("[frontend] alerts load failed", error);
+      elements.alertsMeta.textContent = "Alerts unavailable";
+    });
 
     if (watchlistResult.status === "rejected") {
       throw watchlistResult.reason;
@@ -1085,6 +1184,10 @@ function bindApp() {
       persistSelectedStrategy(nextStrategy);
       renderStrategyButtons();
       if (isAuthenticated()) {
+        loadAlerts(true).catch((error) => {
+          console.error("[frontend] alerts refresh failed", error);
+          elements.alertsMeta.textContent = "Alerts unavailable";
+        });
         await loadSymbol(state.selectedSymbol, true);
       }
     });

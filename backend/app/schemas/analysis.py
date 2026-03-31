@@ -12,11 +12,23 @@ MacroTrend = Literal["bullish", "neutral", "bearish"]
 InterestRateEffect = Literal["positive", "neutral", "negative"]
 UsdStrength = Literal["weak", "neutral", "strong"]
 Strategy = Literal["simple", "ai", "hedgefund"]
+AlertTone = Literal["bullish", "bearish", "neutral"]
+AlertKind = Literal["recommendation", "rsi", "entry", "exit"]
 
 
 class AnalyzeRequest(BaseModel):
     symbol: str
     strategy: Strategy = "hedgefund"
+
+
+class AnalysisAlert(BaseModel):
+    symbol: str
+    strategy: Strategy
+    kind: AlertKind
+    tone: AlertTone
+    title: str
+    message: str
+    priority: int
 
 
 class SignalResult(BaseModel):
