@@ -763,11 +763,13 @@ async function bootDashboard(forceRefresh = false) {
 }
 
 function bindAuth() {
-  elements.authCancelButton.addEventListener("click", () => {
-    elements.authForm.reset();
-    elements.authError.hidden = true;
-    elements.authPassword.focus();
-  });
+  if (elements.authCancelButton) {
+    elements.authCancelButton.addEventListener("click", () => {
+      elements.authForm.reset();
+      elements.authError.hidden = true;
+      elements.authPassword.focus();
+    });
+  }
 
   elements.authPassword.addEventListener("input", () => {
     elements.authError.hidden = true;
