@@ -814,7 +814,7 @@ body {
     padding: 0.68rem 0.9rem !important;
     gap: 0.7rem;
     border-radius: 22px !important;
-    grid-template-columns: minmax(420px, 1fr) auto !important;
+    grid-template-columns: minmax(240px, 280px) minmax(360px, 1fr) auto !important;
   }
 
   .dashboard-panel {
@@ -843,7 +843,43 @@ body {
   }
 
   #brandHomeButton {
+    display: flex !important;
+    min-width: 240px;
+    width: auto;
+    gap: 0.8rem;
+    justify-content: flex-start;
+    align-items: center;
+  }
+
+  #brandHomeButton > div {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 1rem;
+    flex: 0 0 auto;
+  }
+
+  #brandHomeButton > div + div {
+    display: block;
+    min-width: 0;
+  }
+
+  #brandHomeButton h1 {
+    font-size: 1.2rem;
+    line-height: 1.05;
+  }
+
+  #brandHomeButton p {
+    font-size: 0.68rem;
+    line-height: 1.25;
+    letter-spacing: 0.02em;
+  }
+
+  #sidebarBrandBlock {
     display: none !important;
+  }
+
+  #searchForm {
+    min-width: 0;
   }
 
   #searchInput {
