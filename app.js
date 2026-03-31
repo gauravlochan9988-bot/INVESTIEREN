@@ -40,6 +40,7 @@ const state = {
   alertsRetryAttempt: 0,
   chartRenderId: null,
   chartRetryAttempt: 0,
+  chartRequestId: 0,
 };
 
 const elements = {
@@ -1121,10 +1122,14 @@ function renderCompanyDetails(overview) {
 }
 
 function queueTradingViewRender(symbol, exchange = "") {
+  const requestId = ++state.chartRequestId;
   window.clearTimeout(state.chartRenderId);
-  showTradingViewLoader();
+  const hasRenderedChart = Boolean(elements.tradingviewChart.querySelector("iframe"));
+  if (!hasRenderedChart || state.tvWidgetSymbol !== toTradingViewSymbol(symbol, exchange)) {
+    showTradingViewLoader();
+  }
   state.chartRenderId = window.setTimeout(() => {
-    renderTradingView(symbol, exchange);
+    renderTradingView(symbol, exchange, requestId);
   }, 120);
 }
 
@@ -1282,10 +1287,15 @@ function showTradingViewLoader(message = "Loading TradingView chart...") {
   elements.tradingviewChart.innerHTML = `<div class="tv-loader">${message}</div>`;
 }
 
-async function renderTradingView(symbol, exchange = "") {
+async function renderTradingView(symbol, exchange = "", requestId = state.chartRequestId) {
   const tvSymbol = toTradingViewSymbol(symbol, exchange);
+  const hasRenderedChart = Boolean(elements.tradingviewChart.querySelector("iframe"));
 
-  if (state.tvWidgetSymbol === tvSymbol && elements.tradingviewChart.childElementCount > 0) {
+  if (requestId !== state.chartRequestId) {
+    return;
+  }
+
+  if (state.tvWidgetSymbol === tvSymbol && hasRenderedChart) {
     return;
   }
 
@@ -1294,6 +1304,9 @@ async function renderTradingView(symbol, exchange = "") {
   try {
     await ensureTradingView();
   } catch (error) {
+    if (requestId !== state.chartRequestId) {
+      return;
+    }
     state.chartRetryAttempt += 1;
     showTradingViewLoader(
       state.chartRetryAttempt <= 2
@@ -1306,6 +1319,10 @@ async function renderTradingView(symbol, exchange = "") {
         renderTradingView(symbol, exchange);
       }, 1200 * state.chartRetryAttempt);
     }
+    return;
+  }
+
+  if (requestId !== state.chartRequestId) {
     return;
   }
 
