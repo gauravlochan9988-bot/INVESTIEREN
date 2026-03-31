@@ -540,11 +540,50 @@ body {
   }
 
   #authOverlay section {
+    min-height: calc(100vh - 2rem);
+    align-content: end;
     gap: 12px;
+    padding-top: 2rem;
+    padding-bottom: 1.25rem;
   }
 
   #authOverlay h1 {
     font-size: 2rem;
+  }
+
+  .auth-copy-block {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: calc(100vh - 2rem);
+  }
+
+  .auth-copy-text {
+    margin-top: auto;
+    padding-top: 15.5rem;
+  }
+
+  .auth-byline {
+    font-size: 0.85rem;
+    color: rgba(243, 244, 246, 0.76);
+  }
+
+  .auth-title {
+    max-width: 12rem;
+    font-size: 1.85rem !important;
+    line-height: 0.98;
+  }
+
+  .auth-form-panel {
+    margin-top: 0.35rem;
+    background: linear-gradient(180deg, rgba(11, 15, 26, 0.72), rgba(11, 15, 26, 0.56));
+    border: 1px solid rgba(31, 41, 55, 0.84);
+    border-radius: 1.35rem;
+    padding: 0.95rem;
+    backdrop-filter: blur(12px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 12px 28px rgba(2, 6, 23, 0.2);
   }
 
   #authHeroImage {
