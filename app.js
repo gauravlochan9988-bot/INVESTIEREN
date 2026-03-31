@@ -215,10 +215,10 @@ function setConfidenceBar(confidence, quality = "") {
   const numeric = Math.max(0, Math.min(100, Number(confidence || 0)));
   const qualityTone =
     quality === "FULL"
-      ? "bg-emerald-300"
+      ? "confidence-fill-full"
       : quality === "PARTIAL"
-      ? "bg-amber-300"
-      : "bg-rose-300";
+      ? "confidence-fill-partial"
+      : "confidence-fill-no-data";
   elements.confidenceBarFill.className = `h-full rounded-full transition-[width] duration-300 ease-out ${qualityTone}`;
   elements.confidenceBarFill.style.width = `${numeric}%`;
 }
@@ -259,44 +259,44 @@ function recommendationLabel(analysis) {
 function recommendationPalette(label) {
   if (label === "BUY") {
     return {
-      card: "rounded-[28px] border border-emerald-400/25 bg-emerald-500/10 p-5",
-      text: "text-emerald-300",
+      card: "rounded-[28px] p-5 signal-buy-card",
+      text: "signal-buy-text",
     };
   }
   if (label === "SELL") {
     return {
-      card: "rounded-[28px] border border-rose-400/25 bg-rose-500/10 p-5",
-      text: "text-rose-300",
+      card: "rounded-[28px] p-5 signal-sell-card",
+      text: "signal-sell-text",
     };
   }
   return {
-    card: "rounded-[28px] border border-amber-400/25 bg-amber-500/10 p-5",
-    text: "text-amber-300",
+    card: "rounded-[28px] p-5 signal-hold-card",
+    text: "signal-hold-text",
   };
 }
 
 function toneClassForRisk(risk) {
   if (risk === "LOW") {
-    return "text-emerald-300";
+    return "tone-buy";
   }
   if (risk === "HIGH") {
-    return "text-rose-300";
+    return "tone-sell";
   }
-  return "text-amber-300";
+  return "tone-hold";
 }
 
 function confidenceToneClass(confidence) {
   const numeric = Number(confidence || 0);
   if (numeric >= 75) {
-    return "text-emerald-300";
+    return "tone-buy";
   }
   if (numeric >= 55) {
-    return "text-cyan-200";
+    return "tone-primary";
   }
   if (numeric >= 40) {
-    return "text-amber-300";
+    return "tone-hold";
   }
-  return "text-rose-300";
+  return "tone-sell";
 }
 
 function confidenceHint(analysis) {
@@ -330,21 +330,21 @@ function dataQualityInfo(analysis) {
     value === "FULL"
       ? {
           label: "Full Data",
-          tone: "text-emerald-300",
+          tone: "tone-primary",
         }
       : value === "PARTIAL"
         ? {
             label: "Limited Data",
-            tone: "text-amber-300",
+            tone: "tone-hold",
           }
         : value === "NO_DATA"
           ? {
               label: "No Data",
-              tone: "text-slate-200",
+              tone: "tone-muted",
             }
           : {
               label: "--",
-              tone: "text-slate-200",
+              tone: "tone-muted",
             };
 
   return {
@@ -380,10 +380,10 @@ function sizeBucket(percentValue) {
 
 function setBackendStatus(message, tone = "loading") {
   const palette = {
-    loading: "border-white/10 bg-slate-950/60 text-slate-300",
-    ok: "border-emerald-400/20 bg-emerald-400/10 text-emerald-200",
-    warning: "border-amber-400/20 bg-amber-400/10 text-amber-200",
-    error: "border-rose-400/20 bg-rose-400/10 text-rose-200",
+    loading: "status-loading",
+    ok: "status-ok",
+    warning: "status-warning",
+    error: "status-error",
   };
   elements.backendStatus.textContent = message;
   elements.backendStatus.className = `rounded-full border px-4 py-2 text-xs font-medium ${palette[tone] || palette.loading}`;
@@ -756,12 +756,12 @@ function renderAnalysis(analysis) {
 
 function strategyToneClasses(label) {
   if (label === "BUY") {
-    return "border-emerald-400/20 bg-emerald-500/10 text-emerald-200";
+    return "signal-buy-card";
   }
   if (label === "SELL") {
-    return "border-rose-400/20 bg-rose-500/10 text-rose-200";
+    return "signal-sell-card";
   }
-  return "border-white/10 bg-white/5 text-slate-200";
+  return "signal-hold-card";
 }
 
 function renderMobileStrategyCardsLoading(symbol) {
@@ -800,7 +800,7 @@ function renderMobileStrategyCards() {
         analysis?.reason ||
         (analysis?.no_data ? analysis.no_data_reason : `Loading ${label} analysis...`);
       const tone = strategyToneClasses(recommendation);
-      const active = current ? "ring-1 ring-cyan-300/40 shadow-lg shadow-cyan-500/10" : "";
+      const active = current ? "ring-1 ring-teal-400/35 shadow-lg shadow-teal-500/10" : "";
       return `
         <button type="button" class="mobile-strategy-card mobile-only rounded-2xl border p-4 text-left ${tone} ${active}" data-mobile-strategy="${key}">
           <div class="flex items-start justify-between gap-3">
@@ -1096,9 +1096,7 @@ function renderStrategyButtons() {
     const active = button.dataset.strategy === state.selectedStrategy;
     button.className = [
       "strategy-button rounded-xl px-3 py-2 text-xs font-semibold transition",
-      active
-        ? "border border-cyan-300/30 bg-cyan-300/15 text-cyan-100 shadow-lg shadow-cyan-500/10"
-        : "border border-transparent text-slate-300 hover:border-white/10 hover:bg-white/5",
+      active ? "strategy-button-active" : "strategy-button-idle",
     ].join(" ");
   });
   if (elements.selectedStrategyBadge) {

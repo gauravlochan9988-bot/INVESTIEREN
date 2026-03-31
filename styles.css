@@ -1,3 +1,22 @@
+:root {
+  --color-bg: #0B0F1A;
+  --color-surface: #111827;
+  --color-surface-2: #0f1724;
+  --color-surface-3: #151d2d;
+  --color-primary: #14B8A6;
+  --color-primary-2: #1d4ed8;
+  --color-buy: #22C55E;
+  --color-sell: #EF4444;
+  --color-hold: #F59E0B;
+  --color-text: #F3F4F6;
+  --color-text-muted: #9CA3AF;
+  --color-border: #1F2937;
+  --glow-primary: rgba(20, 184, 166, 0.14);
+  --glow-buy: rgba(34, 197, 94, 0.12);
+  --glow-sell: rgba(239, 68, 68, 0.1);
+  --glow-hold: rgba(245, 158, 11, 0.12);
+}
+
 html,
 body {
   min-height: 100%;
@@ -6,10 +25,11 @@ body {
 body {
   margin: 0;
   background:
-    radial-gradient(circle at top left, rgba(34, 211, 238, 0.12), transparent 24%),
-    radial-gradient(circle at 85% 15%, rgba(59, 130, 246, 0.08), transparent 18%),
-    radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.1), transparent 18%),
-    #020617;
+    radial-gradient(circle at top left, rgba(20, 184, 166, 0.08), transparent 26%),
+    radial-gradient(circle at 82% 14%, rgba(29, 78, 216, 0.07), transparent 18%),
+    radial-gradient(circle at bottom right, rgba(20, 184, 166, 0.05), transparent 20%),
+    var(--color-bg);
+  color: var(--color-text);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -31,7 +51,7 @@ body {
   place-items: center;
   width: 100%;
   height: 100%;
-  color: rgb(148 163 184);
+  color: var(--color-text-muted);
   font-size: 0.95rem;
   letter-spacing: 0.02em;
 }
@@ -46,8 +66,8 @@ body {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.18), transparent 22%),
-    radial-gradient(circle at top center, rgba(34, 211, 238, 0.05), transparent 32%);
+    linear-gradient(180deg, rgba(17, 24, 39, 0.28), transparent 24%),
+    radial-gradient(circle at top center, rgba(20, 184, 166, 0.045), transparent 34%);
   z-index: 0;
 }
 
@@ -80,11 +100,11 @@ body {
   position: relative;
   overflow: visible;
   z-index: 20;
-  border-color: rgba(148, 163, 184, 0.16);
+  border-color: rgba(31, 41, 55, 0.92);
   background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.8));
+    linear-gradient(180deg, rgba(17, 24, 39, 0.96), rgba(11, 15, 26, 0.88));
   box-shadow:
-    0 24px 80px rgba(2, 6, 23, 0.38),
+    0 18px 44px rgba(2, 6, 23, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
@@ -98,33 +118,37 @@ body {
 }
 
 .dashboard-panel {
-  border-color: rgba(148, 163, 184, 0.12);
+  border-color: rgba(31, 41, 55, 0.88);
   background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.82));
+    linear-gradient(180deg, rgba(17, 24, 39, 0.94), rgba(15, 23, 36, 0.88));
   box-shadow:
-    0 22px 60px rgba(2, 6, 23, 0.25),
+    0 16px 36px rgba(2, 6, 23, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .dashboard-card {
-  border-color: rgba(148, 163, 184, 0.1);
+  border-color: rgba(31, 41, 55, 0.8);
   background:
-    linear-gradient(180deg, rgba(2, 6, 23, 0.74), rgba(2, 6, 23, 0.58));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    linear-gradient(180deg, rgba(11, 15, 26, 0.84), rgba(17, 24, 39, 0.72));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 8px 20px rgba(2, 6, 23, 0.12);
 }
 
 .signal-hero {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.03),
-    0 16px 44px rgba(2, 6, 23, 0.24);
+    0 12px 30px rgba(2, 6, 23, 0.16);
 }
 
 .chart-panel {
   background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(2, 6, 23, 0.9));
+    linear-gradient(180deg, rgba(17, 24, 39, 0.92), rgba(11, 15, 26, 0.94));
 }
 
 .dashboard-search {
+  border-color: rgba(31, 41, 55, 0.95);
+  background: linear-gradient(180deg, rgba(11, 15, 26, 0.92), rgba(15, 23, 36, 0.88));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 0 0 1px transparent;
@@ -132,8 +156,8 @@ body {
 
 .dashboard-search:focus {
   box-shadow:
-    0 0 0 1px rgba(34, 211, 238, 0.28),
-    0 10px 30px rgba(8, 145, 178, 0.14);
+    0 0 0 1px rgba(20, 184, 166, 0.28),
+    0 8px 24px rgba(20, 184, 166, 0.12);
 }
 
 #topbarUtilityActions {
@@ -175,17 +199,136 @@ body {
 }
 
 .action-primary {
+  background: linear-gradient(135deg, var(--color-primary), #0f8f97) !important;
+  color: var(--color-bg) !important;
   box-shadow:
-    0 16px 34px rgba(16, 185, 129, 0.18),
+    0 12px 26px var(--glow-primary),
     inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }
 
 .action-secondary {
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.9), rgba(15, 23, 36, 0.76)) !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .strategy-button {
   letter-spacing: 0.01em;
+}
+
+.strategy-button-active {
+  border: 1px solid rgba(20, 184, 166, 0.28);
+  background: rgba(20, 184, 166, 0.12);
+  color: var(--color-text);
+  box-shadow: 0 10px 22px var(--glow-primary);
+}
+
+.strategy-button-idle {
+  border: 1px solid transparent;
+  color: var(--color-text-muted);
+}
+
+.strategy-button-idle:hover {
+  border-color: rgba(31, 41, 55, 0.92);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.signal-buy-card {
+  border: 1px solid rgba(34, 197, 94, 0.22);
+  background: linear-gradient(180deg, rgba(34, 197, 94, 0.12), rgba(17, 24, 39, 0.9));
+  box-shadow: 0 10px 24px var(--glow-buy);
+}
+
+.signal-sell-card {
+  border: 1px solid rgba(239, 68, 68, 0.22);
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.1), rgba(17, 24, 39, 0.9));
+  box-shadow: 0 10px 24px var(--glow-sell);
+}
+
+.signal-hold-card {
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.12), rgba(17, 24, 39, 0.9));
+  box-shadow: 0 10px 24px var(--glow-hold);
+}
+
+.signal-buy-text,
+.tone-buy {
+  color: var(--color-buy) !important;
+}
+
+.signal-sell-text,
+.tone-sell {
+  color: var(--color-sell) !important;
+}
+
+.signal-hold-text,
+.tone-hold {
+  color: var(--color-hold) !important;
+}
+
+.tone-primary {
+  color: var(--color-primary) !important;
+}
+
+.tone-muted {
+  color: var(--color-text-muted) !important;
+}
+
+.confidence-fill-full {
+  background: var(--color-primary);
+}
+
+.confidence-fill-partial {
+  background: var(--color-hold);
+}
+
+.confidence-fill-no-data {
+  background: #64748b;
+}
+
+.status-loading {
+  border-color: rgba(31, 41, 55, 0.92);
+  background: rgba(17, 24, 39, 0.72);
+  color: var(--color-text-muted);
+}
+
+.status-ok {
+  border-color: rgba(20, 184, 166, 0.24);
+  background: rgba(20, 184, 166, 0.12);
+  color: #d1fae5;
+}
+
+.status-warning {
+  border-color: rgba(245, 158, 11, 0.24);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fde68a;
+}
+
+.status-error {
+  border-color: rgba(239, 68, 68, 0.24);
+  background: rgba(239, 68, 68, 0.12);
+  color: #fecaca;
+}
+
+#brandHomeButton > div {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-2)) !important;
+  box-shadow: 0 12px 28px var(--glow-primary);
+}
+
+#selectedStrategyBadge {
+  border-color: rgba(20, 184, 166, 0.24) !important;
+  background: rgba(20, 184, 166, 0.12) !important;
+  color: var(--color-text) !important;
+}
+
+#changeBadge {
+  background: rgba(34, 197, 94, 0.14) !important;
+  color: var(--color-buy) !important;
+}
+
+#searchSuggestions,
+#tradingviewChart,
+#portfolioSheet {
+  background-color: var(--color-surface-2);
 }
 
 #watchlistBody button {
