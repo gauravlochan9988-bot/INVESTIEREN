@@ -492,8 +492,8 @@ body {
   }
 
   #authOverlay > .absolute.inset-0 {
-    inset: 0 0 auto 0;
-    height: 46vh;
+    inset: 0;
+    height: 100%;
   }
 
   #appShell > div {
@@ -554,7 +554,7 @@ body {
     align-content: stretch;
     gap: 0;
     margin: 0;
-    padding: 0.9rem;
+    padding: 0.95rem 0.95rem 1.1rem;
   }
 
   #authOverlay h1 {
@@ -574,20 +574,32 @@ body {
     padding-top: max(env(safe-area-inset-top, 0px), 0.5rem);
     position: relative;
     z-index: 2;
+    gap: 0.9rem;
   }
 
   .auth-bottom-card {
     margin-top: auto;
-    border: 1px solid rgba(31, 41, 55, 0.94);
-    border-radius: 1.6rem;
-    background: linear-gradient(180deg, rgba(17, 24, 39, 0.97), rgba(11, 15, 26, 0.95));
-    padding: 1rem;
-    backdrop-filter: blur(14px);
+    border: 1px solid rgba(31, 41, 55, 0.96);
+    border-radius: 1.75rem;
+    background: linear-gradient(180deg, rgba(17, 24, 39, 0.94), rgba(11, 15, 26, 0.97));
+    padding: 1rem 1rem 1.05rem;
+    backdrop-filter: blur(18px);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.04),
-      0 16px 38px rgba(2, 6, 23, 0.26);
+      0 18px 44px rgba(2, 6, 23, 0.28);
     position: relative;
     z-index: 2;
+  }
+
+  .auth-bottom-card::before {
+    content: "";
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(20, 184, 166, 0.24), transparent);
+    opacity: 0.9;
   }
 
   .auth-copy-text {
@@ -602,9 +614,9 @@ body {
   }
 
   .auth-title {
-    max-width: 13rem;
-    font-size: 1.58rem !important;
-    line-height: 1;
+    max-width: 14rem;
+    font-size: 1.56rem !important;
+    line-height: 1.02;
   }
 
   .auth-form-panel {
@@ -618,14 +630,16 @@ body {
   }
 
   #authHeroImage {
-    object-position: center 24%;
-    opacity: 0.78 !important;
+    object-position: center 28%;
+    opacity: 0.62 !important;
+    filter: saturate(0.92) contrast(0.92);
   }
 
   #authOverlayShade {
     background:
-      linear-gradient(180deg, rgba(11, 15, 26, 0.05) 0%, rgba(11, 15, 26, 0.12) 28%, rgba(11, 15, 26, 0.48) 44%, rgba(11, 15, 26, 0.88) 58%, rgba(11, 15, 26, 0.98) 100%),
-      radial-gradient(circle at top center, rgba(20, 184, 166, 0.05), transparent 34%) !important;
+      linear-gradient(180deg, rgba(11, 15, 26, 0.16) 0%, rgba(11, 15, 26, 0.22) 26%, rgba(11, 15, 26, 0.38) 44%, rgba(11, 15, 26, 0.78) 60%, rgba(11, 15, 26, 0.94) 76%, rgba(11, 15, 26, 0.985) 100%),
+      radial-gradient(circle at top center, rgba(20, 184, 166, 0.05), transparent 36%) !important;
+    backdrop-filter: blur(2px);
   }
 
   .dashboard-chip {
