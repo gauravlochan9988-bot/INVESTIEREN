@@ -40,6 +40,8 @@ class Settings(BaseSettings):
         )
     )
     market_cache_ttl_seconds: int = 45
+    analysis_cache_ttl_seconds: int = 90
+    alerts_cache_ttl_seconds: int = 60
     macro_cache_ttl_seconds: int = 900
     news_cache_ttl_seconds: int = 600
     news_headline_limit: int = 8

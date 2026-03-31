@@ -17,6 +17,7 @@ from app.schemas.analysis import (
 )
 from app.services.macro import MacroContextService, MacroSnapshot
 from app.schemas.stocks import HistoryPoint
+from app.services.cache import TTLCache
 from app.services.market_data import MarketDataService
 from app.services.news import NewsSentimentService, NewsSentimentSnapshot
 from app.services.summary import SummaryService
@@ -48,11 +49,15 @@ class AnalysisService:
         macro_context_service: MacroContextService,
         summary_service: SummaryService,
         news_sentiment_service: NewsSentimentService,
+        analysis_cache_ttl_seconds: int = 90,
+        alerts_cache_ttl_seconds: int = 60,
     ):
         self.market_data_service = market_data_service
         self.macro_context_service = macro_context_service
         self.summary_service = summary_service
         self.news_sentiment_service = news_sentiment_service
+        self.analysis_cache: TTLCache[AnalysisResponse] = TTLCache(analysis_cache_ttl_seconds)
+        self.alerts_cache: TTLCache[list[AnalysisAlert]] = TTLCache(alerts_cache_ttl_seconds)
 
     def analyze_symbol(
         self,
@@ -61,27 +66,48 @@ class AnalysisService:
         strategy: Strategy = "hedgefund",
     ) -> AnalysisResponse:
         normalized_symbol = self.market_data_service.ensure_supported_symbol(symbol)
+        cache_key = self._analysis_cache_key(normalized_symbol, strategy)
+        if force_refresh:
+            self.analysis_cache.delete(cache_key)
+        else:
+            cached = self.analysis_cache.get(cache_key)
+            if cached is not None:
+                return cached
         try:
             history = self.market_data_service.get_history(
                 normalized_symbol, "6mo", force_refresh=force_refresh
             )
-            return self.analyze(normalized_symbol, history, strategy=strategy)
+            return self.analysis_cache.set(
+                cache_key,
+                self.analyze(normalized_symbol, history, strategy=strategy),
+            )
         except NotFoundError as error:
-            return self._no_data_response(
-                normalized_symbol,
-                error.message,
-                strategy=strategy,
+            return self.analysis_cache.set(
+                cache_key,
+                self._no_data_response(
+                    normalized_symbol,
+                    error.message,
+                    strategy=strategy,
+                ),
             )
         except ExternalServiceError as error:
             message = error.message.rstrip(".")
-            return self._no_data_response(normalized_symbol, f"{message}.", strategy=strategy)
+            return self.analysis_cache.set(
+                cache_key,
+                self._no_data_response(
+                    normalized_symbol, f"{message}.", strategy=strategy
+                ),
+            )
         except ValidationError as error:
             if "At least 60 daily closes are required" not in error.message:
                 raise
-            return self._no_data_response(
-                normalized_symbol,
-                "No live market data available for a complete analysis window.",
-                strategy=strategy,
+            return self.analysis_cache.set(
+                cache_key,
+                self._no_data_response(
+                    normalized_symbol,
+                    "No live market data available for a complete analysis window.",
+                    strategy=strategy,
+                ),
             )
 
     def analyze(
@@ -245,6 +271,13 @@ class AnalysisService:
         limit: int = 6,
     ) -> list[AnalysisAlert]:
         universe = list(symbols or self.market_data_service.allowed_symbols.keys())
+        cache_key = self._alerts_cache_key(strategy=strategy, symbols=universe, limit=limit)
+        if force_refresh:
+            self.alerts_cache.delete(cache_key)
+        else:
+            cached = self.alerts_cache.get(cache_key)
+            if cached is not None:
+                return cached
         alerts: list[AnalysisAlert] = []
 
         for symbol in universe:
@@ -255,7 +288,7 @@ class AnalysisService:
 
         alerts.sort(key=lambda item: (-item.priority, item.symbol, item.title))
         if len(alerts) <= limit:
-            return alerts
+            return self.alerts_cache.set(cache_key, alerts)
 
         selected_keys: set[tuple[str, str, str]] = set()
         selected: list[AnalysisAlert] = []
@@ -283,7 +316,15 @@ class AnalysisService:
             selected_keys.add(key)
 
         selected.sort(key=lambda item: (-item.priority, item.symbol, item.title))
-        return selected[:limit]
+        return self.alerts_cache.set(cache_key, selected[:limit])
+
+    def _analysis_cache_key(self, symbol: str, strategy: Strategy) -> str:
+        return f"analysis:{strategy}:{symbol}"
+
+    def _alerts_cache_key(
+        self, *, strategy: Strategy, symbols: Sequence[str], limit: int
+    ) -> str:
+        return f"alerts:{strategy}:{limit}:{','.join(symbols)}"
 
     def _alerts_from_analysis(self, analysis: AnalysisResponse) -> list[AnalysisAlert]:
         alerts: list[AnalysisAlert] = []

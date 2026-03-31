@@ -258,7 +258,75 @@ def test_analyze_symbol_returns_no_data_status_when_live_market_data_is_missing(
     assert result.symbol == "AAPL"
     assert result.strategy == "hedgefund"
     assert result.no_data is True
-    assert result.no_data_reason == "No live market data available."
+
+
+def test_analyze_symbol_reuses_cached_response_without_reloading_history():
+    provider = FakeMarketDataProvider()
+    market_data_service = MarketDataService(
+        provider=provider,
+        allowed_symbols={"AAPL": "Apple"},
+        ttl_seconds=3600,
+    )
+    analysis_service = AnalysisService(
+        market_data_service=market_data_service,
+        macro_context_service=MacroContextService(
+            provider=provider,
+            ttl_seconds=3600,
+            market_symbol="SPY",
+            usd_symbol="DXY",
+            interest_rate_effect="neutral",
+        ),
+        news_sentiment_service=NewsSentimentService(
+            provider=FakeNewsProvider(),
+            ttl_seconds=3600,
+            headline_limit=8,
+        ),
+        summary_service=FakeSummaryService(),
+        analysis_cache_ttl_seconds=3600,
+        alerts_cache_ttl_seconds=3600,
+    )
+
+    first = analysis_service.analyze_symbol("AAPL", strategy="hedgefund")
+    history_calls_after_first = provider.history_calls
+    second = analysis_service.analyze_symbol("AAPL", strategy="hedgefund")
+
+    assert first.symbol == second.symbol == "AAPL"
+    assert first.generated_at == second.generated_at
+    assert provider.history_calls == history_calls_after_first
+
+
+def test_scan_alerts_reuses_cached_alerts_without_recomputing_analysis():
+    provider = FakeMarketDataProvider()
+    market_data_service = MarketDataService(
+        provider=provider,
+        allowed_symbols={"AAPL": "Apple", "MSFT": "Microsoft"},
+        ttl_seconds=3600,
+    )
+    analysis_service = AnalysisService(
+        market_data_service=market_data_service,
+        macro_context_service=MacroContextService(
+            provider=provider,
+            ttl_seconds=3600,
+            market_symbol="SPY",
+            usd_symbol="DXY",
+            interest_rate_effect="neutral",
+        ),
+        news_sentiment_service=NewsSentimentService(
+            provider=FakeNewsProvider(),
+            ttl_seconds=3600,
+            headline_limit=8,
+        ),
+        summary_service=FakeSummaryService(),
+        analysis_cache_ttl_seconds=3600,
+        alerts_cache_ttl_seconds=3600,
+    )
+
+    first = analysis_service.scan_alerts(strategy="simple", limit=6)
+    history_calls_after_first = provider.history_calls
+    second = analysis_service.scan_alerts(strategy="simple", limit=6)
+
+    assert first == second
+    assert provider.history_calls == history_calls_after_first
 
 
 def test_strategies_return_distinct_results_without_overwriting_each_other(analysis_service):

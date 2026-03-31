@@ -69,11 +69,14 @@ def get_news_sentiment_service_instance() -> NewsSentimentService:
 
 @lru_cache
 def get_analysis_service_instance() -> AnalysisService:
+    settings = get_settings()
     return AnalysisService(
         market_data_service=get_market_data_service_instance(),
         macro_context_service=get_macro_context_service_instance(),
         news_sentiment_service=get_news_sentiment_service_instance(),
         summary_service=get_summary_service_instance(),
+        analysis_cache_ttl_seconds=settings.analysis_cache_ttl_seconds,
+        alerts_cache_ttl_seconds=settings.alerts_cache_ttl_seconds,
     )
 
 
