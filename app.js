@@ -59,6 +59,8 @@ const elements = {
   metricPrevClose: document.getElementById("metricPrevClose"),
   recommendationCard: document.getElementById("recommendationCard"),
   recommendationValue: document.getElementById("recommendationValue"),
+  confidenceValue: document.getElementById("confidenceValue"),
+  confidenceHint: document.getElementById("confidenceHint"),
   analysisSummary: document.getElementById("analysisSummary"),
   selectedStrategyBadge: document.getElementById("selectedStrategyBadge"),
   analysisGeneratedAt: document.getElementById("analysisGeneratedAt"),
@@ -190,6 +192,37 @@ function toneClassForRisk(risk) {
     return "text-rose-300";
   }
   return "text-amber-300";
+}
+
+function confidenceToneClass(confidence) {
+  const numeric = Number(confidence || 0);
+  if (numeric >= 75) {
+    return "text-emerald-300";
+  }
+  if (numeric >= 55) {
+    return "text-cyan-200";
+  }
+  if (numeric >= 40) {
+    return "text-amber-300";
+  }
+  return "text-rose-300";
+}
+
+function confidenceHint(analysis) {
+  if (!analysis || analysis.no_data || analysis.confidence === null || analysis.confidence === undefined) {
+    return "Waiting for signal strength";
+  }
+  const confidence = Number(analysis.confidence || 0);
+  if (confidence >= 75) {
+    return "Strong signal alignment";
+  }
+  if (confidence >= 55) {
+    return "Good confirmation";
+  }
+  if (confidence >= 40) {
+    return "Mixed but tradable";
+  }
+  return "Low conviction";
 }
 
 function scoreInfo(analysis) {
@@ -370,6 +403,9 @@ function renderAnalysisLoading(symbol) {
   elements.recommendationCard.className = "rounded-[28px] border border-white/10 bg-slate-950/70 p-5";
   elements.recommendationValue.className = "text-5xl font-black tracking-[-0.05em] text-white";
   elements.recommendationValue.textContent = "LOADING";
+  elements.confidenceValue.className = "mt-2 text-2xl font-semibold text-white";
+  elements.confidenceValue.textContent = "--";
+  elements.confidenceHint.textContent = "Reading market context";
   elements.analysisSummary.textContent = `Building ${STRATEGY_LABELS[state.selectedStrategy]} analysis for ${symbol}...`;
   elements.selectedStrategyBadge.textContent = STRATEGY_LABELS[state.selectedStrategy];
   elements.analysisGeneratedAt.textContent = "Running analysis";
@@ -403,6 +439,9 @@ function renderAnalysis(analysis) {
     elements.recommendationCard.className = "rounded-[28px] border border-rose-400/25 bg-rose-500/10 p-5";
     elements.recommendationValue.className = "text-5xl font-black tracking-[-0.05em] text-rose-200";
     elements.recommendationValue.textContent = "NO DATA";
+    elements.confidenceValue.className = "mt-2 text-2xl font-semibold text-slate-200";
+    elements.confidenceValue.textContent = "--";
+    elements.confidenceHint.textContent = "No confidence without data";
     elements.analysisSummary.textContent = reason;
     elements.analysisGeneratedAt.textContent = "No analysis";
     elements.biasValue.textContent = "neutral setup";
@@ -433,6 +472,9 @@ function renderAnalysis(analysis) {
   elements.recommendationCard.className = palette.card;
   elements.recommendationValue.className = `text-5xl font-black tracking-[-0.05em] ${palette.text}`;
   elements.recommendationValue.textContent = label;
+  elements.confidenceValue.className = `mt-2 text-2xl font-semibold ${confidenceToneClass(analysis.confidence)}`;
+  elements.confidenceValue.textContent = `${Math.round(Number(analysis.confidence || 0))}%`;
+  elements.confidenceHint.textContent = confidenceHint(analysis);
   elements.analysisSummary.textContent = analysis.reason || analysis.summary || "No summary available.";
   elements.analysisGeneratedAt.textContent = analysis.generated_at
     ? `Updated ${new Date(analysis.generated_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
