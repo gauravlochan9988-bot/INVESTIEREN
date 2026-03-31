@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
+import math
 from typing import Iterable, Union
 
 import httpx
@@ -76,6 +77,21 @@ class FinnhubDashboardService:
             raise ExternalServiceError(f"No Finnhub profile available for {symbol}.")
         return payload
 
+    def _safe_float(
+        self,
+        value: object,
+        *,
+        default: float | None = None,
+        allow_none: bool = False,
+    ) -> float | None:
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            return None if allow_none else default
+        if not math.isfinite(numeric):
+            return None if allow_none else default
+        return numeric
+
     def _fallback_symbol_overview(self, symbol: str) -> DashboardSymbolOverview:
         try:
             import yfinance as yf
@@ -105,8 +121,8 @@ class FinnhubDashboardService:
 
         current_row = history.iloc[-1]
         previous_row = history.iloc[-2] if len(history.index) > 1 else current_row
-        current = float(current_row["Close"])
-        previous = float(previous_row["Close"])
+        current = self._safe_float(current_row.get("Close"), default=0.0) or 0.0
+        previous = self._safe_float(previous_row.get("Close"), default=current) or current
         change_percent = ((current - previous) / previous * 100) if previous else 0.0
 
         try:
@@ -136,13 +152,13 @@ class FinnhubDashboardService:
             ipo=str(ipo) if ipo is not None else None,
             logo=logo,
             weburl=website,
-            market_capitalization=float(market_cap) if market_cap else None,
-            share_outstanding=float(shares_outstanding) if shares_outstanding else None,
+            market_capitalization=self._safe_float(market_cap, allow_none=True),
+            share_outstanding=self._safe_float(shares_outstanding, allow_none=True),
             price=round(current, 2),
             change_percent=round(change_percent, 2),
-            high=round(float(current_row.get("High") or current), 2),
-            low=round(float(current_row.get("Low") or current), 2),
-            open=round(float(current_row.get("Open") or current), 2),
+            high=round(self._safe_float(current_row.get("High"), default=current) or current, 2),
+            low=round(self._safe_float(current_row.get("Low"), default=current) or current, 2),
+            open=round(self._safe_float(current_row.get("Open"), default=current) or current, 2),
             previous_close=round(previous, 2),
         )
 
@@ -240,7 +256,10 @@ class FinnhubDashboardService:
                 previous_close=float(quote.get("pc") or 0),
             )
         except ExternalServiceError:
-            overview = self._fallback_symbol_overview(normalized)
+            try:
+                overview = self._fallback_symbol_overview(normalized)
+            except Exception as exc:
+                raise ExternalServiceError(f"No live market data available for {normalized}.") from exc
         return self.symbol_cache.set(cache_key, overview)
 
     def get_company_news(

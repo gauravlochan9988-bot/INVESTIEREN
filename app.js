@@ -1089,6 +1089,32 @@ function renderOverview(overview) {
   renderTradingView(overview.symbol, overview.exchange);
 }
 
+function renderOverviewFallback(symbol) {
+  elements.selectedSymbolName.textContent = symbol;
+  elements.selectedCompanyName.textContent = "Live overview unavailable";
+  elements.chartSymbolBadge.textContent = symbol;
+  elements.changeBadge.textContent = "--";
+  elements.changeBadge.className =
+    "inline-flex w-fit rounded-full bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300";
+  elements.metricPrice.textContent = "$--";
+  elements.metricHigh.textContent = "$--";
+  elements.metricLow.textContent = "$--";
+  elements.metricOpen.textContent = "$--";
+  elements.metricPrevClose.textContent = "$--";
+  elements.companyHeadline.textContent = symbol;
+  elements.companyExchange.textContent = "Exchange unavailable";
+  elements.companyLogo.classList.add("hidden");
+  elements.companyLogo.removeAttribute("src");
+  renderCompanyDetails({
+    exchange: "--",
+    finnhub_industry: "--",
+    ipo: "--",
+    market_capitalization: null,
+    share_outstanding: null,
+  });
+  renderTradingView(symbol);
+}
+
 function toTradingViewSymbol(symbol, exchange = "") {
   const plain = symbol.toUpperCase();
   const normalizedExchange = String(exchange || "").toUpperCase();
@@ -1271,7 +1297,8 @@ async function loadSymbol(symbol, forceRefresh = false) {
     if (overviewResult.status === "fulfilled") {
       renderOverview(overviewResult.value);
     } else {
-      throw overviewResult.reason;
+      console.error("[frontend] overview load failed", overviewResult.reason);
+      renderOverviewFallback(normalized);
     }
 
     if (analysisResult.status === "fulfilled") {
@@ -1289,6 +1316,10 @@ async function loadSymbol(symbol, forceRefresh = false) {
     state.latestNews = newsResult.status === "fulfilled" ? newsResult.value : [];
 
     renderWatchlist(state.watchlist);
+
+    if (overviewResult.status === "rejected") {
+      showError("Live overview is unavailable for this symbol right now.");
+    }
   } catch (error) {
     if (requestId !== state.activeRequest) {
       return;
