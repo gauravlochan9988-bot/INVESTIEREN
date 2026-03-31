@@ -488,7 +488,7 @@ body {
 
   #authOverlay {
     align-items: stretch;
-    justify-content: flex-end;
+    justify-content: flex-start;
   }
 
   #authOverlay > .absolute.inset-0 {
@@ -550,11 +550,11 @@ body {
   }
 
   #authOverlay section {
-    min-height: 100vh;
+    min-height: 100svh;
     align-content: stretch;
     gap: 0;
     margin: 0;
-    padding: 0.95rem 0.95rem 1.1rem;
+    padding: 1rem 1rem 1.15rem;
   }
 
   #authOverlay h1 {
@@ -565,13 +565,13 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    min-height: 100vh;
+    min-height: calc(100svh - 2rem);
     padding: 0;
-    gap: 0.75rem;
+    gap: 0;
   }
 
   .auth-brand-row {
-    padding-top: max(env(safe-area-inset-top, 0px), 0.5rem);
+    padding-top: max(env(safe-area-inset-top, 0px), 0.7rem);
     position: relative;
     z-index: 2;
     gap: 0.9rem;
@@ -579,10 +579,14 @@ body {
 
   .auth-bottom-card {
     margin-top: auto;
+    margin-bottom: max(env(safe-area-inset-bottom, 0px), 0.15rem);
+    width: 100%;
+    max-width: 28rem;
+    align-self: stretch;
     border: 1px solid rgba(31, 41, 55, 0.96);
     border-radius: 1.75rem;
     background: linear-gradient(180deg, rgba(17, 24, 39, 0.94), rgba(11, 15, 26, 0.97));
-    padding: 1rem 1rem 1.05rem;
+    padding: 0.95rem 0.95rem 1rem;
     backdrop-filter: blur(18px);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.04),
@@ -605,22 +609,22 @@ body {
   .auth-copy-text {
     margin-top: 0;
     padding-top: 0;
-    gap: 0.3rem;
+    gap: 0.25rem;
   }
 
   .auth-byline {
-    font-size: 0.76rem;
+    font-size: 0.74rem;
     color: rgba(243, 244, 246, 0.76);
   }
 
   .auth-title {
     max-width: 14rem;
-    font-size: 1.56rem !important;
+    font-size: 1.5rem !important;
     line-height: 1.02;
   }
 
   .auth-form-panel {
-    margin-top: 0.75rem;
+    margin-top: 0.65rem;
     padding: 0;
     background: transparent;
     border: 0;
@@ -631,15 +635,15 @@ body {
 
   #authHeroImage {
     object-position: center 28%;
-    opacity: 0.62 !important;
+    opacity: 0.68 !important;
     filter: saturate(0.92) contrast(0.92);
   }
 
   #authOverlayShade {
     background:
-      linear-gradient(180deg, rgba(11, 15, 26, 0.16) 0%, rgba(11, 15, 26, 0.22) 26%, rgba(11, 15, 26, 0.38) 44%, rgba(11, 15, 26, 0.78) 60%, rgba(11, 15, 26, 0.94) 76%, rgba(11, 15, 26, 0.985) 100%),
-      radial-gradient(circle at top center, rgba(20, 184, 166, 0.05), transparent 36%) !important;
-    backdrop-filter: blur(2px);
+      linear-gradient(180deg, rgba(11, 15, 26, 0.12) 0%, rgba(11, 15, 26, 0.16) 18%, rgba(11, 15, 26, 0.24) 38%, rgba(11, 15, 26, 0.68) 66%, rgba(11, 15, 26, 0.92) 84%, rgba(11, 15, 26, 0.985) 100%),
+      radial-gradient(circle at top center, rgba(20, 184, 166, 0.04), transparent 36%) !important;
+    backdrop-filter: blur(1.5px);
   }
 
   .dashboard-chip {
