@@ -22,6 +22,20 @@ const STRATEGY_LABELS = {
   hedgefund: "Hedgefund",
 };
 
+const MAX_SIDEBAR_SLOTS = 10;
+const DEFAULT_SIDEBAR_ITEMS = [
+  { symbol: "AAPL", name: "Apple Inc" },
+  { symbol: "MSFT", name: "Microsoft" },
+  { symbol: "NVDA", name: "NVIDIA" },
+  { symbol: "AMZN", name: "Amazon" },
+  { symbol: "META", name: "Meta" },
+  { symbol: "TSLA", name: "Tesla" },
+  { symbol: "GOOGL", name: "Alphabet" },
+  { symbol: "AMD", name: "AMD" },
+  { symbol: "NFLX", name: "Netflix" },
+  { symbol: "SPY", name: "SPDR S&P 500 ETF" },
+];
+
 const state = {
   selectedSymbol: window.sessionStorage.getItem(STORAGE_KEYS.selectedSymbol) || "AAPL",
   selectedStrategy: window.sessionStorage.getItem(STORAGE_KEYS.selectedStrategy) || "hedgefund",
@@ -42,9 +56,12 @@ const state = {
   chartRetryAttempt: 0,
   chartRequestId: 0,
   chartInView: false,
+  chartInteractionEnabled: false,
   pendingChart: null,
   chartObserver: null,
   strategySnapshots: {},
+  suppressStrategyClick: false,
+  latestOverview: null,
 };
 
 const elements = {
@@ -59,6 +76,8 @@ const elements = {
   alertsSection: document.getElementById("alertsSection"),
   alertsMeta: document.getElementById("alertsMeta"),
   alertsList: document.getElementById("alertsList"),
+  strategyToggle: document.getElementById("strategyToggle"),
+  strategyToggleThumb: document.getElementById("strategyToggleThumb"),
   strategyButtons: Array.from(document.querySelectorAll(".strategy-button")),
   logoutButton: document.getElementById("logoutButton"),
   refreshButton: document.getElementById("refreshButton"),
@@ -69,6 +88,7 @@ const elements = {
   watchlistMeta: document.getElementById("watchlistMeta"),
   watchlistBody: document.getElementById("watchlistBody"),
   watchlistSection: document.getElementById("watchlistSection"),
+  decisionRail: document.getElementById("decisionRail"),
   favoritesMeta: document.getElementById("favoritesMeta"),
   favoritesBody: document.getElementById("favoritesBody"),
   selectedSymbolSection: document.getElementById("selectedSymbolSection"),
@@ -76,6 +96,7 @@ const elements = {
   selectedSymbolName: document.getElementById("selectedSymbolName"),
   selectedCompanyName: document.getElementById("selectedCompanyName"),
   changeBadge: document.getElementById("changeBadge"),
+  selectedFavoriteButton: document.getElementById("selectedFavoriteButton"),
   metricPrice: document.getElementById("metricPrice"),
   metricHigh: document.getElementById("metricHigh"),
   metricLow: document.getElementById("metricLow"),
@@ -106,8 +127,10 @@ const elements = {
   stopLossReason: document.getElementById("stopLossReason"),
   warningsList: document.getElementById("warningsList"),
   chartSection: document.getElementById("chartSection"),
+  tradingviewChartFrame: document.getElementById("tradingviewChartFrame"),
   chartSymbolBadge: document.getElementById("chartSymbolBadge"),
   tradingviewChart: document.getElementById("tradingviewChart"),
+  chartInteractionGuard: document.getElementById("chartInteractionGuard"),
   companyLogo: document.getElementById("companyLogo"),
   companyHeadline: document.getElementById("companyHeadline"),
   companyExchange: document.getElementById("companyExchange"),
@@ -591,6 +614,7 @@ function renderAlertsLoading() {
       `,
     )
     .join("");
+  requestAnimationFrame(syncCompanySectionAlignment);
 }
 
 function renderAlerts(alerts) {
@@ -606,6 +630,7 @@ function renderAlerts(alerts) {
         <p class="mt-2 text-sm leading-6 text-slate-400">The app is watching your watchlist for BUY, SELL and RSI trigger events.</p>
       </article>
     `;
+    requestAnimationFrame(syncCompanySectionAlignment);
     return;
   }
 
@@ -627,6 +652,7 @@ function renderAlerts(alerts) {
       `;
     })
     .join("");
+  requestAnimationFrame(syncCompanySectionAlignment);
 }
 
 function renderAlertsWarning(message) {
@@ -637,6 +663,7 @@ function renderAlertsWarning(message) {
       <p class="mt-2 text-sm leading-6 text-slate-300">The backend is still syncing signals. Try again in a moment.</p>
     </article>
   `;
+  requestAnimationFrame(syncCompanySectionAlignment);
 }
 
 function queueAlertsRetry(forceRefresh = false, delayMs = 2500) {
@@ -847,6 +874,21 @@ function syncMobileFavoriteButton() {
   elements.mobileFavoriteButton.classList.toggle("mobile-quick-action-active", active);
 }
 
+function syncSelectedFavoriteButton() {
+  if (!elements.selectedFavoriteButton) {
+    return;
+  }
+  const active = isFavoriteSymbol(state.selectedSymbol);
+  elements.selectedFavoriteButton.textContent = active ? "★ Favorite" : "☆ Favorite";
+  elements.selectedFavoriteButton.className = active
+    ? "favorite-button favorite-active rounded-full border border-amber-300/30 bg-amber-300/12 px-4 py-2 text-sm font-semibold text-amber-200"
+    : "favorite-button rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300";
+  elements.selectedFavoriteButton.setAttribute(
+    "aria-label",
+    active ? "Remove selected symbol from favorites" : "Add selected symbol to favorites",
+  );
+}
+
 function showPortfolioSheetLoading() {
   elements.portfolioSheetSummary.innerHTML = `
     <div class="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
@@ -979,6 +1021,68 @@ function isFavoriteSymbol(symbol) {
   return state.favoriteSymbols.has(String(symbol || "").toUpperCase());
 }
 
+function buildSidebarItemFromOverview(overview) {
+  return {
+    symbol: overview.symbol,
+    name: overview.name || overview.symbol,
+    price: Number(overview.price || 0),
+    change_percent: Number(overview.change_percent || 0),
+  };
+}
+
+function upsertWatchlistItem(nextItem, options = {}) {
+  if (!nextItem?.symbol) {
+    return;
+  }
+  const symbol = String(nextItem.symbol).toUpperCase();
+  const existingIndex = state.watchlist.findIndex((item) => item.symbol === symbol);
+  if (existingIndex >= 0) {
+    state.watchlist[existingIndex] = {
+      ...state.watchlist[existingIndex],
+      ...nextItem,
+      symbol,
+      userAdded: state.watchlist[existingIndex].userAdded || Boolean(options.userAdded),
+    };
+    return;
+  }
+  state.watchlist = [...state.watchlist, { ...nextItem, symbol, userAdded: Boolean(options.userAdded) }];
+}
+
+function getDefaultSidebarItems(itemBySymbol) {
+  return DEFAULT_SIDEBAR_ITEMS.map((fallbackItem) => {
+    const liveItem = itemBySymbol.get(fallbackItem.symbol);
+    if (liveItem) {
+      return {
+        ...fallbackItem,
+        ...liveItem,
+        symbol: fallbackItem.symbol,
+      };
+    }
+    return {
+      ...fallbackItem,
+      price: null,
+      change_percent: null,
+      placeholder: true,
+    };
+  });
+}
+
+function getVisibleWatchlistItems(items) {
+  const normalizedItems = Array.isArray(items) ? items : [];
+  const itemBySymbol = new Map(normalizedItems.map((item) => [item.symbol, item]));
+  const favoriteItems = Array.from(state.favoriteSymbols)
+    .map((symbol) => itemBySymbol.get(symbol) || getDefaultSidebarItems(itemBySymbol).find((item) => item.symbol === symbol))
+    .filter(Boolean);
+  const defaultItems = getDefaultSidebarItems(itemBySymbol).filter((item) => !state.favoriteSymbols.has(item.symbol));
+  const adHocItems = normalizedItems.filter(
+    (item) =>
+      !state.favoriteSymbols.has(item.symbol) &&
+      !item.userAdded &&
+      !DEFAULT_SIDEBAR_ITEMS.some((defaultItem) => defaultItem.symbol === item.symbol),
+  );
+  return [...favoriteItems, ...defaultItems, ...adHocItems].slice(0, MAX_SIDEBAR_SLOTS);
+}
+
 function toggleFavorite(symbol) {
   const normalized = String(symbol || "").trim().toUpperCase();
   if (!normalized) {
@@ -987,12 +1091,20 @@ function toggleFavorite(symbol) {
   if (state.favoriteSymbols.has(normalized)) {
     state.favoriteSymbols.delete(normalized);
   } else {
+    if (state.favoriteSymbols.size >= MAX_SIDEBAR_SLOTS) {
+      showError("You can pin up to 10 favorites.");
+      return;
+    }
+    if (state.latestOverview && state.latestOverview.symbol === normalized) {
+      upsertWatchlistItem(buildSidebarItemFromOverview(state.latestOverview), { userAdded: true });
+    }
     state.favoriteSymbols.add(normalized);
   }
   persistFavoriteSymbols();
   renderWatchlist(state.watchlist);
   renderFavorites();
   syncMobileFavoriteButton();
+  syncSelectedFavoriteButton();
 }
 
 function renderFavoriteButton(symbol) {
@@ -1014,6 +1126,10 @@ function bindFavoriteButtons(scope = document) {
 }
 
 function renderFavorites() {
+  const favoritesSection = document.getElementById("favoritesSection");
+  if (favoritesSection) {
+    favoritesSection.hidden = true;
+  }
   const favoriteItems = state.watchlist.filter((item) => isFavoriteSymbol(item.symbol));
   elements.favoritesMeta.textContent = `${favoriteItems.length} saved`;
 
@@ -1069,7 +1185,7 @@ function hydrateDashboardFromCache() {
 
   if (Array.isArray(cachedWatchlist) && cachedWatchlist.length) {
     state.watchlist = cachedWatchlist;
-    elements.watchlistMeta.textContent = `${cachedWatchlist.length} symbols`;
+    elements.watchlistMeta.textContent = `${MAX_SIDEBAR_SLOTS}/${MAX_SIDEBAR_SLOTS} visible`;
     renderWatchlist(cachedWatchlist);
     renderFavorites();
   }
@@ -1092,6 +1208,13 @@ function hydrateDashboardFromCache() {
 }
 
 function renderStrategyButtons() {
+  const activeIndex = Math.max(
+    0,
+    elements.strategyButtons.findIndex((button) => button.dataset.strategy === state.selectedStrategy),
+  );
+  if (elements.strategyToggle) {
+    elements.strategyToggle.style.setProperty("--strategy-index", String(activeIndex));
+  }
   elements.strategyButtons.forEach((button) => {
     const active = button.dataset.strategy === state.selectedStrategy;
     button.className = [
@@ -1276,13 +1399,19 @@ async function loadAlerts(forceRefresh = false) {
 
 function renderLoadingWatchlist() {
   elements.watchlistBody.innerHTML = `
-    <div class="space-y-3">
-      ${Array.from({ length: 5 })
+    <div class="space-y-2">
+      ${Array.from({ length: MAX_SIDEBAR_SLOTS })
         .map(
           () => `
-            <div class="animate-pulse rounded-2xl border border-white/10 bg-slate-950/50 p-4">
-              <div class="h-4 w-20 rounded bg-white/10"></div>
-              <div class="mt-3 h-6 w-28 rounded bg-white/10"></div>
+            <div class="animate-pulse rounded-2xl border border-white/10 bg-slate-950/50 px-3 py-3">
+              <div class="flex items-center gap-3">
+                <div class="h-9 w-9 rounded-2xl bg-white/10"></div>
+                <div class="min-w-0 flex-1">
+                  <div class="h-3 w-16 rounded bg-white/10"></div>
+                  <div class="mt-2 h-3 w-24 rounded bg-white/10"></div>
+                </div>
+                <div class="h-8 w-8 rounded-2xl bg-white/10"></div>
+              </div>
             </div>
           `,
         )
@@ -1292,45 +1421,41 @@ function renderLoadingWatchlist() {
 }
 
 function renderWatchlist(items) {
-  elements.watchlistMeta.textContent = `${items.length} symbols`;
+  const visibleItems = getVisibleWatchlistItems(items);
+  elements.watchlistMeta.textContent = `${visibleItems.length}/${MAX_SIDEBAR_SLOTS} visible`;
   elements.watchlistBody.innerHTML = "";
 
-  items.forEach((item) => {
-    const tone = item.change_percent >= 0 ? "text-emerald-300" : "text-rose-300";
+  visibleItems.forEach((item) => {
+    const hasChange = typeof item.change_percent === "number" && !Number.isNaN(item.change_percent);
+    const hasPrice = typeof item.price === "number" && !Number.isNaN(item.price) && item.price > 0;
+    const tone = !hasChange ? "text-slate-500" : item.change_percent >= 0 ? "text-emerald-300" : "text-rose-300";
     const active = item.symbol === state.selectedSymbol;
     const card = document.createElement("button");
     card.type = "button";
     card.dataset.symbol = item.symbol;
     card.className = [
-      "w-full rounded-3xl border p-4 text-left transition",
+      "watchlist-slot w-full rounded-2xl border px-3 py-3 text-left transition",
       active
         ? "border-cyan-300/40 bg-cyan-300/10 shadow-lg shadow-cyan-500/10"
         : "border-white/10 bg-slate-950/50 hover:bg-slate-900/90",
     ].join(" ");
     card.innerHTML = `
-      <div class="flex items-start justify-between gap-4">
-        <div class="min-w-0 flex-1">
-          <div class="flex items-center gap-3">
-            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-sm font-bold text-white/90">
+      <div class="flex items-center gap-3">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-xs font-bold text-white/90">
               ${item.symbol.slice(0, 2)}
-            </div>
-            <div class="min-w-0">
-              <p class="truncate text-sm font-semibold tracking-tight">${item.symbol}</p>
-              <p class="mt-1 truncate text-xs text-slate-400">${item.name}</p>
-            </div>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center justify-between gap-3">
+            <p class="watchlist-symbol truncate text-sm font-semibold tracking-tight text-white">${item.symbol}</p>
+            <p class="watchlist-change text-xs font-medium ${tone}">${hasChange ? percent(item.change_percent) : "--"}</p>
           </div>
-          <div class="mt-4 flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-slate-500">
-            <span>Live Quote</span>
-            <span class="h-1 w-1 rounded-full bg-slate-600"></span>
-            <span>${active ? "Selected" : "Watchlist"}</span>
+          <div class="mt-1 flex items-center justify-between gap-3">
+            <p class="watchlist-name truncate text-[11px] text-slate-400">${item.name}</p>
+            <p class="watchlist-price text-sm font-semibold text-white">${hasPrice ? currency(item.price) : "--"}</p>
           </div>
         </div>
-        <div class="shrink-0 text-right">
-          <div class="mb-3 flex justify-end">
-            ${renderFavoriteButton(item.symbol)}
-          </div>
-          <p class="text-sm font-semibold text-white">${currency(item.price)}</p>
-          <p class="mt-1 text-xs font-medium ${tone}">${percent(item.change_percent)}</p>
+        <div class="shrink-0">
+          ${renderFavoriteButton(item.symbol)}
         </div>
       </div>
     `;
@@ -1382,6 +1507,10 @@ function queueTradingViewRender(symbol, exchange = "") {
 }
 
 function renderOverview(overview) {
+  state.latestOverview = overview;
+  if (isFavoriteSymbol(overview.symbol) || state.watchlist.some((item) => item.symbol === overview.symbol)) {
+    upsertWatchlistItem(buildSidebarItemFromOverview(overview));
+  }
   elements.selectedSymbolName.textContent = overview.symbol;
   elements.selectedCompanyName.textContent = overview.name;
   elements.chartSymbolBadge.textContent = overview.symbol;
@@ -1413,6 +1542,8 @@ function renderOverview(overview) {
   renderCompanyDetails(overview);
   writeCachedJson(STORAGE_KEYS.cachedOverview, overview);
   queueTradingViewRender(overview.symbol, overview.exchange);
+  syncSelectedFavoriteButton();
+  requestAnimationFrame(syncCompanySectionAlignment);
 }
 
 function renderOverviewFallback(symbol) {
@@ -1439,6 +1570,8 @@ function renderOverviewFallback(symbol) {
     share_outstanding: null,
   });
   queueTradingViewRender(symbol);
+  syncSelectedFavoriteButton();
+  requestAnimationFrame(syncCompanySectionAlignment);
 }
 
 function toTradingViewSymbol(symbol, exchange = "") {
@@ -1535,6 +1668,34 @@ function showTradingViewLoader(message = "Loading TradingView chart...") {
   elements.tradingviewChart.innerHTML = `<div class="tv-loader">${message}</div>`;
 }
 
+function setChartInteractionEnabled(enabled) {
+  state.chartInteractionEnabled = Boolean(enabled);
+  if (!elements.tradingviewChartFrame || !elements.chartInteractionGuard) {
+    return;
+  }
+  elements.tradingviewChartFrame.classList.toggle("chart-locked", !enabled);
+  elements.tradingviewChartFrame.classList.toggle("chart-interactive", enabled);
+  elements.chartInteractionGuard.textContent = enabled
+    ? "Chart active · move cursor out to lock"
+    : "Scroll-safe chart · click to interact";
+}
+
+function syncCompanySectionAlignment() {
+  if (!elements.decisionRail || !elements.companySection || !elements.selectedSymbolSection) {
+    return;
+  }
+
+  if (window.innerWidth < 1280) {
+    elements.companySection.style.removeProperty("--company-align-offset");
+    return;
+  }
+
+  const railTop = elements.decisionRail.getBoundingClientRect().top;
+  const selectedTop = elements.selectedSymbolSection.getBoundingClientRect().top;
+  const offset = Math.max(0, Math.round(selectedTop - railTop));
+  elements.companySection.style.setProperty("--company-align-offset", `${offset}px`);
+}
+
 function initChartObserver() {
   if (!elements.chartSection || !("IntersectionObserver" in window)) {
     state.chartInView = !isMobileViewport();
@@ -1562,6 +1723,7 @@ function initChartObserver() {
 
 function handleViewportFeatures() {
   state.chartInView = !isMobileViewport();
+  setChartInteractionEnabled(false);
   if (isMobileViewport()) {
     initChartObserver();
   } else if (state.pendingChart) {
@@ -1571,6 +1733,7 @@ function handleViewportFeatures() {
   }
   syncMobileFavoriteButton();
   renderMobileStrategyCards();
+  requestAnimationFrame(syncCompanySectionAlignment);
 }
 
 async function renderTradingView(symbol, exchange = "", requestId = state.chartRequestId) {
@@ -1635,11 +1798,12 @@ async function renderTradingView(symbol, exchange = "", requestId = state.chartR
     toolbar_bg: "#020617",
     container_id: "tradingviewChart",
   });
+  setChartInteractionEnabled(false);
 }
 
 async function loadWatchlist(forceRefresh = false) {
   renderLoadingWatchlist();
-  elements.watchlistMeta.textContent = "Syncing Finnhub...";
+  elements.watchlistMeta.textContent = `0/${MAX_SIDEBAR_SLOTS} visible`;
   const suffix = forceRefresh ? "?refresh=1" : "";
   const items = await api(`/api/dashboard/watchlist${suffix}`, {
     timeoutMs: 25000,
@@ -1868,6 +2032,28 @@ function bindApp() {
   renderStrategyButtons();
   handleViewportFeatures();
 
+  const applyStrategy = async (nextStrategy) => {
+    if (!nextStrategy || nextStrategy === state.selectedStrategy) {
+      return;
+    }
+    persistSelectedStrategy(nextStrategy);
+    renderStrategyButtons();
+    if (isAuthenticated()) {
+      loadAlerts(true).catch((error) => {
+        console.error("[frontend] alerts refresh failed", error);
+        const cachedAlerts = readCachedJson(STORAGE_KEYS.cachedAlerts);
+        if (Array.isArray(cachedAlerts) && cachedAlerts.length) {
+          renderAlerts(cachedAlerts);
+          elements.alertsMeta.textContent = "Showing cached alerts";
+        } else {
+          renderAlertsWarning("Retrying alerts...");
+        }
+        queueAlertsRetry(true);
+      });
+      await loadSymbol(state.selectedSymbol, true);
+    }
+  };
+
   elements.logoutButton.addEventListener("click", () => {
     setAuthenticated(false);
     showLoginOverlay();
@@ -1888,6 +2074,27 @@ function bindApp() {
     syncMobileFavoriteButton();
   });
 
+  elements.selectedFavoriteButton?.addEventListener("click", () => {
+    toggleFavorite(state.selectedSymbol);
+    syncSelectedFavoriteButton();
+  });
+
+  elements.chartInteractionGuard?.addEventListener("click", () => {
+    setChartInteractionEnabled(true);
+  });
+
+  elements.tradingviewChartFrame?.addEventListener("mouseleave", () => {
+    if (state.chartInteractionEnabled) {
+      setChartInteractionEnabled(false);
+    }
+  });
+
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && state.chartInteractionEnabled) {
+      setChartInteractionEnabled(false);
+    }
+  });
+
   elements.mobileAlertButton?.addEventListener("click", () => {
     elements.alertsSection?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
@@ -1901,28 +2108,99 @@ function bindApp() {
 
   elements.strategyButtons.forEach((button) => {
     button.addEventListener("click", async () => {
-      const nextStrategy = button.dataset.strategy;
-      if (!nextStrategy || nextStrategy === state.selectedStrategy) {
+      if (state.suppressStrategyClick) {
+        state.suppressStrategyClick = false;
         return;
       }
-      persistSelectedStrategy(nextStrategy);
-      renderStrategyButtons();
-      if (isAuthenticated()) {
-        loadAlerts(true).catch((error) => {
-          console.error("[frontend] alerts refresh failed", error);
-          const cachedAlerts = readCachedJson(STORAGE_KEYS.cachedAlerts);
-          if (Array.isArray(cachedAlerts) && cachedAlerts.length) {
-            renderAlerts(cachedAlerts);
-            elements.alertsMeta.textContent = "Showing cached alerts";
-          } else {
-            renderAlertsWarning("Retrying alerts...");
-          }
-          queueAlertsRetry(true);
-        });
-        await loadSymbol(state.selectedSymbol, true);
-      }
+      await applyStrategy(button.dataset.strategy);
     });
   });
+
+  if (elements.strategyToggle && elements.strategyToggleThumb && elements.strategyButtons.length) {
+    const dragState = {
+      pointerId: null,
+      step: 0,
+      startX: 0,
+      startOffset: 0,
+      moved: false,
+      startStrategy: null,
+    };
+
+    const resetThumb = () => {
+      elements.strategyToggleThumb.style.transform = "";
+      elements.strategyToggle.classList.remove("is-dragging");
+      renderStrategyButtons();
+    };
+
+    elements.strategyToggle.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse" && event.button !== 0) {
+        return;
+      }
+      dragState.startStrategy = event.target.closest(".strategy-button")?.dataset.strategy || null;
+      const rect = elements.strategyToggle.getBoundingClientRect();
+      const gap = parseFloat(getComputedStyle(elements.strategyToggle).getPropertyValue("--toggle-gap")) || 4;
+      const thumbWidth = (rect.width - gap * 4) / 3;
+      dragState.step = thumbWidth + gap;
+      dragState.pointerId = event.pointerId;
+      dragState.startX = event.clientX;
+      dragState.startOffset =
+        Math.max(
+          0,
+          elements.strategyButtons.findIndex((button) => button.dataset.strategy === state.selectedStrategy),
+        ) * dragState.step;
+      dragState.moved = false;
+      elements.strategyToggle.classList.add("is-dragging");
+      elements.strategyToggle.setPointerCapture(event.pointerId);
+    });
+
+    elements.strategyToggle.addEventListener("pointermove", (event) => {
+      if (dragState.pointerId !== event.pointerId) {
+        return;
+      }
+      const delta = event.clientX - dragState.startX;
+      if (Math.abs(delta) > 6) {
+        dragState.moved = true;
+      }
+      const maxOffset = dragState.step * (elements.strategyButtons.length - 1);
+      const nextOffset = Math.min(maxOffset, Math.max(0, dragState.startOffset + delta));
+      if (dragState.moved) {
+        elements.strategyToggleThumb.style.transform = `translateX(${nextOffset}px)`;
+      }
+    });
+
+    const finishDrag = async (event) => {
+      if (dragState.pointerId !== event.pointerId) {
+        return;
+      }
+      const delta = event.clientX - dragState.startX;
+      const maxIndex = elements.strategyButtons.length - 1;
+      const unclampedIndex = Math.round((dragState.startOffset + delta) / Math.max(dragState.step, 1));
+      const nextIndex = Math.min(maxIndex, Math.max(0, unclampedIndex));
+      const nextStrategy = elements.strategyButtons[nextIndex]?.dataset.strategy;
+      dragState.pointerId = null;
+      elements.strategyToggle.releasePointerCapture(event.pointerId);
+      resetThumb();
+      if (!dragState.moved && dragState.startStrategy) {
+        state.suppressStrategyClick = true;
+        await applyStrategy(dragState.startStrategy);
+      } else if (dragState.moved && nextStrategy) {
+        state.suppressStrategyClick = true;
+        await applyStrategy(nextStrategy);
+      }
+      dragState.startStrategy = null;
+    };
+
+    elements.strategyToggle.addEventListener("pointerup", finishDrag);
+    elements.strategyToggle.addEventListener("pointercancel", (event) => {
+      if (dragState.pointerId !== event.pointerId) {
+        return;
+      }
+      dragState.pointerId = null;
+      elements.strategyToggle.releasePointerCapture(event.pointerId);
+      resetThumb();
+      dragState.startStrategy = null;
+    });
+  }
 
   elements.searchForm.addEventListener("submit", async (event) => {
     event.preventDefault();
