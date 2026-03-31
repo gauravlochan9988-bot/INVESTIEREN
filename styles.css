@@ -331,6 +331,10 @@ body {
   background-color: var(--color-surface-2);
 }
 
+#authHeroImage {
+  object-position: center center;
+}
+
 #watchlistBody button {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
@@ -541,6 +545,17 @@ body {
 
   #authOverlay h1 {
     font-size: 2rem;
+  }
+
+  #authHeroImage {
+    object-position: center 32%;
+    opacity: 0.42 !important;
+  }
+
+  #authOverlayShade {
+    background:
+      linear-gradient(180deg, rgba(11, 15, 26, 0.18) 0%, rgba(11, 15, 26, 0.38) 28%, rgba(11, 15, 26, 0.82) 70%, rgba(11, 15, 26, 0.96) 100%),
+      radial-gradient(circle at top center, rgba(20, 184, 166, 0.08), transparent 36%) !important;
   }
 
   .dashboard-chip {
