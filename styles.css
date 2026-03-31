@@ -325,7 +325,7 @@ body {
 
   #appShell > div {
     padding: 10px;
-    padding-bottom: 92px;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 168px);
   }
 
   #alertsSection {
@@ -527,25 +527,26 @@ body {
 
   #mobileQuickActions {
     position: fixed;
-    inset-inline: 10px;
-    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
     z-index: 45;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
+    gap: 8px;
     border: 1px solid rgba(148, 163, 184, 0.14);
     border-radius: 22px;
     background: rgba(2, 6, 23, 0.92);
     box-shadow: 0 20px 40px rgba(2, 6, 23, 0.42);
     backdrop-filter: blur(18px);
-    padding: 8px;
+    padding: 6px;
   }
 
   .mobile-quick-action {
     display: grid;
     place-items: center;
     gap: 4px;
-    min-height: 58px;
+    min-height: 54px;
     border-radius: 16px;
     border: 1px solid rgba(148, 163, 184, 0.1);
     background: rgba(255, 255, 255, 0.04);
