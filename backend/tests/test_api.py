@@ -102,9 +102,10 @@ def test_analyze_endpoint_returns_decision_payload(client):
     assert payload["recommendation"] in {"BUY", "HOLD", "SELL"}
     assert isinstance(payload["score"], int)
     assert -100 <= payload["score"] <= 100
-    assert payload["data_quality"] in {"FULL", "PARTIAL", "NO DATA"}
+    assert payload["data_quality"] in {"FULL", "PARTIAL", "NO_DATA"}
     assert isinstance(payload["data_quality_reason"], str)
     assert payload["data_quality_reason"]
+    assert payload["risk"] == payload["risk_level"]
     assert 0 <= payload["probability_up"] <= 1
     assert 0 <= payload["probability_down"] <= 1
     assert isinstance(payload["warnings"], list)
@@ -200,7 +201,7 @@ def test_analyze_endpoint_returns_no_data_status_when_live_market_data_is_missin
     assert payload["strategy"] == "simple"
     assert payload["no_data"] is True
     assert payload["no_data_reason"] == "No live market data available."
-    assert payload["data_quality"] == "NO DATA"
+    assert payload["data_quality"] == "NO_DATA"
     assert payload["data_quality_reason"] == "No live market data available."
     assert payload["recommendation"] is None
     assert payload["signals"] is None
@@ -234,7 +235,7 @@ def test_analyze_endpoint_returns_partial_when_only_short_history_exists(client)
     assert response.status_code == 200
     payload = response.json()
     assert payload["no_data"] is True
-    assert payload["data_quality"] == "NO DATA"
+    assert payload["data_quality"] == "NO_DATA"
     assert "Not enough market history" in payload["data_quality_reason"]
 
 

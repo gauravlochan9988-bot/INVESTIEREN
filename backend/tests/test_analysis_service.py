@@ -267,7 +267,7 @@ def test_analyze_symbol_returns_no_data_status_when_live_market_data_is_missing(
     assert result.symbol == "AAPL"
     assert result.strategy == "hedgefund"
     assert result.no_data is True
-    assert result.data_quality == "NO DATA"
+    assert result.data_quality == "NO_DATA"
 
 
 def test_analyze_symbol_marks_partial_data_when_history_window_is_too_short():
@@ -296,7 +296,7 @@ def test_analyze_symbol_marks_partial_data_when_history_window_is_too_short():
 
     assert result.symbol == "AAPL"
     assert result.no_data is True
-    assert result.data_quality == "NO DATA"
+    assert result.data_quality == "NO_DATA"
     assert "Not enough market history" in result.data_quality_reason
 
 
@@ -364,7 +364,7 @@ def test_data_quality_returns_no_data_when_too_many_required_inputs_are_missing(
         ),
     )
 
-    assert decision.level == "NO DATA"
+    assert decision.level == "NO_DATA"
     assert decision.can_run_strategy is False
     assert "only 2/6 required inputs" in decision.reason
 

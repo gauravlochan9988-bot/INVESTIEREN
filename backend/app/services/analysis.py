@@ -468,7 +468,7 @@ class AnalysisService:
         if available_count < 4:
             missing = ", ".join(missing_inputs) or "core market inputs"
             return DataQualityDecision(
-                level="NO DATA",
+                level="NO_DATA",
                 reason=(
                     f"Not enough data for meaningful analysis: only {available_count}/6 required inputs are available. "
                     f"Missing {missing}."
@@ -1001,7 +1001,7 @@ class AnalysisService:
             probability_down=None,
             confidence=None,
             risk_level=None,
-            data_quality="NO DATA",
+            data_quality="NO_DATA",
             data_quality_reason=message,
             macro=None,
             no_trade=True,

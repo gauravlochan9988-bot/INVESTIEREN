@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, computed_field
 
 Recommendation = Literal["BUY", "HOLD", "SELL"]
 RiskLevel = Literal["LOW", "MEDIUM", "HIGH"]
-DataQuality = Literal["FULL", "PARTIAL", "NO DATA"]
+DataQuality = Literal["FULL", "PARTIAL", "NO_DATA"]
 SignalStatus = Literal["BULLISH", "NEUTRAL", "BEARISH"]
 Timeframe = Literal["short_term", "mid_term", "unclear"]
 MacroTrend = Literal["bullish", "neutral", "bearish"]
@@ -69,8 +69,8 @@ class AnalysisResponse(BaseModel):
     probability_down: Optional[float] = None
     confidence: Optional[float] = None
     risk_level: Optional[RiskLevel] = None
-    data_quality: Optional[DataQuality] = None
-    data_quality_reason: Optional[str] = None
+    data_quality: DataQuality
+    data_quality_reason: str
     macro: Optional[MacroContext] = None
     no_trade: bool
     no_trade_reason: str
@@ -122,6 +122,11 @@ class AnalysisResponse(BaseModel):
     @property
     def stop_loss(self) -> Optional[float]:
         return self.stop_loss_level
+
+    @computed_field
+    @property
+    def risk(self) -> Optional[RiskLevel]:
+        return self.risk_level
 
     @computed_field
     @property
