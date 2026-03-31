@@ -74,7 +74,7 @@ def test_simple_strategy_now_triggers_buy_on_plus_one_score(analysis_service):
     assert result.recommendation == "BUY"
     assert result.score == 1
     assert result.probability_up >= 0.68
-    assert result.data_quality == "FULL"
+    assert result.data_quality == "PARTIAL"
     assert result.no_trade is False
     assert result.entry_signal is False
     assert result.exit_signal is False
@@ -383,13 +383,14 @@ def test_data_quality_returns_no_data_when_too_many_required_inputs_are_missing(
     assert "only 2/5 core inputs" in decision.reason
 
 
-def test_confidence_is_boosted_for_full_data_and_reduced_for_partial_data(analysis_service):
+def test_confidence_preserves_full_data_and_reduces_partial_data(analysis_service):
     full_confidence = analysis_service._apply_data_quality_to_confidence(60.0, "FULL")
     partial_confidence = analysis_service._apply_data_quality_to_confidence(60.0, "PARTIAL")
     no_data_confidence = analysis_service._apply_data_quality_to_confidence(60.0, "NO_DATA")
 
-    assert full_confidence > 60.0
+    assert full_confidence == 60.0
     assert partial_confidence < 60.0
+    assert 30.0 <= partial_confidence <= 42.0
     assert no_data_confidence == 0.0
 
 
@@ -482,9 +483,9 @@ def test_strategies_return_distinct_results_without_overwriting_each_other(analy
     assert ai.recommendation == "BUY"
     assert hedgefund.recommendation == "BUY"
     assert simple.score != ai.score
-    assert simple.data_quality == "FULL"
-    assert ai.data_quality == "FULL"
-    assert hedgefund.data_quality == "FULL"
+    assert simple.data_quality == "PARTIAL"
+    assert ai.data_quality == "PARTIAL"
+    assert hedgefund.data_quality == "PARTIAL"
     assert simple.no_trade is False
     assert ai.no_trade is False
     assert hedgefund.no_trade is False

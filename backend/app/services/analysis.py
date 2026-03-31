@@ -203,8 +203,6 @@ class AnalysisService:
                 data_quality_decision.reason,
                 strategy=strategy,
             )
-        data_quality = data_quality_decision.level
-        data_quality_reason = data_quality_decision.reason
         context = {
             "latest_price": latest_price,
             "sma20": sma20,
@@ -224,6 +222,15 @@ class AnalysisService:
             "signals": signals,
         }
         decision = self._strategy_decision(strategy, context)
+        data_quality_decision = self._refine_data_quality_for_signals(
+            strategy=strategy,
+            score=int(decision["score"]),
+            conflicts=decision["conflicts"],
+            recommendation=decision["recommendation"],
+            base_decision=data_quality_decision,
+        )
+        data_quality = data_quality_decision.level
+        data_quality_reason = data_quality_decision.reason
         decision["confidence"] = self._apply_data_quality_to_confidence(
             float(decision["confidence"]),
             data_quality,
@@ -528,16 +535,56 @@ class AnalysisService:
             can_run_strategy=False,
         )
 
+    def _refine_data_quality_for_signals(
+        self,
+        *,
+        strategy: Strategy,
+        score: int,
+        conflicts: Sequence[str],
+        recommendation: Recommendation,
+        base_decision: DataQualityDecision,
+    ) -> DataQualityDecision:
+        if base_decision.level == "NO_DATA":
+            return base_decision
+
+        partial_reasons: list[str] = []
+        if conflicts:
+            partial_reasons.append("signals are conflicting")
+
+        if strategy == "simple":
+            if abs(score) <= 2:
+                partial_reasons.append("the simple score is still in a middle range")
+        elif abs(score) < 45:
+            partial_reasons.append("the weighted score is still in a middle range")
+
+        if recommendation == "HOLD" and abs(score) > 0:
+            partial_reasons.append("the setup is not clean enough for a full-strength signal")
+
+        if not partial_reasons:
+            return base_decision
+
+        reason_prefix = base_decision.reason
+        if base_decision.level == "FULL":
+            reason_prefix = "Partial data quality: core inputs are available, but signal quality is mixed."
+
+        return DataQualityDecision(
+            level="PARTIAL",
+            reason=f"{reason_prefix} Confidence is reduced because {' and '.join(partial_reasons)}.",
+            can_run_strategy=True,
+        )
+
     def _apply_data_quality_to_confidence(
         self, confidence: float, data_quality: DataQuality
     ) -> float:
         if data_quality == "NO_DATA":
             return 0.0
         if data_quality == "FULL":
-            boosted = confidence + 4
-            return round(self._clamp(boosted, 20, 95), 1)
-        reduced = max(confidence * 0.72, confidence - 18)
-        return round(self._clamp(reduced, 10, 85), 1)
+            return round(self._clamp(confidence, 20, 95), 1)
+
+        normalized = self._clamp(confidence / 100, 0.0, 1.0)
+        reduction_factor = 0.5 + (normalized * 0.2)
+        reduced = confidence * reduction_factor
+        return round(self._clamp(reduced, 12, 70), 1)
 
     def _strategy_decision(self, strategy: Strategy, context: dict) -> dict[str, object]:
         if strategy == "simple":
