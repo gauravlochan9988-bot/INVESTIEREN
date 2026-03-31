@@ -285,19 +285,31 @@ function dataQualityInfo(analysis) {
     };
   }
 
-  const label = analysis.data_quality || (analysis.no_data ? "NO_DATA" : "--");
-  const tone =
-    label === "FULL"
-      ? "text-emerald-300"
-      : label === "PARTIAL"
-        ? "text-amber-300"
-        : label === "NO_DATA"
-          ? "text-slate-200"
-        : "text-slate-200";
+  const value = analysis.data_quality || (analysis.no_data ? "NO_DATA" : "--");
+  const presentation =
+    value === "FULL"
+      ? {
+          label: "Full Data",
+          tone: "text-emerald-300",
+        }
+      : value === "PARTIAL"
+        ? {
+            label: "Limited Data",
+            tone: "text-amber-300",
+          }
+        : value === "NO_DATA"
+          ? {
+              label: "No Data",
+              tone: "text-slate-200",
+            }
+          : {
+              label: "--",
+              tone: "text-slate-200",
+            };
 
   return {
-    label: label === "NO_DATA" ? "NO DATA" : label,
-    tone,
+    label: presentation.label,
+    tone: presentation.tone,
     reason:
       analysis.data_quality_reason ||
       analysis.no_data_reason ||
@@ -612,9 +624,7 @@ function renderAnalysis(analysis) {
 
   if (!analysis || analysis.no_data) {
     const reason = analysis?.no_data_reason || "No live market data available.";
-    const noDataQuality = analysis?.data_quality || "NO_DATA";
-    const noDataQualityTone =
-      noDataQuality === "PARTIAL" ? "text-amber-300" : "text-slate-200";
+    const noDataQuality = dataQualityInfo(analysis);
     elements.recommendationCard.className = "rounded-[28px] border border-rose-400/25 bg-rose-500/10 p-5";
     elements.recommendationValue.className = "text-5xl font-black tracking-[-0.05em] text-rose-200";
     elements.recommendationValue.textContent = "NO DATA";
@@ -628,9 +638,9 @@ function renderAnalysis(analysis) {
     elements.riskValue.className = "mt-3 text-2xl font-semibold text-slate-200";
     elements.riskValue.textContent = "--";
     elements.timeframeValue.textContent = "--";
-    elements.coverageValue.className = `mt-3 text-2xl font-semibold ${noDataQualityTone}`;
-    elements.coverageValue.textContent = noDataQuality === "NO_DATA" ? "NO DATA" : noDataQuality;
-    elements.coverageReason.textContent = analysis.data_quality_reason || reason;
+    elements.coverageValue.className = `mt-3 text-2xl font-semibold ${noDataQuality.tone}`;
+    elements.coverageValue.textContent = noDataQuality.label;
+    elements.coverageReason.textContent = noDataQuality.reason;
     elements.entryValue.textContent = "NO";
     elements.entryReason.textContent = reason;
     elements.exitValue.textContent = "NO";
