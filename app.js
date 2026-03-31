@@ -610,6 +610,9 @@ function renderAnalysis(analysis) {
 
   if (!analysis || analysis.no_data) {
     const reason = analysis?.no_data_reason || "No live market data available.";
+    const noDataQuality = analysis?.data_quality || "NO DATA";
+    const noDataQualityTone =
+      noDataQuality === "PARTIAL" ? "text-amber-300" : "text-slate-200";
     elements.recommendationCard.className = "rounded-[28px] border border-rose-400/25 bg-rose-500/10 p-5";
     elements.recommendationValue.className = "text-5xl font-black tracking-[-0.05em] text-rose-200";
     elements.recommendationValue.textContent = "NO DATA";
@@ -623,8 +626,8 @@ function renderAnalysis(analysis) {
     elements.riskValue.className = "mt-3 text-2xl font-semibold text-slate-200";
     elements.riskValue.textContent = "--";
     elements.timeframeValue.textContent = "--";
-    elements.coverageValue.className = "mt-3 text-2xl font-semibold text-amber-300";
-    elements.coverageValue.textContent = analysis.data_quality || "PARTIAL";
+    elements.coverageValue.className = `mt-3 text-2xl font-semibold ${noDataQualityTone}`;
+    elements.coverageValue.textContent = noDataQuality;
     elements.coverageReason.textContent = analysis.data_quality_reason || reason;
     elements.entryValue.textContent = "NO";
     elements.entryReason.textContent = reason;

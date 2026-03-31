@@ -15,6 +15,16 @@ class FailingMarketDataProvider:
         raise ExternalServiceError("Live market data provider is currently unavailable.")
 
 
+class ShortHistoryMarketDataProvider:
+    def fetch_quotes(self, symbols, names):
+        raise ExternalServiceError("Quotes are not needed for this test.")
+
+    def fetch_history(self, symbol, period):
+        from tests.helpers import build_history
+
+        return build_history(start=100.0, drift=0.4)[:40]
+
+
 def test_stocks_endpoint_returns_watchlist(client):
     response = client.get("/api/stocks")
 
@@ -190,10 +200,42 @@ def test_analyze_endpoint_returns_no_data_status_when_live_market_data_is_missin
     assert payload["strategy"] == "simple"
     assert payload["no_data"] is True
     assert payload["no_data_reason"] == "No live market data available."
-    assert payload["data_quality"] == "PARTIAL"
+    assert payload["data_quality"] is None
     assert payload["data_quality_reason"] == "No live market data available."
     assert payload["recommendation"] is None
     assert payload["signals"] is None
+
+
+def test_analyze_endpoint_returns_partial_when_only_short_history_exists(client):
+    analysis_service = AnalysisService(
+        market_data_service=MarketDataService(
+            provider=ShortHistoryMarketDataProvider(),
+            allowed_symbols={"AAPL": "Apple"},
+            ttl_seconds=3600,
+        ),
+        macro_context_service=MacroContextService(
+            provider=FakeMarketDataProvider(),
+            ttl_seconds=3600,
+            market_symbol="SPY",
+            usd_symbol="DXY",
+            interest_rate_effect="neutral",
+        ),
+        news_sentiment_service=NewsSentimentService(
+            provider=FakeNewsProvider(),
+            ttl_seconds=3600,
+            headline_limit=8,
+        ),
+        summary_service=FakeSummaryService(),
+    )
+    client.app.dependency_overrides[get_analysis_service] = lambda: analysis_service
+
+    response = client.post("/api/analyze", json={"symbol": "AAPL", "strategy": "simple"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["no_data"] is True
+    assert payload["data_quality"] == "PARTIAL"
+    assert "At least 60 are needed" in payload["data_quality_reason"]
 
 
 def test_strategy_query_returns_selected_strategy_without_frontend_overrides(client):

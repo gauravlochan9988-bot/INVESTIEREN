@@ -19,6 +19,14 @@ class FailingMarketDataProvider:
         raise ExternalServiceError("Live market data provider is currently unavailable.")
 
 
+class ShortHistoryMarketDataProvider:
+    def fetch_quotes(self, symbols, names):
+        raise ExternalServiceError("Quotes are not needed for this test.")
+
+    def fetch_history(self, symbol, period):
+        return build_history(start=100.0, drift=0.4)[:40]
+
+
 def test_buy_setup_can_still_block_fresh_entry_when_overbought(analysis_service):
     history = build_history(start=100.0, drift=1.1, noise=0.003)
 
@@ -258,6 +266,37 @@ def test_analyze_symbol_returns_no_data_status_when_live_market_data_is_missing(
     assert result.symbol == "AAPL"
     assert result.strategy == "hedgefund"
     assert result.no_data is True
+    assert result.data_quality is None
+
+
+def test_analyze_symbol_marks_partial_data_when_history_window_is_too_short():
+    analysis_service = AnalysisService(
+        market_data_service=MarketDataService(
+            provider=ShortHistoryMarketDataProvider(),
+            allowed_symbols={"AAPL": "Apple"},
+            ttl_seconds=3600,
+        ),
+        macro_context_service=MacroContextService(
+            provider=FakeMarketDataProvider(),
+            ttl_seconds=3600,
+            market_symbol="SPY",
+            usd_symbol="DXY",
+            interest_rate_effect="neutral",
+        ),
+        news_sentiment_service=NewsSentimentService(
+            provider=FakeNewsProvider(),
+            ttl_seconds=3600,
+            headline_limit=8,
+        ),
+        summary_service=FakeSummaryService(),
+    )
+
+    result = analysis_service.analyze_symbol("AAPL")
+
+    assert result.symbol == "AAPL"
+    assert result.no_data is True
+    assert result.data_quality == "PARTIAL"
+    assert "At least 60 are needed" in result.data_quality_reason
 
 
 def test_analyze_symbol_reuses_cached_response_without_reloading_history():

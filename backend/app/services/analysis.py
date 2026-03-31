@@ -78,6 +78,15 @@ class AnalysisService:
             history = self.market_data_service.get_history(
                 normalized_symbol, "1y", force_refresh=force_refresh
             )
+            if len(history) < MIN_HISTORY_POINTS:
+                return self.analysis_cache.set(
+                    cache_key,
+                    self._partial_data_response(
+                        normalized_symbol,
+                        available_points=len(history),
+                        strategy=strategy,
+                    ),
+                )
             return self.analysis_cache.set(
                 cache_key,
                 self.analyze(normalized_symbol, history, strategy=strategy),
@@ -100,16 +109,7 @@ class AnalysisService:
                 ),
             )
         except ValidationError as error:
-            if "At least 60 daily closes are required" not in error.message:
-                raise
-            return self.analysis_cache.set(
-                cache_key,
-                self._no_data_response(
-                    normalized_symbol,
-                    "No live market data available for a complete analysis window.",
-                    strategy=strategy,
-                ),
-            )
+            raise
 
     def analyze(
         self,
@@ -952,7 +952,50 @@ class AnalysisService:
         strategy: Strategy,
     ) -> AnalysisResponse:
         normalized_symbol = symbol.strip().upper()
-        message = "No live market data available."
+        message = reason or "No live market data available."
+        return AnalysisResponse(
+            symbol=normalized_symbol,
+            strategy=strategy,
+            no_data=True,
+            no_data_reason=message,
+            recommendation=None,
+            score=None,
+            probability_up=None,
+            probability_down=None,
+            confidence=None,
+            risk_level=None,
+            data_quality=None,
+            data_quality_reason=message,
+            macro=None,
+            no_trade=True,
+            no_trade_reason=message,
+            entry_signal=False,
+            entry_reason=message,
+            exit_signal=False,
+            exit_reason=message,
+            stop_loss_level=None,
+            stop_loss_reason=message,
+            position_size_percent=None,
+            position_size_reason=message,
+            timeframe=None,
+            warnings=[],
+            summary=message,
+            generated_at=datetime.now(timezone.utc),
+            signals=None,
+        )
+
+    def _partial_data_response(
+        self,
+        symbol: str,
+        *,
+        available_points: int,
+        strategy: Strategy,
+    ) -> AnalysisResponse:
+        normalized_symbol = symbol.strip().upper()
+        message = (
+            f"Partial market history only: {available_points} daily closes are available. "
+            "At least 60 are needed for a full analysis."
+        )
         return AnalysisResponse(
             symbol=normalized_symbol,
             strategy=strategy,
