@@ -311,8 +311,10 @@ body {
 }
 
 #brandHomeButton > div {
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-2)) !important;
-  box-shadow: 0 12px 28px var(--glow-primary);
+  background: linear-gradient(180deg, rgba(51, 65, 85, 0.95), rgba(30, 41, 59, 0.92)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 8px 18px rgba(2, 6, 23, 0.14);
 }
 
 #selectedStrategyBadge {
@@ -849,6 +851,11 @@ body {
     gap: 0.8rem;
     justify-content: flex-start;
     align-items: center;
+    padding: 0.72rem 0.9rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1.1rem;
+    background: linear-gradient(180deg, rgba(17, 24, 39, 0.9), rgba(15, 23, 36, 0.76));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
 
   #brandHomeButton > div:first-child {
@@ -876,6 +883,13 @@ body {
     font-size: 0.68rem;
     line-height: 1.25;
     letter-spacing: 0.02em;
+    color: var(--color-text-muted) !important;
+    text-shadow: none !important;
+  }
+
+  #brandHomeButton h1 {
+    color: var(--color-text) !important;
+    text-shadow: none !important;
   }
 
   #sidebarBrandBlock {
