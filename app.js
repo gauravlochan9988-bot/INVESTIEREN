@@ -9,6 +9,7 @@ const STORAGE_KEYS = {
   authenticated: "investieren:authenticated",
   selectedSymbol: "investieren:selectedSymbol",
   selectedStrategy: "investieren:selectedStrategy",
+  favoriteSymbols: "investieren:favoriteSymbols",
   cachedWatchlist: "investieren:cachedWatchlist",
   cachedOverview: "investieren:cachedOverview",
   cachedAnalysis: "investieren:cachedAnalysis",
@@ -33,6 +34,7 @@ const state = {
   searchDebounceId: null,
   activeRequest: 0,
   latestAnalysis: null,
+  favoriteSymbols: new Set(),
 };
 
 const elements = {
@@ -55,6 +57,8 @@ const elements = {
   searchSuggestions: document.getElementById("searchSuggestions"),
   watchlistMeta: document.getElementById("watchlistMeta"),
   watchlistBody: document.getElementById("watchlistBody"),
+  favoritesMeta: document.getElementById("favoritesMeta"),
+  favoritesBody: document.getElementById("favoritesBody"),
   selectedSymbolName: document.getElementById("selectedSymbolName"),
   selectedCompanyName: document.getElementById("selectedCompanyName"),
   changeBadge: document.getElementById("changeBadge"),
@@ -330,17 +334,21 @@ function renderSearchSuggestions(results, query) {
           class="search-suggestion flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left transition hover:bg-white/5"
           data-symbol="${item.symbol}"
         >
-          <div>
+          <div class="min-w-0">
             <p class="text-sm font-semibold text-white">${item.symbol}</p>
             <p class="mt-1 text-xs text-slate-400">${item.name}</p>
           </div>
-          <span class="text-xs uppercase tracking-[0.24em] text-slate-500">Open</span>
+          <div class="ml-3 flex items-center gap-2">
+            ${renderFavoriteButton(item.symbol)}
+            <span class="text-xs uppercase tracking-[0.24em] text-slate-500">Open</span>
+          </div>
         </button>
       `,
     )
     .join("");
   elements.searchSuggestions.classList.remove("hidden");
 
+  bindFavoriteButtons(elements.searchSuggestions);
   elements.searchSuggestions.querySelectorAll(".search-suggestion").forEach((button) => {
     button.addEventListener("click", async () => {
       const symbol = button.dataset.symbol;
@@ -628,16 +636,114 @@ function writeCachedJson(key, value) {
   }
 }
 
+function readFavoriteSymbols() {
+  const raw = readCachedJson(STORAGE_KEYS.favoriteSymbols);
+  if (!Array.isArray(raw)) {
+    return new Set();
+  }
+  return new Set(raw.filter((value) => typeof value === "string").map((value) => value.toUpperCase()));
+}
+
+function persistFavoriteSymbols() {
+  writeCachedJson(STORAGE_KEYS.favoriteSymbols, Array.from(state.favoriteSymbols));
+}
+
+function isFavoriteSymbol(symbol) {
+  return state.favoriteSymbols.has(String(symbol || "").toUpperCase());
+}
+
+function toggleFavorite(symbol) {
+  const normalized = String(symbol || "").trim().toUpperCase();
+  if (!normalized) {
+    return;
+  }
+  if (state.favoriteSymbols.has(normalized)) {
+    state.favoriteSymbols.delete(normalized);
+  } else {
+    state.favoriteSymbols.add(normalized);
+  }
+  persistFavoriteSymbols();
+  renderWatchlist(state.watchlist);
+  renderFavorites();
+}
+
+function renderFavoriteButton(symbol) {
+  const active = isFavoriteSymbol(symbol);
+  const label = active ? "Remove favorite" : "Add favorite";
+  const classes = active
+    ? "favorite-button favorite-active rounded-full border border-amber-300/30 bg-amber-300/12 px-3 py-2 text-amber-200"
+    : "favorite-button rounded-full border border-white/10 bg-white/5 px-3 py-2 text-slate-300";
+  return `<button type="button" class="${classes}" data-favorite-symbol="${symbol}" aria-label="${label}">${active ? "★" : "☆"}</button>`;
+}
+
+function bindFavoriteButtons(scope = document) {
+  scope.querySelectorAll("[data-favorite-symbol]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleFavorite(button.dataset.favoriteSymbol);
+    });
+  });
+}
+
+function renderFavorites() {
+  const favoriteItems = state.watchlist.filter((item) => isFavoriteSymbol(item.symbol));
+  elements.favoritesMeta.textContent = `${favoriteItems.length} saved`;
+
+  if (!favoriteItems.length) {
+    elements.favoritesBody.innerHTML = `
+      <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+        <p class="text-sm font-semibold text-white">No favorites yet</p>
+        <p class="mt-2 text-sm leading-6 text-slate-400">Use the star button on a stock to pin it here.</p>
+      </article>
+    `;
+    return;
+  }
+
+  elements.favoritesBody.innerHTML = favoriteItems
+    .map((item) => {
+      const tone = item.change_percent >= 0 ? "text-emerald-300" : "text-rose-300";
+      return `
+        <button
+          type="button"
+          class="favorite-card w-full rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-left transition hover:bg-slate-900/90"
+          data-symbol="${item.symbol}"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-white">${item.symbol}</p>
+              <p class="mt-1 truncate text-xs text-slate-400">${item.name}</p>
+            </div>
+            ${renderFavoriteButton(item.symbol)}
+          </div>
+          <div class="mt-4 flex items-center justify-between gap-3">
+            <p class="text-sm font-semibold text-white">${currency(item.price)}</p>
+            <p class="text-xs font-medium ${tone}">${percent(item.change_percent)}</p>
+          </div>
+        </button>
+      `;
+    })
+    .join("");
+
+  elements.favoritesBody.querySelectorAll(".favorite-card").forEach((card) => {
+    card.addEventListener("click", () => {
+      loadSymbol(card.dataset.symbol);
+    });
+  });
+  bindFavoriteButtons(elements.favoritesBody);
+}
+
 function hydrateDashboardFromCache() {
   const cachedWatchlist = readCachedJson(STORAGE_KEYS.cachedWatchlist);
   const cachedOverview = readCachedJson(STORAGE_KEYS.cachedOverview);
   const cachedAnalysis = readCachedJson(STORAGE_KEYS.cachedAnalysis);
   const cachedAlerts = readCachedJson(STORAGE_KEYS.cachedAlerts);
+  state.favoriteSymbols = readFavoriteSymbols();
 
   if (Array.isArray(cachedWatchlist) && cachedWatchlist.length) {
     state.watchlist = cachedWatchlist;
     elements.watchlistMeta.textContent = `${cachedWatchlist.length} symbols`;
     renderWatchlist(cachedWatchlist);
+    renderFavorites();
   }
 
   if (cachedOverview && cachedOverview.symbol === state.selectedSymbol) {
@@ -850,6 +956,9 @@ function renderWatchlist(items) {
           </div>
         </div>
         <div class="shrink-0 text-right">
+          <div class="mb-3 flex justify-end">
+            ${renderFavoriteButton(item.symbol)}
+          </div>
           <p class="text-sm font-semibold text-white">${currency(item.price)}</p>
           <p class="mt-1 text-xs font-medium ${tone}">${percent(item.change_percent)}</p>
         </div>
@@ -860,6 +969,8 @@ function renderWatchlist(items) {
     });
     elements.watchlistBody.appendChild(card);
   });
+  bindFavoriteButtons(elements.watchlistBody);
+  renderFavorites();
 }
 
 function renderCompanyDetails(overview) {
