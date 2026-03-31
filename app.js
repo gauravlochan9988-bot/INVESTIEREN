@@ -14,6 +14,8 @@ const state = {
   selectedSymbol: window.sessionStorage.getItem(STORAGE_KEYS.selectedSymbol) || "AAPL",
   watchlist: [],
   tvReady: typeof window.TradingView !== "undefined",
+  tvScriptPromise: null,
+  tvWidgetSymbol: null,
   activeRequest: 0,
   latestAnalysis: null,
 };
@@ -513,20 +515,70 @@ function toTradingViewSymbol(symbol) {
   return mapping[plain] || plain;
 }
 
-function renderTradingView(symbol) {
-  elements.tradingviewChart.innerHTML = '<div class="tv-loader">Loading TradingView chart...</div>';
+function ensureTradingView() {
+  if (window.TradingView && typeof window.TradingView.widget === "function") {
+    state.tvReady = true;
+    return Promise.resolve(window.TradingView);
+  }
 
-  if (!window.TradingView || typeof window.TradingView.widget !== "function") {
-    elements.tradingviewChart.innerHTML =
-      '<div class="tv-loader">TradingView widget failed to load.</div>';
+  if (state.tvScriptPromise) {
+    return state.tvScriptPromise;
+  }
+
+  const existingScript = document.querySelector('script[src="https://s3.tradingview.com/tv.js"]');
+
+  state.tvScriptPromise = new Promise((resolve, reject) => {
+    const onLoad = () => {
+      state.tvReady = true;
+      resolve(window.TradingView);
+    };
+
+    const onError = () => {
+      reject(new Error("TradingView widget failed to load."));
+    };
+
+    if (existingScript) {
+      existingScript.addEventListener("load", onLoad, { once: true });
+      existingScript.addEventListener("error", onError, { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://s3.tradingview.com/tv.js";
+    script.async = true;
+    script.onload = onLoad;
+    script.onerror = onError;
+    document.head.appendChild(script);
+  });
+
+  return state.tvScriptPromise;
+}
+
+function showTradingViewLoader(message = "Loading TradingView chart...") {
+  elements.tradingviewChart.innerHTML = `<div class="tv-loader">${message}</div>`;
+}
+
+async function renderTradingView(symbol) {
+  const tvSymbol = toTradingViewSymbol(symbol);
+
+  if (state.tvWidgetSymbol === tvSymbol && elements.tradingviewChart.childElementCount > 0) {
     return;
   }
 
+  showTradingViewLoader();
+
+  try {
+    await ensureTradingView();
+  } catch (error) {
+    showTradingViewLoader("TradingView widget failed to load.");
+    return;
+  }
+
+  state.tvWidgetSymbol = tvSymbol;
   elements.tradingviewChart.innerHTML = "";
-  // TradingView expects the container element to exist in the DOM before init.
   new window.TradingView.widget({
     autosize: true,
-    symbol: toTradingViewSymbol(symbol),
+    symbol: tvSymbol,
     interval: "D",
     timezone: "Etc/UTC",
     theme: "dark",
@@ -555,6 +607,7 @@ async function loadSymbol(symbol, forceRefresh = false) {
   clearError();
   renderWatchlist(state.watchlist);
   renderAnalysisLoading(normalized);
+  renderTradingView(normalized);
 
   try {
     const suffix = forceRefresh ? "?refresh=1" : "";
@@ -585,7 +638,6 @@ async function loadSymbol(symbol, forceRefresh = false) {
       });
     }
 
-    renderTradingView(normalized);
     renderWatchlist(state.watchlist);
   } catch (error) {
     if (requestId !== state.activeRequest) {
@@ -639,6 +691,10 @@ function bindAuth() {
     await bootDashboard();
   });
 }
+
+ensureTradingView().catch(() => {
+  state.tvReady = false;
+});
 
 function bindApp() {
   elements.logoutButton.addEventListener("click", () => {
