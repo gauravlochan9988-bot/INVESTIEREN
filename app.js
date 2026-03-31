@@ -537,7 +537,7 @@ function renderStrategyButtons() {
   elements.strategyButtons.forEach((button) => {
     const active = button.dataset.strategy === state.selectedStrategy;
     button.className = [
-      "strategy-button rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.24em] transition",
+      "strategy-button rounded-xl px-3 py-2 text-xs font-semibold transition",
       active
         ? "border border-cyan-300/30 bg-cyan-300/15 text-cyan-100 shadow-lg shadow-cyan-500/10"
         : "border border-transparent text-slate-300 hover:border-white/10 hover:bg-white/5",
@@ -615,9 +615,9 @@ async function api(path, options = {}) {
 async function loadBackendHealth() {
   try {
     const payload = await api("/api/health");
-    setBackendStatus("Backend connected", "ok");
+    setBackendStatus("Connected", "ok");
   } catch (error) {
-    setBackendStatus("Backend unavailable", "error");
+    setBackendStatus("Backend offline", "error");
     throw error;
   }
 }
@@ -912,7 +912,7 @@ async function bootDashboard(forceRefresh = false) {
     }
   } catch (error) {
     showError(error.message || "Dashboard could not load.");
-    setBackendStatus("Backend unavailable", "error");
+    setBackendStatus("Backend offline", "error");
   }
 }
 
