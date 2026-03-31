@@ -48,7 +48,14 @@ def build_history(start: float, drift: float, noise: float = 0.005) -> List[Hist
     for index in range(120):
         cycle = ((index % 7) - 3) * noise
         price = max(1.0, price + drift + price * cycle)
-        points.append(HistoryPoint(date=base + timedelta(days=index), close=round(price, 4)))
+        volume = int(max(100_000, 1_000_000 + (index % 10) * 25_000 + abs(drift) * 30_000))
+        points.append(
+            HistoryPoint(
+                date=base + timedelta(days=index),
+                close=round(price, 4),
+                volume=volume,
+            )
+        )
     return points
 
 

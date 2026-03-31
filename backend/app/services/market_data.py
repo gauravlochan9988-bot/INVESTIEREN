@@ -136,7 +136,16 @@ class YFinanceProvider:
             dt = timestamp.to_pydatetime()
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=timezone.utc)
-            points.append(HistoryPoint(date=dt, close=round(float(row["Close"]), 4)))
+            points.append(
+                HistoryPoint(
+                    date=dt,
+                    open=round(float(row["Open"]), 4) if row.get("Open") is not None else None,
+                    high=round(float(row["High"]), 4) if row.get("High") is not None else None,
+                    low=round(float(row["Low"]), 4) if row.get("Low") is not None else None,
+                    close=round(float(row["Close"]), 4),
+                    volume=int(row.get("Volume") or 0),
+                )
+            )
         return points
 
 

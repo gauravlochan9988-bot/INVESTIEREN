@@ -141,6 +141,7 @@ class AnalysisService:
     ) -> AnalysisResponse:
         normalized_symbol = symbol.strip().upper()
         closes = [point.close for point in history]
+        volumes = [max(point.volume, 0) for point in history]
         if len(closes) < MIN_HISTORY_POINTS:
             raise ValidationError(
                 "At least 60 daily closes are required to build an analysis view."
@@ -158,6 +159,9 @@ class AnalysisService:
         support_distance = ((latest_price - support_level) / latest_price) if latest_price else 0.0
         price_vs_sma50 = ((latest_price - sma50) / sma50) if sma50 else 0.0
         sma20_vs_sma50 = ((sma20 - sma50) / sma50) if sma50 else 0.0
+        avg_volume_20 = self._average_volume(volumes, min(20, len(volumes)))
+        latest_volume = volumes[-1] if volumes else 0
+        volume_ratio = (latest_volume / avg_volume_20) if avg_volume_20 else 1.0
 
         news_snapshot = self.news_sentiment_service.get_sentiment(normalized_symbol)
         macro_snapshot = self.macro_context_service.get_context_for_symbol(normalized_symbol)
@@ -217,6 +221,9 @@ class AnalysisService:
             "price_vs_sma200": ((latest_price - sma200) / sma200) if sma200 else 0.0,
             "sma20_vs_sma50": sma20_vs_sma50,
             "support_level": support_level,
+            "latest_volume": latest_volume,
+            "avg_volume_20": avg_volume_20,
+            "volume_ratio": volume_ratio,
             "factor_scores": factor_scores,
             "signal_map": signal_map,
             "signals": signals,
@@ -654,13 +661,19 @@ class AnalysisService:
             else 0,
         }
         score = sum(signal_scores.values())
-        if score >= 2:
+        trade_quality_conflicts = self._trade_quality_conflicts(
+            recommendation="BUY" if score >= 2 else "SELL" if score <= -2 else "HOLD",
+            context=context,
+            signal_scores=signal_scores,
+        )
+        if score >= 2 and not trade_quality_conflicts:
             recommendation: Recommendation = "BUY"
-        elif score <= -2:
+        elif score <= -2 and not trade_quality_conflicts:
             recommendation = "SELL"
         else:
             recommendation = "HOLD"
-        conflicts = self._simple_conflicts(signal_scores)
+        conflicts = self._simple_conflicts(signal_scores) + trade_quality_conflicts
+        conflicts = list(dict.fromkeys(conflicts))[:4]
         risk_level = self._simple_strategy_risk(
             score=score,
             volatility_30d=context["volatility_30d"],
@@ -688,14 +701,27 @@ class AnalysisService:
     def _ai_strategy(self, context: dict) -> dict[str, object]:
         signal_scores = self._ai_signal_scores(context["factor_scores"])
         score = self._total_score(signal_scores)
-        recommendation: Recommendation
+        candidate: Recommendation
         if score >= 35:
-            recommendation = "BUY"
+            candidate = "BUY"
         elif score <= -35:
+            candidate = "SELL"
+        else:
+            candidate = "HOLD"
+        trade_quality_conflicts = self._trade_quality_conflicts(
+            recommendation=candidate,
+            context=context,
+            signal_scores=signal_scores,
+        )
+        recommendation: Recommendation
+        if candidate == "BUY" and not trade_quality_conflicts:
+            recommendation = "BUY"
+        elif candidate == "SELL" and not trade_quality_conflicts:
             recommendation = "SELL"
         else:
             recommendation = "HOLD"
-        conflicts = self._simple_conflicts(signal_scores)
+        conflicts = self._simple_conflicts(signal_scores) + trade_quality_conflicts
+        conflicts = list(dict.fromkeys(conflicts))[:4]
         risk_level = self._weighted_strategy_risk(
             score=score,
             volatility_30d=context["volatility_30d"],
@@ -728,13 +754,19 @@ class AnalysisService:
         trend_down = context["latest_price"] < context["sma200"]
         momentum_up = context["momentum_5d"] > 0
         momentum_down = context["momentum_5d"] < 0
+        candidate: Recommendation = "HOLD"
         if trend_up:
-            recommendation: Recommendation = "BUY" if score >= 35 and momentum_up else "HOLD"
+            candidate = "BUY" if score >= 35 and momentum_up else "HOLD"
         elif trend_down:
-            recommendation = "SELL" if score <= -35 and momentum_down else "HOLD"
-        else:
-            recommendation = "HOLD"
-        conflicts = self._simple_conflicts(signal_scores)
+            candidate = "SELL" if score <= -35 and momentum_down else "HOLD"
+        trade_quality_conflicts = self._trade_quality_conflicts(
+            recommendation=candidate,
+            context=context,
+            signal_scores=signal_scores,
+        )
+        recommendation: Recommendation = candidate if candidate != "HOLD" and not trade_quality_conflicts else "HOLD"
+        conflicts = self._simple_conflicts(signal_scores) + trade_quality_conflicts
+        conflicts = list(dict.fromkeys(conflicts))[:4]
         risk_level = self._weighted_strategy_risk(
             score=score,
             volatility_30d=context["volatility_30d"],
@@ -849,8 +881,93 @@ class AnalysisService:
             conflicts.append("Trend vs Momentum")
         return conflicts[:3]
 
+    def _trade_quality_conflicts(
+        self,
+        *,
+        recommendation: Recommendation,
+        context: dict,
+        signal_scores: dict[str, int],
+    ) -> list[str]:
+        if recommendation == "HOLD":
+            return []
+
+        conflicts: list[str] = []
+        low_volume = self._is_low_volume(
+            latest_volume=context["latest_volume"],
+            avg_volume_20=context["avg_volume_20"],
+        )
+        sideways = self._is_sideways_market(
+            price_vs_sma50=context["price_vs_sma50"],
+            sma20_vs_sma50=context["sma20_vs_sma50"],
+            signal_map=context["signal_map"],
+        )
+        confirmation_count = self._confirmation_count(
+            recommendation=recommendation,
+            signal_scores=signal_scores,
+            latest_volume=context["latest_volume"],
+            avg_volume_20=context["avg_volume_20"],
+        )
+
+        if low_volume:
+            conflicts.append("Low Volume")
+        if sideways:
+            conflicts.append("Sideways Trend")
+        if confirmation_count < 2:
+            conflicts.append("Weak Confirmation")
+        return conflicts
+
+    def _confirmation_count(
+        self,
+        *,
+        recommendation: Recommendation,
+        signal_scores: dict[str, int],
+        latest_volume: float,
+        avg_volume_20: float,
+    ) -> int:
+        checks = 0
+        if recommendation == "BUY":
+            if signal_scores.get("rsi", 0) >= 0:
+                checks += 1
+            if signal_scores.get("momentum", 0) > 0:
+                checks += 1
+        elif recommendation == "SELL":
+            if signal_scores.get("rsi", 0) <= 0:
+                checks += 1
+            if signal_scores.get("momentum", 0) < 0:
+                checks += 1
+
+        if not self._is_low_volume(latest_volume=latest_volume, avg_volume_20=avg_volume_20):
+            checks += 1
+        return checks
+
+    def _is_low_volume(self, *, latest_volume: float, avg_volume_20: float) -> bool:
+        if latest_volume <= 0 or avg_volume_20 <= 0:
+            return False
+        return latest_volume < (avg_volume_20 * 0.85)
+
+    def _is_sideways_market(
+        self,
+        *,
+        price_vs_sma50: float,
+        sma20_vs_sma50: float,
+        signal_map: dict[str, SignalResult],
+    ) -> bool:
+        return (
+            abs(price_vs_sma50) < 0.015
+            and abs(sma20_vs_sma50) < 0.01
+            and signal_map["trend_strength"].strength < 0.35
+        )
+
     def _total_score(self, signal_scores: dict[str, int]) -> int:
         return int(self._clamp(sum(signal_scores.values()), -100, 100))
+
+    def _average_volume(self, volumes: Sequence[int], window: int) -> float:
+        if window <= 0 or not volumes:
+            return 0.0
+        sample = volumes[-window:]
+        if not sample:
+            return 0.0
+        return sum(sample) / len(sample)
 
     def _probability_from_strategy_score(
         self,

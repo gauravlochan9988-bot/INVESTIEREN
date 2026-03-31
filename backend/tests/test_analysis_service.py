@@ -108,7 +108,7 @@ def test_high_risk_hold_does_not_automatically_become_no_trade(analysis_service)
 
     result = analysis_service.analyze("AMZN", history)
 
-    assert result.recommendation == "BUY"
+    assert result.recommendation == "HOLD"
     assert result.score >= 35
     assert result.risk_level == "HIGH"
     assert result.no_trade is False
