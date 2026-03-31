@@ -335,6 +335,16 @@ body {
   object-position: center center;
 }
 
+#authOverlay {
+  background:
+    radial-gradient(circle at top center, rgba(20, 184, 166, 0.08), transparent 32%),
+    linear-gradient(180deg, rgba(15, 23, 36, 1) 0%, rgba(11, 15, 26, 1) 100%);
+}
+
+#authOverlay > .absolute.inset-0 {
+  display: none;
+}
+
 .login-bg {
   position: absolute;
   inset: 0;
@@ -392,6 +402,79 @@ body {
 
 .login-button {
   width: 100%;
+}
+
+.auth-overlay-content {
+  width: min(100%, 28rem);
+}
+
+.auth-copy-block {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: calc(100svh - 3rem);
+  padding: clamp(1.5rem, 4vw, 2rem) 0;
+  gap: 0;
+}
+
+.auth-brand-row {
+  position: relative;
+  z-index: 2;
+  gap: 0.9rem;
+  margin-bottom: clamp(3rem, 10vh, 6rem);
+}
+
+.auth-bottom-card {
+  width: min(100%, 26rem);
+  max-width: 26rem;
+  align-self: center;
+  border: 1px solid rgba(31, 41, 55, 0.96);
+  border-radius: 1.75rem;
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.96), rgba(11, 15, 26, 0.985));
+  padding: 1.05rem 1rem 1.1rem;
+  backdrop-filter: blur(20px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 22px 52px rgba(2, 6, 23, 0.28);
+  position: relative;
+  z-index: 2;
+}
+
+.auth-bottom-card::before {
+  content: "";
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(20, 184, 166, 0.24), transparent);
+  opacity: 0.9;
+}
+
+.auth-copy-text {
+  margin-top: 0;
+  padding-top: 0;
+  gap: 0.24rem;
+}
+
+.auth-byline {
+  font-size: 0.74rem;
+  color: rgba(243, 244, 246, 0.76);
+}
+
+.auth-title {
+  max-width: 16rem;
+  line-height: 1.02;
+}
+
+.auth-form-panel {
+  margin-top: 0.7rem;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  backdrop-filter: none;
+  box-shadow: none;
 }
 
 #watchlistBody button {
