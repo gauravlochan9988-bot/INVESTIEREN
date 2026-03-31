@@ -851,7 +851,7 @@ body {
     align-items: center;
   }
 
-  #brandHomeButton > div {
+  #brandHomeButton > div:first-child {
     width: 2.75rem;
     height: 2.75rem;
     border-radius: 1rem;
@@ -860,6 +860,10 @@ body {
 
   #brandHomeButton > div + div {
     display: block;
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    flex: 1 1 auto;
     min-width: 0;
   }
 
