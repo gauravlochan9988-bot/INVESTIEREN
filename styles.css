@@ -136,6 +136,10 @@ body {
     0 10px 30px rgba(8, 145, 178, 0.14);
 }
 
+#topbarUtilityActions {
+  width: 100%;
+}
+
 .dashboard-chip {
   white-space: nowrap;
   letter-spacing: 0.01em;
@@ -158,7 +162,8 @@ body {
 .action-secondary:hover,
 #brandHomeButton:hover,
 #watchlistBody button:hover,
-.search-suggestion:hover {
+.search-suggestion:hover,
+.mobile-quick-action:hover {
   transform: translateY(-1px);
 }
 
@@ -251,6 +256,10 @@ body {
     top: calc(100% + 12px);
   }
 
+  #topbarUtilityActions {
+    max-width: 352px;
+  }
+
   #alertsList {
     align-items: stretch;
   }
@@ -325,7 +334,7 @@ body {
 
   #appShell > div {
     padding: 10px;
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 168px);
+    padding-bottom: 10px;
   }
 
   #alertsSection {
@@ -397,6 +406,10 @@ body {
   #strategyToggle,
   .dashboard-topbar .grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  #topbarUtilityActions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .strategy-button {
@@ -525,23 +538,6 @@ body {
     height: 250px !important;
   }
 
-  #mobileQuickActions {
-    position: fixed;
-    left: 10px;
-    right: 10px;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
-    z-index: 45;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-    border: 1px solid rgba(148, 163, 184, 0.14);
-    border-radius: 22px;
-    background: rgba(2, 6, 23, 0.92);
-    box-shadow: 0 20px 40px rgba(2, 6, 23, 0.42);
-    backdrop-filter: blur(18px);
-    padding: 6px;
-  }
-
   .mobile-quick-action {
     display: grid;
     place-items: center;
@@ -556,6 +552,7 @@ body {
     letter-spacing: 0.01em;
     transition:
       transform 140ms ease,
+      box-shadow 140ms ease,
       border-color 140ms ease,
       background-color 140ms ease;
   }
