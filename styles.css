@@ -652,7 +652,7 @@ body {
 
   .auth-bottom-card {
     margin-top: auto;
-    margin-bottom: max(env(safe-area-inset-bottom, 0px), 0.9rem);
+    margin-bottom: max(env(safe-area-inset-bottom, 0px), 1.65rem);
     width: min(100%, 25.5rem);
     max-width: 25.5rem;
     align-self: center;
@@ -707,7 +707,7 @@ body {
   }
 
   #authHeroImage {
-    object-position: center 24%;
+    object-position: center 20%;
     opacity: 0.76 !important;
     filter: saturate(0.98) contrast(0.98);
   }
@@ -724,7 +724,7 @@ body {
   }
 
   .login-card {
-    margin-bottom: max(env(safe-area-inset-bottom, 0px), 0.35rem);
+    margin-bottom: max(env(safe-area-inset-bottom, 0px), 1.65rem);
   }
 
   .dashboard-chip {
