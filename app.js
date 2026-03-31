@@ -9,6 +9,9 @@ const STORAGE_KEYS = {
   authenticated: "investieren:authenticated",
   selectedSymbol: "investieren:selectedSymbol",
   selectedStrategy: "investieren:selectedStrategy",
+  cachedWatchlist: "investieren:cachedWatchlist",
+  cachedOverview: "investieren:cachedOverview",
+  cachedAnalysis: "investieren:cachedAnalysis",
 };
 
 const STRATEGY_LABELS = {
@@ -433,6 +436,9 @@ function renderAnalysis(analysis) {
   state.latestAnalysis = analysis;
   const strategy = analysis?.strategy || state.selectedStrategy;
   elements.selectedStrategyBadge.textContent = STRATEGY_LABELS[strategy] || titleCase(strategy);
+  if (analysis && !analysis.no_data) {
+    writeCachedJson(STORAGE_KEYS.cachedAnalysis, analysis);
+  }
 
   if (!analysis || analysis.no_data) {
     const reason = analysis?.no_data_reason || "No live market data available.";
@@ -531,6 +537,47 @@ function persistSelectedSymbol(symbol) {
 function persistSelectedStrategy(strategy) {
   state.selectedStrategy = strategy;
   window.sessionStorage.setItem(STORAGE_KEYS.selectedStrategy, strategy);
+}
+
+function readCachedJson(key) {
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedJson(key, value) {
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Ignore cache failures so live requests keep working.
+  }
+}
+
+function hydrateDashboardFromCache() {
+  const cachedWatchlist = readCachedJson(STORAGE_KEYS.cachedWatchlist);
+  const cachedOverview = readCachedJson(STORAGE_KEYS.cachedOverview);
+  const cachedAnalysis = readCachedJson(STORAGE_KEYS.cachedAnalysis);
+
+  if (Array.isArray(cachedWatchlist) && cachedWatchlist.length) {
+    state.watchlist = cachedWatchlist;
+    elements.watchlistMeta.textContent = `${cachedWatchlist.length} symbols`;
+    renderWatchlist(cachedWatchlist);
+  }
+
+  if (cachedOverview && cachedOverview.symbol === state.selectedSymbol) {
+    renderOverview(cachedOverview);
+  }
+
+  if (
+    cachedAnalysis &&
+    cachedAnalysis.symbol === state.selectedSymbol &&
+    cachedAnalysis.strategy === state.selectedStrategy
+  ) {
+    renderAnalysis(cachedAnalysis);
+  }
 }
 
 function renderStrategyButtons() {
@@ -737,6 +784,7 @@ function renderOverview(overview) {
   }
 
   renderCompanyDetails(overview);
+  writeCachedJson(STORAGE_KEYS.cachedOverview, overview);
 }
 
 function toTradingViewSymbol(symbol) {
@@ -841,6 +889,7 @@ async function loadWatchlist(forceRefresh = false) {
   const suffix = forceRefresh ? "?refresh=1" : "";
   const items = await api(`/api/dashboard/watchlist${suffix}`);
   state.watchlist = items;
+  writeCachedJson(STORAGE_KEYS.cachedWatchlist, items);
   renderWatchlist(items);
   return items;
 }
@@ -902,13 +951,33 @@ async function loadSymbol(symbol, forceRefresh = false) {
 
 async function bootDashboard(forceRefresh = false) {
   clearError();
+  if (!forceRefresh) {
+    hydrateDashboardFromCache();
+  }
   try {
     setBackendStatus("Connecting backend...", "loading");
-    await loadBackendHealth();
-    const watchlist = await loadWatchlist(forceRefresh);
-    const fallback = watchlist.find((item) => item.symbol === state.selectedSymbol)?.symbol || watchlist[0]?.symbol;
+    const [healthResult, watchlistResult, symbolResult] = await Promise.allSettled([
+      loadBackendHealth(),
+      loadWatchlist(forceRefresh),
+      loadSymbol(state.selectedSymbol, forceRefresh),
+    ]);
+
+    if (healthResult.status === "rejected") {
+      throw healthResult.reason;
+    }
+    if (watchlistResult.status === "rejected") {
+      throw watchlistResult.reason;
+    }
+
+    const watchlist = watchlistResult.value;
+    const fallback =
+      watchlist.find((item) => item.symbol === state.selectedSymbol)?.symbol || watchlist[0]?.symbol;
     if (fallback) {
-      await loadSymbol(fallback, forceRefresh);
+      if (fallback !== state.selectedSymbol) {
+        await loadSymbol(fallback, forceRefresh);
+      } else if (symbolResult.status === "rejected") {
+        throw symbolResult.reason;
+      }
     }
   } catch (error) {
     showError(error.message || "Dashboard could not load.");
