@@ -58,10 +58,13 @@ class Settings(BaseSettings):
             return value
 
         if value.startswith("postgres://"):
-            return value.replace("postgres://", "postgresql+psycopg://", 1)
+            return value.replace("postgres://", "postgresql+psycopg2://", 1)
 
         if value.startswith("postgresql://"):
-            return value.replace("postgresql://", "postgresql+psycopg://", 1)
+            return value.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+        if value.startswith("postgresql+psycopg://"):
+            return value.replace("postgresql+psycopg://", "postgresql+psycopg2://", 1)
 
         return value
 

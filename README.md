@@ -66,7 +66,7 @@ uvicorn backend.app.main:app --host 0.0.0.0 --port 10000
 - Recommended SQLAlchemy URL format:
 
 ```bash
-DATABASE_URL=postgresql+psycopg://postgres:YOUR_PASSWORD@db.YOUR_PROJECT_REF.supabase.co:5432/postgres?sslmode=require
+DATABASE_URL=postgresql+psycopg2://postgres:YOUR_PASSWORD@db.YOUR_PROJECT_REF.supabase.co:5432/postgres?sslmode=require
 ```
 
 - If Supabase gives you a pooled host, use the pooler URL instead of `db.YOUR_PROJECT_REF...`.
