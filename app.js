@@ -38,6 +38,7 @@ const state = {
   favoriteSymbols: new Set(),
   alertsRetryId: null,
   alertsRetryAttempt: 0,
+  chartRenderId: null,
 };
 
 const elements = {
@@ -109,6 +110,19 @@ function resolveApiBaseUrl() {
 
 function buildApiUrl(path) {
   return `${resolveApiBaseUrl()}${path}`;
+}
+
+function scheduleLowPriorityTask(task, delayMs = 0) {
+  const runTask = () => {
+    window.setTimeout(task, delayMs);
+  };
+
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(runTask, { timeout: Math.max(500, delayMs) });
+    return;
+  }
+
+  window.setTimeout(task, delayMs);
 }
 
 function isReadOnlyApiRequest(path, options = {}) {
@@ -1105,6 +1119,14 @@ function renderCompanyDetails(overview) {
     .join("");
 }
 
+function queueTradingViewRender(symbol, exchange = "") {
+  window.clearTimeout(state.chartRenderId);
+  showTradingViewLoader();
+  state.chartRenderId = window.setTimeout(() => {
+    renderTradingView(symbol, exchange);
+  }, 120);
+}
+
 function renderOverview(overview) {
   elements.selectedSymbolName.textContent = overview.symbol;
   elements.selectedCompanyName.textContent = overview.name;
@@ -1136,7 +1158,7 @@ function renderOverview(overview) {
 
   renderCompanyDetails(overview);
   writeCachedJson(STORAGE_KEYS.cachedOverview, overview);
-  renderTradingView(overview.symbol, overview.exchange);
+  queueTradingViewRender(overview.symbol, overview.exchange);
 }
 
 function renderOverviewFallback(symbol) {
@@ -1162,7 +1184,7 @@ function renderOverviewFallback(symbol) {
     market_capitalization: null,
     share_outstanding: null,
   });
-  renderTradingView(symbol);
+  queueTradingViewRender(symbol);
 }
 
 function toTradingViewSymbol(symbol, exchange = "") {
@@ -1317,7 +1339,7 @@ async function loadSymbol(symbol, forceRefresh = false) {
   clearError();
   renderWatchlist(state.watchlist);
   renderAnalysisLoading(normalized);
-  renderTradingView(normalized);
+  queueTradingViewRender(normalized);
 
   try {
     const analysisParams = new URLSearchParams({ strategy: state.selectedStrategy });
@@ -1325,17 +1347,29 @@ async function loadSymbol(symbol, forceRefresh = false) {
       analysisParams.set("refresh", "1");
     }
     const overviewSuffix = forceRefresh ? "?refresh=1" : "";
-    const [overviewResult, analysisResult, newsResult] = await Promise.allSettled([
+    const newsPromise = api(`/api/dashboard/news/${encodeURIComponent(normalized)}${overviewSuffix}`, {
+      timeoutMs: 18000,
+      retryCount: 1,
+    })
+      .then((payload) => {
+        if (requestId === state.activeRequest) {
+          state.latestNews = payload;
+        }
+      })
+      .catch((error) => {
+        console.error("[frontend] news load failed", error);
+        if (requestId === state.activeRequest) {
+          state.latestNews = [];
+        }
+      });
+
+    const [overviewResult, analysisResult] = await Promise.allSettled([
       api(`/api/dashboard/symbol/${encodeURIComponent(normalized)}${overviewSuffix}`, {
         timeoutMs: 22000,
         retryCount: 1,
       }),
       api(`/api/analysis/${encodeURIComponent(normalized)}?${analysisParams.toString()}`, {
         timeoutMs: 30000,
-        retryCount: 1,
-      }),
-      api(`/api/dashboard/news/${encodeURIComponent(normalized)}${overviewSuffix}`, {
-        timeoutMs: 18000,
         retryCount: 1,
       }),
     ]);
@@ -1363,7 +1397,7 @@ async function loadSymbol(symbol, forceRefresh = false) {
       });
     }
 
-    state.latestNews = newsResult.status === "fulfilled" ? newsResult.value : [];
+    void newsPromise;
 
     renderWatchlist(state.watchlist);
 
@@ -1390,23 +1424,28 @@ async function bootDashboard(forceRefresh = false) {
   renderAlertsLoading();
   try {
     setBackendStatus("Connecting backend...", "loading");
-    const [healthResult, watchlistResult, symbolResult] = await Promise.allSettled([
-      loadBackendHealth(),
+    loadBackendHealth().catch((error) => {
+      console.error("[frontend] health load failed", error);
+    });
+
+    const [watchlistResult, symbolResult] = await Promise.allSettled([
       loadWatchlist(forceRefresh),
       loadSymbol(state.selectedSymbol, forceRefresh),
     ]);
 
-    loadAlerts(forceRefresh).catch((error) => {
-      console.error("[frontend] alerts load failed", error);
-      const cachedAlerts = readCachedJson(STORAGE_KEYS.cachedAlerts);
-      if (Array.isArray(cachedAlerts) && cachedAlerts.length) {
-        renderAlerts(cachedAlerts);
-        elements.alertsMeta.textContent = "Showing cached alerts";
-      } else {
-        renderAlertsWarning("Retrying alerts...");
-      }
-      queueAlertsRetry(forceRefresh);
-    });
+    scheduleLowPriorityTask(() => {
+      loadAlerts(forceRefresh).catch((error) => {
+        console.error("[frontend] alerts load failed", error);
+        const cachedAlerts = readCachedJson(STORAGE_KEYS.cachedAlerts);
+        if (Array.isArray(cachedAlerts) && cachedAlerts.length) {
+          renderAlerts(cachedAlerts);
+          elements.alertsMeta.textContent = "Showing cached alerts";
+        } else {
+          renderAlertsWarning("Retrying alerts...");
+        }
+        queueAlertsRetry(forceRefresh);
+      });
+    }, 180);
 
     if (watchlistResult.status === "rejected") {
       throw watchlistResult.reason;
