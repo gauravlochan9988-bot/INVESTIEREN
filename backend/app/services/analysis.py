@@ -546,9 +546,9 @@ class AnalysisService:
             else 0,
         }
         score = sum(signal_scores.values())
-        if score >= 2:
+        if score >= 1:
             recommendation: Recommendation = "BUY"
-        elif score <= -2:
+        elif score <= -1:
             recommendation = "SELL"
         else:
             recommendation = "HOLD"
