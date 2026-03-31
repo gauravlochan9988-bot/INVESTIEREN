@@ -339,17 +339,12 @@ function renderSearchSuggestions(results, query) {
             <p class="text-sm font-semibold text-white">${item.symbol}</p>
             <p class="mt-1 text-xs text-slate-400">${item.name}</p>
           </div>
-          <div class="ml-3 flex items-center gap-2">
-            ${renderFavoriteButton(item.symbol)}
-            <span class="text-xs uppercase tracking-[0.24em] text-slate-500">Open</span>
-          </div>
+          <span class="ml-3 shrink-0 text-xs uppercase tracking-[0.24em] text-slate-500">Open</span>
         </button>
       `,
     )
     .join("");
   elements.searchSuggestions.classList.remove("hidden");
-
-  bindFavoriteButtons(elements.searchSuggestions);
   elements.searchSuggestions.querySelectorAll(".search-suggestion").forEach((button) => {
     button.addEventListener("click", async () => {
       const symbol = button.dataset.symbol;

@@ -102,7 +102,7 @@
             </div>
           </button>
 
-          <form id="searchForm" class="flex w-full max-w-2xl flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+          <form id="searchForm" class="relative z-30 flex w-full max-w-2xl flex-col items-stretch gap-3 sm:flex-row sm:items-center">
             <div class="relative flex-1">
               <input
                 id="searchInput"
@@ -116,7 +116,7 @@
               <span class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-500">⌕</span>
               <div
                 id="searchSuggestions"
-                class="absolute left-0 right-0 top-[calc(100%+10px)] z-20 hidden max-h-80 overflow-y-auto rounded-3xl border border-white/10 bg-slate-950/95 p-2 shadow-2xl shadow-black/40 backdrop-blur"
+                class="absolute left-0 right-0 top-[calc(100%+10px)] z-[70] hidden max-h-80 overflow-y-auto rounded-3xl border border-white/10 bg-slate-950/95 p-2 shadow-2xl shadow-black/40 backdrop-blur"
               ></div>
             </div>
             <button

@@ -47,7 +47,6 @@ body {
   z-index: 0;
 }
 
-.dashboard-topbar,
 .dashboard-panel,
 .dashboard-card,
 .signal-hero {
@@ -66,12 +65,24 @@ body {
 }
 
 .dashboard-topbar {
+  position: relative;
+  overflow: visible;
+  z-index: 20;
   border-color: rgba(148, 163, 184, 0.16);
   background:
     linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.8));
   box-shadow:
     0 24px 80px rgba(2, 6, 23, 0.38),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+#searchForm {
+  position: relative;
+  z-index: 30;
+}
+
+#searchSuggestions {
+  z-index: 70;
 }
 
 .dashboard-panel {
