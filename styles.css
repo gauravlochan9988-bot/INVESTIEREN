@@ -814,7 +814,7 @@ body {
     padding: 0.68rem 0.9rem !important;
     gap: 0.7rem;
     border-radius: 22px !important;
-    grid-template-columns: 64px minmax(420px, 1fr) auto !important;
+    grid-template-columns: auto minmax(420px, 1fr) auto !important;
   }
 
   .dashboard-panel {
@@ -843,10 +843,10 @@ body {
   }
 
   #brandHomeButton {
-    width: 56px;
-    min-width: 56px;
+    width: auto;
+    min-width: 0;
     gap: 0.8rem;
-    justify-content: center;
+    justify-content: flex-start;
   }
 
   #brandHomeButton > div {
@@ -856,7 +856,7 @@ body {
   }
 
   #brandHomeButton > div + div {
-    display: none;
+    display: block;
   }
 
   #brandHomeButton h1 {
@@ -865,6 +865,10 @@ body {
 
   #brandHomeButton p {
     font-size: 0.68rem;
+  }
+
+  #sidebarBrandBlock {
+    display: none !important;
   }
 
   #searchInput {
