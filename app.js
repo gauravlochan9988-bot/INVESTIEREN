@@ -111,6 +111,20 @@ function buildApiUrl(path) {
   return `${resolveApiBaseUrl()}${path}`;
 }
 
+function isReadOnlyApiRequest(path, options = {}) {
+  const method = (options.method || "GET").toUpperCase();
+  return method === "GET" && String(path || "").startsWith("/api/");
+}
+
+function shouldFallbackToDeployedApi(path, options = {}, baseUrl) {
+  return (
+    LOCAL_API_HOSTS.has(window.location.hostname) &&
+    baseUrl !== DEPLOYED_API_ORIGIN &&
+    !options.skipDeployedFallback &&
+    isReadOnlyApiRequest(path, options)
+  );
+}
+
 function currency(value) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -851,7 +865,8 @@ function showLoginOverlay() {
 }
 
 async function api(path, options = {}) {
-  const url = buildApiUrl(path);
+  const baseUrl = options.baseUrlOverride || resolveApiBaseUrl();
+  const url = `${baseUrl}${path}`;
   const timeoutMs = options.timeoutMs ?? 15000;
   const retryCount = options.retryCount ?? 0;
   const retryDelayMs = options.retryDelayMs ?? 1200;
@@ -875,10 +890,21 @@ async function api(path, options = {}) {
     const canRetry = retryCount > 0 && (!options.method || options.method === "GET");
     if (error.name === "AbortError") {
       console.error("[frontend] API timeout", { path, timeoutMs });
+      if (shouldFallbackToDeployedApi(path, options, baseUrl)) {
+        console.warn("[frontend] local API timed out, retrying against deployed backend", { path });
+        return api(path, {
+          ...options,
+          baseUrlOverride: DEPLOYED_API_ORIGIN,
+          skipDeployedFallback: true,
+          retryCount: Math.max(retryCount, 1),
+          timeoutMs: Math.round(timeoutMs * 1.25),
+        });
+      }
       if (canRetry) {
         await new Promise((resolve) => window.setTimeout(resolve, retryDelayMs));
         return api(path, {
           ...options,
+          baseUrlOverride: baseUrl,
           timeoutMs: Math.round(timeoutMs * 1.5),
           retryCount: retryCount - 1,
         });
@@ -886,10 +912,21 @@ async function api(path, options = {}) {
       throw new Error("Request timed out.");
     }
     console.error("[frontend] API network error", { path, error: error.message });
+    if (shouldFallbackToDeployedApi(path, options, baseUrl)) {
+      console.warn("[frontend] local API failed, retrying against deployed backend", { path, error: error.message });
+      return api(path, {
+        ...options,
+        baseUrlOverride: DEPLOYED_API_ORIGIN,
+        skipDeployedFallback: true,
+        retryCount: Math.max(retryCount, 1),
+        timeoutMs: Math.round(timeoutMs * 1.25),
+      });
+    }
     if (canRetry) {
       await new Promise((resolve) => window.setTimeout(resolve, retryDelayMs));
       return api(path, {
         ...options,
+        baseUrlOverride: baseUrl,
         timeoutMs: Math.round(timeoutMs * 1.25),
         retryCount: retryCount - 1,
       });
@@ -910,6 +947,19 @@ async function api(path, options = {}) {
   if (!response.ok) {
     const detail = payload?.error || payload?.detail || payload || "Request failed.";
     console.error("[frontend] API failure", { path, status: response.status, detail });
+    if (shouldFallbackToDeployedApi(path, options, baseUrl)) {
+      console.warn("[frontend] local API returned error, retrying against deployed backend", {
+        path,
+        status: response.status,
+      });
+      return api(path, {
+        ...options,
+        baseUrlOverride: DEPLOYED_API_ORIGIN,
+        skipDeployedFallback: true,
+        retryCount: Math.max(retryCount, 1),
+        timeoutMs: Math.round(timeoutMs * 1.2),
+      });
+    }
     throw new Error(String(detail));
   }
 
