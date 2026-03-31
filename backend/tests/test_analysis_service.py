@@ -300,6 +300,19 @@ def test_analyze_symbol_marks_partial_data_when_history_window_is_too_short():
     assert "Not enough market history" in result.data_quality_reason
 
 
+def test_analyze_symbol_returns_structured_no_data_for_invalid_symbol_format(
+    analysis_service,
+):
+    result = analysis_service.analyze_symbol("BMW!")
+
+    assert result.symbol == "BMW!"
+    assert result.no_data is True
+    assert result.recommendation is None
+    assert result.confidence == 0.0
+    assert result.data_quality == "NO_DATA"
+    assert result.reason == "No sufficient data available."
+
+
 def test_data_quality_returns_full_when_at_least_eighty_percent_is_available(analysis_service):
     decision = analysis_service._evaluate_data_quality(
         latest_price=100.0,

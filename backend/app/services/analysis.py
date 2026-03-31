@@ -74,7 +74,14 @@ class AnalysisService:
         force_refresh: bool = False,
         strategy: Strategy = "hedgefund",
     ) -> AnalysisResponse:
-        normalized_symbol = self.market_data_service.ensure_supported_symbol(symbol)
+        try:
+            normalized_symbol = self.market_data_service.ensure_supported_symbol(symbol)
+        except ValidationError:
+            return self._no_data_response(
+                symbol,
+                "No sufficient data available.",
+                strategy=strategy,
+            )
         cache_key = self._analysis_cache_key(normalized_symbol, strategy)
         if force_refresh:
             self.analysis_cache.delete(cache_key)
@@ -116,8 +123,15 @@ class AnalysisService:
                     normalized_symbol, f"{message}.", strategy=strategy
                 ),
             )
-        except ValidationError as error:
-            raise
+        except ValidationError:
+            return self.analysis_cache.set(
+                cache_key,
+                self._no_data_response(
+                    normalized_symbol,
+                    "No sufficient data available.",
+                    strategy=strategy,
+                ),
+            )
 
     def analyze(
         self,

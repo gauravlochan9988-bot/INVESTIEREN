@@ -241,6 +241,21 @@ def test_analyze_endpoint_returns_partial_when_only_short_history_exists(client)
     assert payload["confidence"] == 0.0
 
 
+def test_analyze_endpoint_returns_structured_no_data_for_invalid_symbol(client):
+    response = client.post("/api/analyze", json={"symbol": "BMW!", "strategy": "ai"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["symbol"] == "BMW!"
+    assert payload["strategy"] == "ai"
+    assert payload["no_data"] is True
+    assert payload["recommendation"] is None
+    assert payload["confidence"] == 0.0
+    assert payload["data_quality"] == "NO_DATA"
+    assert payload["data_quality_reason"] == "No sufficient data available."
+    assert payload["reason"] == "No sufficient data available."
+
+
 def test_strategy_query_returns_selected_strategy_without_frontend_overrides(client):
     simple = client.get("/api/analysis/MSFT", params={"strategy": "simple"})
     ai = client.get("/api/analysis/MSFT", params={"strategy": "ai"})
