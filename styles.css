@@ -353,7 +353,7 @@ body {
       rgba(11, 15, 26, 0.9) 100%
     ),
     radial-gradient(circle at top center, rgba(20, 184, 166, 0.04), transparent 36%);
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(2px);
 }
 
 .login-container {
@@ -716,7 +716,7 @@ body {
     background:
       linear-gradient(180deg, rgba(11, 15, 26, 0.08) 0%, rgba(11, 15, 26, 0.12) 16%, rgba(11, 15, 26, 0.2) 34%, rgba(11, 15, 26, 0.54) 58%, rgba(11, 15, 26, 0.86) 76%, rgba(11, 15, 26, 0.97) 88%, rgba(11, 15, 26, 0.992) 100%),
       radial-gradient(circle at top center, rgba(20, 184, 166, 0.04), transparent 36%) !important;
-    backdrop-filter: blur(2px);
+    backdrop-filter: blur(0.75px);
   }
 
   .login-header {
