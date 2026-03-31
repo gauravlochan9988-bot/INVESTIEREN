@@ -335,6 +335,27 @@ body {
   object-position: center center;
 }
 
+.login-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.login-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(11, 15, 26, 0.3) 0%,
+      rgba(11, 15, 26, 0.6) 50%,
+      rgba(11, 15, 26, 0.9) 100%
+    ),
+    radial-gradient(circle at top center, rgba(20, 184, 166, 0.04), transparent 36%);
+  backdrop-filter: blur(6px);
+}
+
 #watchlistBody button {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
