@@ -313,7 +313,7 @@ def test_analyze_symbol_returns_structured_no_data_for_invalid_symbol_format(
     assert result.reason == "No sufficient data available."
 
 
-def test_data_quality_returns_full_when_at_least_eighty_percent_is_available(analysis_service):
+def test_data_quality_returns_full_when_all_core_inputs_are_available(analysis_service):
     decision = analysis_service._evaluate_data_quality(
         latest_price=100.0,
         sma50=95.0,
@@ -325,18 +325,18 @@ def test_data_quality_returns_full_when_at_least_eighty_percent_is_available(ana
             symbol="AAPL",
             news_score=0.0,
             sentiment_label="neutral",
-            article_count=0,
+            article_count=2,
             articles=[],
-            note="No recent articles",
+            note="Two recent articles",
         ),
     )
 
     assert decision.level == "FULL"
     assert decision.can_run_strategy is True
-    assert "5/6" in decision.reason
+    assert "5/5 core inputs" in decision.reason
 
 
-def test_data_quality_returns_partial_when_analysis_can_still_run_with_less_than_eighty_percent(analysis_service):
+def test_data_quality_returns_partial_when_one_or_two_core_inputs_are_missing(analysis_service):
     decision = analysis_service._evaluate_data_quality(
         latest_price=100.0,
         sma50=95.0,
@@ -356,7 +356,7 @@ def test_data_quality_returns_partial_when_analysis_can_still_run_with_less_than
 
     assert decision.level == "PARTIAL"
     assert decision.can_run_strategy is True
-    assert "4/6" in decision.reason
+    assert "4/5 core inputs" in decision.reason
 
 
 def test_data_quality_returns_no_data_when_too_many_required_inputs_are_missing(analysis_service):
@@ -379,7 +379,7 @@ def test_data_quality_returns_no_data_when_too_many_required_inputs_are_missing(
 
     assert decision.level == "NO_DATA"
     assert decision.can_run_strategy is False
-    assert "only 2/6 required inputs" in decision.reason
+    assert "only 2/5 core inputs" in decision.reason
 
 
 def test_confidence_is_boosted_for_full_data_and_reduced_for_partial_data(analysis_service):

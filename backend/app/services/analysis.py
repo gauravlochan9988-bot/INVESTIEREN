@@ -467,52 +467,65 @@ class AnalysisService:
         volatility_30d: float,
         news_snapshot: NewsSentimentSnapshot,
     ) -> DataQualityDecision:
-        available_inputs = {
+        core_inputs = {
             "price": isfinite(latest_price) and latest_price > 0,
             "sma": all(isfinite(value) and value > 0 for value in (sma50, sma200)),
             "rsi": isfinite(rsi14),
             "momentum": isfinite(momentum_5d),
-            "volatility": isfinite(volatility_30d),
             "news/sentiment": news_snapshot.article_count > 0,
         }
-        available_count = sum(1 for available in available_inputs.values() if available)
-        ratio = available_count / len(available_inputs)
-        missing_inputs = [name for name, available in available_inputs.items() if not available]
+        supplemental_inputs = {
+            "volatility": isfinite(volatility_30d),
+        }
+        core_available_count = sum(1 for available in core_inputs.values() if available)
+        core_missing = [name for name, available in core_inputs.items() if not available]
+        has_market_structure = core_inputs["price"] and core_inputs["sma"]
+        has_full_core = core_available_count == len(core_inputs)
 
-        if available_count < 4:
-            missing = ", ".join(missing_inputs) or "core market inputs"
-            return DataQualityDecision(
-                level="NO_DATA",
-                reason=(
-                    f"Not enough data for meaningful analysis: only {available_count}/6 required inputs are available. "
-                    f"Missing {missing}."
-                ),
-                can_run_strategy=False,
-            )
-
-        if ratio >= 0.8:
-            if not missing_inputs:
+        if has_full_core:
+            if supplemental_inputs["volatility"]:
                 return DataQualityDecision(
                     level="FULL",
-                    reason=f"Full data quality: {available_count}/6 required inputs are available.",
+                    reason="Full data quality: all 5/5 core inputs are available.",
                     can_run_strategy=True,
                 )
             return DataQualityDecision(
                 level="FULL",
                 reason=(
-                    f"Full data quality: {available_count}/6 required inputs are available. "
-                    f"Confidence is slightly tempered by missing {missing_inputs[0]}."
+                    "Full data quality: all 5/5 core inputs are available. "
+                    "Volatility is missing, so risk handling stays conservative."
                 ),
                 can_run_strategy=True,
             )
 
+        if has_market_structure and core_available_count >= 3:
+            return DataQualityDecision(
+                level="PARTIAL",
+                reason=(
+                    f"Partial data quality: {core_available_count}/5 core inputs are available. "
+                    f"Missing {', '.join(core_missing)}."
+                ),
+                can_run_strategy=True,
+            )
+
+        missing = ", ".join(core_missing) or "core market inputs"
+        if not has_market_structure:
+            return DataQualityDecision(
+                level="NO_DATA",
+                reason=(
+                    f"Not enough data for meaningful analysis: only {core_available_count}/5 core inputs are available. "
+                    f"Missing {missing}."
+                ),
+                can_run_strategy=False,
+            )
+
         return DataQualityDecision(
-            level="PARTIAL",
+            level="NO_DATA",
             reason=(
-                f"Partial data quality: {available_count}/6 required inputs are available. "
-                f"Confidence is reduced because {', '.join(missing_inputs)} are missing."
+                f"Not enough data for meaningful analysis: only {core_available_count}/5 core inputs are available. "
+                f"Missing {missing}."
             ),
-            can_run_strategy=True,
+            can_run_strategy=False,
         )
 
     def _apply_data_quality_to_confidence(
@@ -583,7 +596,7 @@ class AnalysisService:
         recommendation: Recommendation
         if score >= 30:
             recommendation = "BUY"
-        elif score <= -30:
+        elif score <= -35:
             recommendation = "SELL"
         else:
             recommendation = "HOLD"
@@ -623,7 +636,7 @@ class AnalysisService:
         if trend_up:
             recommendation: Recommendation = "BUY" if score >= 35 and momentum_up else "HOLD"
         elif trend_down:
-            recommendation = "SELL" if score <= -35 and momentum_down else "HOLD"
+            recommendation = "SELL" if score <= -40 and momentum_down else "HOLD"
         else:
             recommendation = "HOLD"
         conflicts = self._simple_conflicts(signal_scores)
