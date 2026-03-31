@@ -110,52 +110,34 @@ class AnalysisService:
         }
         signals = AnalysisSignals(**signal_map)
 
-        conflicts = self._detect_conflicts(signal_map)
-        weighted_edge = self._weighted_edge(signal_map)
-        consistency_adjustment = self._consistency_adjustment(signal_map)
-        macro_adjustment = self._macro_edge_adjustment(
-            macro_snapshot=macro_snapshot,
-            signal_map=signal_map,
-        )
-        raw_edge = self._soften_for_conflicts(
-            weighted_edge + consistency_adjustment + macro_adjustment,
-            len(conflicts),
-        )
-
         overextension_risk = self._overextension_risk(price_vs_sma50)
         drawdown_risk = self._drawdown_risk(
             support_distance=support_distance,
             volatility_30d=volatility_30d,
             max_drawdown=max_drawdown,
         )
-        if raw_edge > 0:
-            raw_edge -= drawdown_risk * 0.08
-            raw_edge -= overextension_risk * 0.08
-
-        probability_up = self._probability_from_edge(raw_edge)
+        simple_scores = self._simple_signal_scores(
+            latest_price=latest_price,
+            sma50=sma50,
+            rsi14=rsi14,
+            momentum_5d=momentum_5d,
+            news_snapshot=news_snapshot,
+        )
+        score = sum(simple_scores.values())
+        conflicts = self._simple_conflicts(simple_scores)
+        probability_up = self._probability_from_score(score)
         probability_down = round(1 - probability_up, 4)
-        recommendation = self._recommendation_from_signals(
-            signal_map=signal_map,
-            probability_up=probability_up,
-            conflicts=conflicts,
-        )
-        confidence = self._confidence(
-            signal_map=signal_map,
-            probability_up=probability_up,
+        recommendation = self._recommendation_from_score(score)
+        risk_level = self._simple_risk_level(
             volatility_30d=volatility_30d,
-            conflicts=conflicts,
-            overextension_risk=overextension_risk,
-            news_snapshot=news_snapshot,
-            macro_snapshot=macro_snapshot,
-        )
-        risk_level = self._risk_level(
-            signal_map=signal_map,
-            volatility_30d=volatility_30d,
-            news_snapshot=news_snapshot,
-            conflicts=conflicts,
-            overextension_risk=overextension_risk,
             drawdown_risk=drawdown_risk,
-            macro_snapshot=macro_snapshot,
+            rsi14=rsi14,
+        )
+        confidence = self._simple_confidence(
+            score=score,
+            risk_level=risk_level,
+            conflicts=conflicts,
+            volatility_30d=volatility_30d,
         )
         timeframe = self._timeframe(
             signal_map=signal_map,
@@ -163,49 +145,29 @@ class AnalysisService:
             price_vs_sma50=price_vs_sma50,
             sma20_vs_sma50=sma20_vs_sma50,
         )
-        no_trade, no_trade_reason = self._no_trade_decision(
-            signal_map=signal_map,
-            conflicts=conflicts,
-            volatility_30d=volatility_30d,
-            probability_up=probability_up,
-            confidence=confidence,
-            risk_level=risk_level,
-            news_snapshot=news_snapshot,
-            macro_snapshot=macro_snapshot,
-        )
-        warnings = self._build_warnings(
+        no_trade = False
+        no_trade_reason = "Trade evaluation available."
+        warnings = self._simple_warnings(
             rsi14=rsi14,
             volatility_30d=volatility_30d,
             news_snapshot=news_snapshot,
             conflicts=conflicts,
-            trend_strength=signal_map["trend_strength"].strength,
-            weighted_edge=raw_edge,
             drawdown_risk=drawdown_risk,
-            probability_up=probability_up,
             confidence=confidence,
             risk_level=risk_level,
-            no_trade=no_trade,
-            macro_snapshot=macro_snapshot,
+            score=score,
         )
-        entry_signal, entry_reason = self._entry_decision(
-            signal_map=signal_map,
-            rsi14=rsi14,
-            volatility_30d=volatility_30d,
-            news_snapshot=news_snapshot,
-            probability_up=probability_up,
-            confidence=confidence,
+        entry_signal, entry_reason = self._simple_entry_decision(
+            recommendation=recommendation,
             risk_level=risk_level,
-            no_trade=no_trade,
-            no_trade_reason=no_trade_reason,
-            macro_snapshot=macro_snapshot,
+            confidence=confidence,
+            score=score,
         )
-        exit_signal, exit_reason = self._exit_decision(
-            signal_map=signal_map,
-            rsi14=rsi14,
-            momentum_5d=momentum_5d,
-            news_snapshot=news_snapshot,
-            probability_down=probability_down,
-            macro_snapshot=macro_snapshot,
+        exit_signal, exit_reason = self._simple_exit_decision(
+            recommendation=recommendation,
+            risk_level=risk_level,
+            score=score,
+            warnings=warnings,
         )
         stop_loss_level, stop_loss_reason = self._stop_loss(
             latest_price=latest_price,
@@ -213,38 +175,18 @@ class AnalysisService:
             support_level=support_level,
             volatility_30d=volatility_30d,
         )
-        position_size_percent, position_size_reason = self._position_size(
-            entry_signal=entry_signal,
-            no_trade=no_trade,
-            no_trade_reason=no_trade_reason,
+        position_size_percent, position_size_reason = self._simple_position_size(
             recommendation=recommendation,
             risk_level=risk_level,
             confidence=confidence,
-            volatility_30d=volatility_30d,
-            macro_snapshot=macro_snapshot,
         )
-        summary = self.summary_service.summarize(
-            symbol=normalized_symbol,
+        summary = self._simple_summary(
             recommendation=recommendation,
-            probability_up=probability_up,
-            probability_down=probability_down,
             confidence=confidence,
             risk_level=risk_level,
-            macro=macro_context,
-            no_trade=no_trade,
-            no_trade_reason=no_trade_reason,
-            signals=signal_map.values(),
+            score=score,
+            signal_scores=simple_scores,
             warnings=warnings,
-            conflicts=conflicts,
-            entry_signal=entry_signal,
-            entry_reason=entry_reason,
-            exit_signal=exit_signal,
-            exit_reason=exit_reason,
-            stop_loss_level=stop_loss_level,
-            stop_loss_reason=stop_loss_reason,
-            position_size_percent=position_size_percent,
-            position_size_reason=position_size_reason,
-            timeframe=timeframe,
         )
 
         return AnalysisResponse(
@@ -273,6 +215,208 @@ class AnalysisService:
             generated_at=datetime.now(timezone.utc),
             signals=signals,
         )
+
+    def _simple_signal_scores(
+        self,
+        *,
+        latest_price: float,
+        sma50: float,
+        rsi14: float,
+        momentum_5d: float,
+        news_snapshot: NewsSentimentSnapshot,
+    ) -> dict[str, int]:
+        trend = 1 if latest_price >= sma50 else -1
+        if rsi14 < 30:
+            rsi = 1
+        elif rsi14 > 70:
+            rsi = -1
+        else:
+            rsi = 0
+        momentum = 1 if momentum_5d > 0 else -1
+        if news_snapshot.article_count == 0 or abs(news_snapshot.news_score) < 0.15:
+            news = 0
+        else:
+            news = 1 if news_snapshot.news_score > 0 else -1
+        return {
+            "trend": trend,
+            "rsi": rsi,
+            "momentum": momentum,
+            "news": news,
+        }
+
+    def _simple_conflicts(self, signal_scores: dict[str, int]) -> list[str]:
+        positives = [name for name, value in signal_scores.items() if value > 0]
+        negatives = [name for name, value in signal_scores.items() if value < 0]
+        if positives and negatives:
+            return [f"{positives[0].title()} vs {negatives[0].title()}"]
+        return []
+
+    def _recommendation_from_score(self, score: int) -> Recommendation:
+        if score >= 2:
+            return "BUY"
+        if score <= -2:
+            return "SELL"
+        return "HOLD"
+
+    def _probability_from_score(self, score: int) -> float:
+        mapping = {
+            -4: 0.15,
+            -3: 0.25,
+            -2: 0.35,
+            -1: 0.45,
+            0: 0.50,
+            1: 0.55,
+            2: 0.65,
+            3: 0.75,
+            4: 0.85,
+        }
+        return mapping.get(score, 0.50)
+
+    def _simple_risk_level(
+        self,
+        *,
+        volatility_30d: float,
+        drawdown_risk: float,
+        rsi14: float,
+    ) -> RiskLevel:
+        if volatility_30d >= 0.34 or drawdown_risk >= 0.65:
+            return "HIGH"
+        if volatility_30d >= 0.22 or abs(rsi14 - 50) >= 20:
+            return "MEDIUM"
+        return "LOW"
+
+    def _simple_confidence(
+        self,
+        *,
+        score: int,
+        risk_level: RiskLevel,
+        conflicts: Sequence[str],
+        volatility_30d: float,
+    ) -> float:
+        confidence = 45 + (abs(score) * 14)
+        if conflicts:
+            confidence -= 8
+        if volatility_30d >= 0.30:
+            confidence -= 8
+        if risk_level == "MEDIUM":
+            confidence -= 10
+        elif risk_level == "HIGH":
+            confidence -= 20
+        return round(self._clamp(confidence, 20, 95), 1)
+
+    def _simple_warnings(
+        self,
+        *,
+        rsi14: float,
+        volatility_30d: float,
+        news_snapshot: NewsSentimentSnapshot,
+        conflicts: Sequence[str],
+        drawdown_risk: float,
+        confidence: float,
+        risk_level: RiskLevel,
+        score: int,
+    ) -> list[str]:
+        warnings: list[str] = []
+        if conflicts:
+            warnings.append("Mixed Signals")
+        if volatility_30d >= 0.30:
+            warnings.append("High Volatility")
+        if news_snapshot.news_score <= -0.2 and news_snapshot.article_count:
+            warnings.append("Negative News")
+        if rsi14 > 70:
+            warnings.append("Overbought")
+        if rsi14 < 30:
+            warnings.append("Oversold")
+        if drawdown_risk >= 0.55:
+            warnings.append("Drawdown Risk")
+        if risk_level == "HIGH" and confidence <= 45:
+            warnings.append("High Risk / Lower Confidence")
+        if score == 0:
+            warnings.append("No Clear Edge")
+        return warnings[:MAX_WARNINGS]
+
+    def _simple_entry_decision(
+        self,
+        *,
+        recommendation: Recommendation,
+        risk_level: RiskLevel,
+        confidence: float,
+        score: int,
+    ) -> tuple[bool, str]:
+        if recommendation != "BUY":
+            return False, "Fresh entry is not ideal because the signals are not strong enough for a buy."
+        if risk_level == "HIGH":
+            return False, "Fresh entry is not ideal because volatility and downside risk are elevated."
+        if confidence < 55:
+            return False, "Fresh entry is not ideal because conviction is still limited."
+        if score >= 3:
+            return True, "Multiple positive signals align, so a fresh entry looks reasonable."
+        return True, "The signal score supports a measured buy entry."
+
+    def _simple_exit_decision(
+        self,
+        *,
+        recommendation: Recommendation,
+        risk_level: RiskLevel,
+        score: int,
+        warnings: Sequence[str],
+    ) -> tuple[bool, str]:
+        if recommendation == "SELL":
+            return True, "An exit or trim looks sensible because negative signals are in control."
+        if recommendation == "HOLD" and risk_level == "HIGH" and score < 0:
+            return True, "An exit or trim looks sensible because risk is high while momentum is fading."
+        if "Negative News" in warnings and recommendation != "BUY":
+            return True, "An exit or trim looks sensible because negative news is adding pressure."
+        return False, "No immediate exit trigger is dominant, so holding is reasonable for now."
+
+    def _simple_position_size(
+        self,
+        *,
+        recommendation: Recommendation,
+        risk_level: RiskLevel,
+        confidence: float,
+    ) -> tuple[float, str]:
+        if recommendation != "BUY":
+            return 0.0, "No fresh allocation is suggested unless the setup turns into a buy."
+        if risk_level == "LOW":
+            minimum, maximum = 12.0, 20.0
+        elif risk_level == "MEDIUM":
+            minimum, maximum = 6.0, 12.0
+        else:
+            minimum, maximum = 2.0, 5.0
+        normalized_confidence = self._clamp((confidence - 20) / 75, 0.0, 1.0)
+        size = round(minimum + ((maximum - minimum) * normalized_confidence), 1)
+        if risk_level == "LOW":
+            reason = "Risk is low, so a fuller position is acceptable."
+        elif risk_level == "MEDIUM":
+            reason = "Risk is moderate, so a medium-sized position is more disciplined."
+        else:
+            reason = "Risk is high, so only a small starter position is appropriate."
+        return size, reason
+
+    def _simple_summary(
+        self,
+        *,
+        recommendation: Recommendation,
+        confidence: float,
+        risk_level: RiskLevel,
+        score: int,
+        signal_scores: dict[str, int],
+        warnings: Sequence[str],
+    ) -> str:
+        positive = [name for name, value in signal_scores.items() if value > 0]
+        negative = [name for name, value in signal_scores.items() if value < 0]
+        if recommendation == "BUY":
+            drivers = ", ".join(positive[:2]) or "positive signals"
+            return f"BUY because {drivers} are supportive. Confidence {confidence:.0f}/100 with {risk_level.lower()} risk."
+        if recommendation == "SELL":
+            drivers = ", ".join(negative[:2]) or "negative signals"
+            return f"SELL because {drivers} are weak. Confidence {confidence:.0f}/100 with {risk_level.lower()} risk."
+        if positive and negative:
+            return f"HOLD because signals are mixed between {positive[0]} and {negative[0]}. Confidence {confidence:.0f}/100 with {risk_level.lower()} risk."
+        if score == 0:
+            return f"HOLD because the setup has no clear edge. Confidence {confidence:.0f}/100 with {risk_level.lower()} risk."
+        return f"HOLD because the signal score is not strong enough for a trade. Confidence {confidence:.0f}/100 with {risk_level.lower()} risk."
 
     def _no_data_response(self, symbol: str, reason: str) -> AnalysisResponse:
         normalized_symbol = symbol.strip().upper()

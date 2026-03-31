@@ -103,3 +103,8 @@ class AnalysisResponse(BaseModel):
     @property
     def stop_loss(self) -> Optional[float]:
         return self.stop_loss_level
+
+    @computed_field
+    @property
+    def reason(self) -> str:
+        return self.summary

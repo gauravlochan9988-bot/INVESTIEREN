@@ -96,8 +96,10 @@ def test_analyze_endpoint_returns_decision_payload(client):
     assert isinstance(payload["stop_loss_level"], float)
     assert isinstance(payload["position_size_percent"], float)
     assert payload["timeframe"] in {"short_term", "mid_term", "unclear"}
-    assert payload["summary"].startswith("AAPL ->")
-    assert "entry=" in payload["summary"]
+    assert isinstance(payload["summary"], str)
+    assert payload["summary"]
+    assert payload["reason"] == payload["summary"]
+    assert payload["summary"].startswith(payload["recommendation"])
     assert set(payload["signals"]) == {
         "trend",
         "sma_crossover",
