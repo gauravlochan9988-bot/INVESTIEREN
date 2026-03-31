@@ -245,6 +245,10 @@ class StockSearchService:
             if deduped:
                 return deduped
 
+        direct_candidate = self._direct_symbol_candidate(query)
+        if direct_candidate is not None:
+            return [direct_candidate]
+
         return []
 
     def _provider_results(self, query: str, limit: int) -> List[SearchSnapshot]:
@@ -387,6 +391,15 @@ class StockSearchService:
                 fallbacks.append(candidate)
 
         return fallbacks
+
+    def _direct_symbol_candidate(self, query: str) -> SearchSnapshot | None:
+        normalized = query.strip().upper()
+        if not _is_supported_symbol(normalized):
+            return None
+        return SearchSnapshot(
+            symbol=normalized,
+            name=f"{normalized} (direct symbol lookup)",
+        )
 
     def _build_catalog_document(self, entry: SearchCatalogEntry) -> CatalogDocument:
         return CatalogDocument(

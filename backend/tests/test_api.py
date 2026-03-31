@@ -61,6 +61,15 @@ def test_search_endpoint_surfaces_index_etfs_from_partial_query(client):
     assert [item["symbol"] for item in payload[:3]] == ["SPY", "VOO", "IVV"]
 
 
+def test_search_endpoint_supports_open_direct_symbol_lookup(client):
+    response = client.get("/api/search", params={"q": "SXR8.DE"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload[0]["symbol"] == "SXR8.DE"
+    assert "direct symbol lookup" in payload[0]["name"].lower()
+
+
 def test_search_universe_endpoint_returns_full_known_catalog(client):
     response = client.get("/api/search/universe")
 

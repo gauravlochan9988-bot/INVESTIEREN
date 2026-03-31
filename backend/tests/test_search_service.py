@@ -45,6 +45,16 @@ def test_stock_search_service_falls_back_to_simplified_query():
     assert [result.symbol for result in results[:3]] == ["IVV", "VTI", "VXUS"]
 
 
+def test_stock_search_service_offers_direct_symbol_lookup_for_unknown_supported_ticker():
+    provider = FakeSearchProvider()
+    service = StockSearchService(provider=provider, ttl_seconds=3600)
+
+    results = service.search("SXR8.DE", limit=5)
+
+    assert results[0].symbol == "SXR8.DE"
+    assert "direct symbol lookup" in results[0].name.lower()
+
+
 def test_search_catalog_has_broad_coverage():
     assert len(DEFAULT_SEARCH_CATALOG) >= 100
 
