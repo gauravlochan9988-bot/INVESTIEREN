@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from math import isfinite, sqrt
 from typing import Sequence
@@ -43,6 +44,13 @@ SIGNAL_WEIGHTS: dict[str, float] = {
 }
 
 
+@dataclass(frozen=True)
+class DataQualityDecision:
+    level: DataQuality
+    reason: str
+    can_run_strategy: bool
+
+
 class AnalysisService:
     def __init__(
         self,
@@ -81,9 +89,9 @@ class AnalysisService:
             if len(history) < MIN_HISTORY_POINTS:
                 return self.analysis_cache.set(
                     cache_key,
-                    self._partial_data_response(
+                    self._no_data_response(
                         normalized_symbol,
-                        available_points=len(history),
+                        f"Not enough market history for a meaningful analysis: only {len(history)} daily closes are available.",
                         strategy=strategy,
                     ),
                 )
@@ -166,7 +174,7 @@ class AnalysisService:
             volatility_30d=volatility_30d,
             news_snapshot=news_snapshot,
         )
-        data_quality, data_quality_reason = self._data_quality_snapshot(
+        data_quality_decision = self._evaluate_data_quality(
             latest_price=latest_price,
             sma50=sma50,
             sma200=sma200,
@@ -175,6 +183,14 @@ class AnalysisService:
             volatility_30d=volatility_30d,
             news_snapshot=news_snapshot,
         )
+        if not data_quality_decision.can_run_strategy:
+            return self._no_data_response(
+                normalized_symbol,
+                data_quality_decision.reason,
+                strategy=strategy,
+            )
+        data_quality = data_quality_decision.level
+        data_quality_reason = data_quality_decision.reason
         context = {
             "latest_price": latest_price,
             "sma20": sma20,
@@ -426,7 +442,7 @@ class AnalysisService:
 
         return alerts
 
-    def _data_quality_snapshot(
+    def _evaluate_data_quality(
         self,
         *,
         latest_price: float,
@@ -436,32 +452,53 @@ class AnalysisService:
         momentum_5d: float,
         volatility_30d: float,
         news_snapshot: NewsSentimentSnapshot,
-    ) -> tuple[DataQuality, str]:
+    ) -> DataQualityDecision:
         available_inputs = {
-            "price / sma": all(
-                isfinite(value) and value > 0
-                for value in (latest_price, sma50, sma200)
-            ),
+            "price": isfinite(latest_price) and latest_price > 0,
+            "sma": all(isfinite(value) and value > 0 for value in (sma50, sma200)),
             "rsi": isfinite(rsi14),
             "momentum": isfinite(momentum_5d),
             "volatility": isfinite(volatility_30d),
-            "news": news_snapshot.article_count > 0,
+            "news/sentiment": news_snapshot.article_count > 0,
         }
         available_count = sum(1 for available in available_inputs.values() if available)
         ratio = available_count / len(available_inputs)
-        quality: DataQuality = "FULL" if ratio >= 0.8 else "PARTIAL"
         missing_inputs = [name for name, available in available_inputs.items() if not available]
 
-        if not missing_inputs:
-            return quality, f"Full data quality: {available_count}/5 inputs are available."
-        if quality == "FULL":
-            return (
-                quality,
-                f"Full data quality: {available_count}/5 inputs are available. Confidence is slightly tempered by missing {missing_inputs[0]}.",
+        if available_count < 4:
+            missing = ", ".join(missing_inputs) or "core market inputs"
+            return DataQualityDecision(
+                level="NO DATA",
+                reason=(
+                    f"Not enough data for meaningful analysis: only {available_count}/6 required inputs are available. "
+                    f"Missing {missing}."
+                ),
+                can_run_strategy=False,
             )
-        return (
-            quality,
-            f"Partial data quality: {available_count}/5 inputs are available. Confidence is reduced because {', '.join(missing_inputs)} are missing.",
+
+        if ratio >= 0.8:
+            if not missing_inputs:
+                return DataQualityDecision(
+                    level="FULL",
+                    reason=f"Full data quality: {available_count}/6 required inputs are available.",
+                    can_run_strategy=True,
+                )
+            return DataQualityDecision(
+                level="FULL",
+                reason=(
+                    f"Full data quality: {available_count}/6 required inputs are available. "
+                    f"Confidence is slightly tempered by missing {missing_inputs[0]}."
+                ),
+                can_run_strategy=True,
+            )
+
+        return DataQualityDecision(
+            level="PARTIAL",
+            reason=(
+                f"Partial data quality: {available_count}/6 required inputs are available. "
+                f"Confidence is reduced because {', '.join(missing_inputs)} are missing."
+            ),
+            can_run_strategy=True,
         )
 
     def _apply_data_quality_to_confidence(
@@ -964,7 +1001,7 @@ class AnalysisService:
             probability_down=None,
             confidence=None,
             risk_level=None,
-            data_quality=None,
+            data_quality="NO DATA",
             data_quality_reason=message,
             macro=None,
             no_trade=True,

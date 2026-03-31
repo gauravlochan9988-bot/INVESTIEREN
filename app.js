@@ -291,6 +291,8 @@ function dataQualityInfo(analysis) {
       ? "text-emerald-300"
       : label === "PARTIAL"
         ? "text-amber-300"
+        : label === "NO DATA"
+          ? "text-slate-200"
         : "text-slate-200";
 
   return {

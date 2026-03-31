@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, computed_field
 
 Recommendation = Literal["BUY", "HOLD", "SELL"]
 RiskLevel = Literal["LOW", "MEDIUM", "HIGH"]
-DataQuality = Literal["FULL", "PARTIAL"]
+DataQuality = Literal["FULL", "PARTIAL", "NO DATA"]
 SignalStatus = Literal["BULLISH", "NEUTRAL", "BEARISH"]
 Timeframe = Literal["short_term", "mid_term", "unclear"]
 MacroTrend = Literal["bullish", "neutral", "bearish"]

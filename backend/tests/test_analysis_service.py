@@ -2,6 +2,7 @@ from app.core.exceptions import ExternalServiceError
 from app.services.analysis import AnalysisService
 from app.services.macro import MacroContextService
 from app.services.market_data import MarketDataService
+from app.services.news import NewsSentimentSnapshot
 from app.services.news import NewsSentimentService
 from tests.helpers import (
     FakeMarketDataProvider,
@@ -266,7 +267,7 @@ def test_analyze_symbol_returns_no_data_status_when_live_market_data_is_missing(
     assert result.symbol == "AAPL"
     assert result.strategy == "hedgefund"
     assert result.no_data is True
-    assert result.data_quality is None
+    assert result.data_quality == "NO DATA"
 
 
 def test_analyze_symbol_marks_partial_data_when_history_window_is_too_short():
@@ -295,8 +296,77 @@ def test_analyze_symbol_marks_partial_data_when_history_window_is_too_short():
 
     assert result.symbol == "AAPL"
     assert result.no_data is True
-    assert result.data_quality == "PARTIAL"
-    assert "At least 60 are needed" in result.data_quality_reason
+    assert result.data_quality == "NO DATA"
+    assert "Not enough market history" in result.data_quality_reason
+
+
+def test_data_quality_returns_full_when_at_least_eighty_percent_is_available(analysis_service):
+    decision = analysis_service._evaluate_data_quality(
+        latest_price=100.0,
+        sma50=95.0,
+        sma200=90.0,
+        rsi14=48.0,
+        momentum_5d=0.03,
+        volatility_30d=0.18,
+        news_snapshot=NewsSentimentSnapshot(
+            symbol="AAPL",
+            news_score=0.0,
+            sentiment_label="neutral",
+            article_count=0,
+            articles=[],
+            note="No recent articles",
+        ),
+    )
+
+    assert decision.level == "FULL"
+    assert decision.can_run_strategy is True
+    assert "5/6" in decision.reason
+
+
+def test_data_quality_returns_partial_when_analysis_can_still_run_with_less_than_eighty_percent(analysis_service):
+    decision = analysis_service._evaluate_data_quality(
+        latest_price=100.0,
+        sma50=95.0,
+        sma200=90.0,
+        rsi14=48.0,
+        momentum_5d=0.0 / 1.0,
+        volatility_30d=float("nan"),
+        news_snapshot=NewsSentimentSnapshot(
+            symbol="AAPL",
+            news_score=0.0,
+            sentiment_label="neutral",
+            article_count=0,
+            articles=[],
+            note="No recent articles",
+        ),
+    )
+
+    assert decision.level == "PARTIAL"
+    assert decision.can_run_strategy is True
+    assert "4/6" in decision.reason
+
+
+def test_data_quality_returns_no_data_when_too_many_required_inputs_are_missing(analysis_service):
+    decision = analysis_service._evaluate_data_quality(
+        latest_price=100.0,
+        sma50=0.0,
+        sma200=0.0,
+        rsi14=float("nan"),
+        momentum_5d=0.0,
+        volatility_30d=float("nan"),
+        news_snapshot=NewsSentimentSnapshot(
+            symbol="AAPL",
+            news_score=0.0,
+            sentiment_label="neutral",
+            article_count=0,
+            articles=[],
+            note="No recent articles",
+        ),
+    )
+
+    assert decision.level == "NO DATA"
+    assert decision.can_run_strategy is False
+    assert "only 2/6 required inputs" in decision.reason
 
 
 def test_analyze_symbol_reuses_cached_response_without_reloading_history():

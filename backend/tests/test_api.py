@@ -102,7 +102,7 @@ def test_analyze_endpoint_returns_decision_payload(client):
     assert payload["recommendation"] in {"BUY", "HOLD", "SELL"}
     assert isinstance(payload["score"], int)
     assert -100 <= payload["score"] <= 100
-    assert payload["data_quality"] in {"FULL", "PARTIAL"}
+    assert payload["data_quality"] in {"FULL", "PARTIAL", "NO DATA"}
     assert isinstance(payload["data_quality_reason"], str)
     assert payload["data_quality_reason"]
     assert 0 <= payload["probability_up"] <= 1
@@ -200,7 +200,7 @@ def test_analyze_endpoint_returns_no_data_status_when_live_market_data_is_missin
     assert payload["strategy"] == "simple"
     assert payload["no_data"] is True
     assert payload["no_data_reason"] == "No live market data available."
-    assert payload["data_quality"] is None
+    assert payload["data_quality"] == "NO DATA"
     assert payload["data_quality_reason"] == "No live market data available."
     assert payload["recommendation"] is None
     assert payload["signals"] is None
@@ -234,8 +234,8 @@ def test_analyze_endpoint_returns_partial_when_only_short_history_exists(client)
     assert response.status_code == 200
     payload = response.json()
     assert payload["no_data"] is True
-    assert payload["data_quality"] == "PARTIAL"
-    assert "At least 60 are needed" in payload["data_quality_reason"]
+    assert payload["data_quality"] == "NO DATA"
+    assert "Not enough market history" in payload["data_quality_reason"]
 
 
 def test_strategy_query_returns_selected_strategy_without_frontend_overrides(client):
