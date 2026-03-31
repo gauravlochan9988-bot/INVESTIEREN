@@ -17,6 +17,10 @@ body {
   display: none !important;
 }
 
+.mobile-only {
+  display: none;
+}
+
 #tradingviewChart iframe {
   width: 100% !important;
   height: 100% !important;
@@ -315,13 +319,44 @@ body {
 }
 
 @media (max-width: 768px) {
+  .mobile-only {
+    display: block;
+  }
+
   #appShell > div {
     padding: 10px;
+    padding-bottom: 92px;
+  }
+
+  #alertsSection {
+    order: 4;
   }
 
   #appShell main {
+    display: flex;
+    flex-direction: column;
     grid-template-columns: 1fr !important;
     gap: 12px;
+  }
+
+  #watchlistSection {
+    order: 4;
+  }
+
+  #companySection {
+    order: 3;
+  }
+
+  #selectedSymbolSection {
+    order: 1;
+  }
+
+  #tradeDecisionSection {
+    order: 2;
+  }
+
+  #chartSection {
+    order: 3;
   }
 
   #appShell main .grid {
@@ -392,6 +427,59 @@ body {
     max-height: 52vh;
   }
 
+  #selectedSymbolSection .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  #tradeDecisionSection .signal-hero {
+    padding: 14px !important;
+  }
+
+  #tradeDecisionSection .signal-hero > .mt-4 {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  #tradeDecisionSection .signal-hero > .mt-4 > div:last-child {
+    width: 100%;
+    max-width: none;
+  }
+
+  #tradeDecisionSection .signal-hero .mt-4.flex.flex-wrap.items-center.gap-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  #tradeDecisionSection .signal-hero .mt-4.flex.flex-wrap.items-center.gap-3 > div {
+    min-width: 0;
+  }
+
+  #mobileStrategyCards {
+    display: grid;
+    gap: 10px;
+  }
+
+  .mobile-strategy-card {
+    transition:
+      transform 140ms ease,
+      box-shadow 140ms ease,
+      background-color 140ms ease;
+  }
+
+  .mobile-strategy-card:active,
+  .mobile-quick-action:active {
+    transform: scale(0.985);
+  }
+
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
   #watchlistBody button,
   #favoritesBody button {
     padding: 0.85rem;
@@ -403,7 +491,7 @@ body {
   }
 
   #recommendationValue {
-    font-size: 2.25rem;
+    font-size: 2.5rem;
     line-height: 1;
   }
 
@@ -435,6 +523,55 @@ body {
 
   #tradingviewChart {
     height: 250px !important;
+  }
+
+  #mobileQuickActions {
+    position: fixed;
+    inset-inline: 10px;
+    bottom: 10px;
+    z-index: 45;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 22px;
+    background: rgba(2, 6, 23, 0.92);
+    box-shadow: 0 20px 40px rgba(2, 6, 23, 0.42);
+    backdrop-filter: blur(18px);
+    padding: 8px;
+  }
+
+  .mobile-quick-action {
+    display: grid;
+    place-items: center;
+    gap: 4px;
+    min-height: 58px;
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgb(226 232 240);
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    transition:
+      transform 140ms ease,
+      border-color 140ms ease,
+      background-color 140ms ease;
+  }
+
+  .mobile-quick-action-active {
+    border-color: rgba(251, 191, 36, 0.28);
+    background: rgba(251, 191, 36, 0.12);
+    color: rgb(253 224 71);
+  }
+
+  #portfolioSheet {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+  }
+
+  #portfolioSheetSummary,
+  #portfolioSheetPositions {
+    min-width: 0;
   }
 
   .mobile-skeleton {

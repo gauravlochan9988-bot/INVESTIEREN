@@ -41,6 +41,10 @@ const state = {
   chartRenderId: null,
   chartRetryAttempt: 0,
   chartRequestId: 0,
+  chartInView: false,
+  pendingChart: null,
+  chartObserver: null,
+  strategySnapshots: {},
 };
 
 const elements = {
@@ -52,6 +56,7 @@ const elements = {
   appShell: document.getElementById("appShell"),
   backendStatus: document.getElementById("backendStatus"),
   errorBanner: document.getElementById("errorBanner"),
+  alertsSection: document.getElementById("alertsSection"),
   alertsMeta: document.getElementById("alertsMeta"),
   alertsList: document.getElementById("alertsList"),
   strategyButtons: Array.from(document.querySelectorAll(".strategy-button")),
@@ -63,8 +68,11 @@ const elements = {
   searchSuggestions: document.getElementById("searchSuggestions"),
   watchlistMeta: document.getElementById("watchlistMeta"),
   watchlistBody: document.getElementById("watchlistBody"),
+  watchlistSection: document.getElementById("watchlistSection"),
   favoritesMeta: document.getElementById("favoritesMeta"),
   favoritesBody: document.getElementById("favoritesBody"),
+  selectedSymbolSection: document.getElementById("selectedSymbolSection"),
+  tradeDecisionSection: document.getElementById("tradeDecisionSection"),
   selectedSymbolName: document.getElementById("selectedSymbolName"),
   selectedCompanyName: document.getElementById("selectedCompanyName"),
   changeBadge: document.getElementById("changeBadge"),
@@ -76,9 +84,11 @@ const elements = {
   recommendationCard: document.getElementById("recommendationCard"),
   recommendationValue: document.getElementById("recommendationValue"),
   confidenceValue: document.getElementById("confidenceValue"),
+  confidenceBarFill: document.getElementById("confidenceBarFill"),
   confidenceHint: document.getElementById("confidenceHint"),
   analysisSummary: document.getElementById("analysisSummary"),
   selectedStrategyBadge: document.getElementById("selectedStrategyBadge"),
+  mobileStrategyCards: document.getElementById("mobileStrategyCards"),
   analysisGeneratedAt: document.getElementById("analysisGeneratedAt"),
   biasValue: document.getElementById("biasValue"),
   noTradeReason: document.getElementById("noTradeReason"),
@@ -95,12 +105,23 @@ const elements = {
   stopLossValue: document.getElementById("stopLossValue"),
   stopLossReason: document.getElementById("stopLossReason"),
   warningsList: document.getElementById("warningsList"),
+  chartSection: document.getElementById("chartSection"),
   chartSymbolBadge: document.getElementById("chartSymbolBadge"),
   tradingviewChart: document.getElementById("tradingviewChart"),
   companyLogo: document.getElementById("companyLogo"),
   companyHeadline: document.getElementById("companyHeadline"),
   companyExchange: document.getElementById("companyExchange"),
   companyDetails: document.getElementById("companyDetails"),
+  companySection: document.getElementById("companySection"),
+  mobileQuickActions: document.getElementById("mobileQuickActions"),
+  mobileFavoriteButton: document.getElementById("mobileFavoriteButton"),
+  mobileAlertButton: document.getElementById("mobileAlertButton"),
+  mobilePortfolioButton: document.getElementById("mobilePortfolioButton"),
+  portfolioSheet: document.getElementById("portfolioSheet"),
+  portfolioSheetBackdrop: document.getElementById("portfolioSheetBackdrop"),
+  portfolioSheetClose: document.getElementById("portfolioSheetClose"),
+  portfolioSheetSummary: document.getElementById("portfolioSheetSummary"),
+  portfolioSheetPositions: document.getElementById("portfolioSheetPositions"),
 };
 
 function resolveApiBaseUrl() {
@@ -185,6 +206,21 @@ function isMobileViewport() {
 
 function renderSkeleton(element, className) {
   element.innerHTML = `<span class="mobile-skeleton ${className}"></span>`;
+}
+
+function setConfidenceBar(confidence, quality = "") {
+  if (!elements.confidenceBarFill) {
+    return;
+  }
+  const numeric = Math.max(0, Math.min(100, Number(confidence || 0)));
+  const qualityTone =
+    quality === "FULL"
+      ? "bg-emerald-300"
+      : quality === "PARTIAL"
+      ? "bg-amber-300"
+      : "bg-rose-300";
+  elements.confidenceBarFill.className = `h-full rounded-full transition-[width] duration-300 ease-out ${qualityTone}`;
+  elements.confidenceBarFill.style.width = `${numeric}%`;
 }
 
 function biasLabel(analysis) {
@@ -476,6 +512,7 @@ function renderAnalysisLoading(symbol) {
   elements.recommendationValue.textContent = "LOADING";
   elements.confidenceValue.className = "mt-2 text-2xl font-semibold text-white";
   elements.confidenceValue.textContent = "--";
+  setConfidenceBar(0, "NO_DATA");
   elements.confidenceHint.textContent = "Reading market context";
   elements.analysisSummary.textContent = `Building ${STRATEGY_LABELS[state.selectedStrategy]} analysis for ${symbol}...`;
   elements.selectedStrategyBadge.textContent = STRATEGY_LABELS[state.selectedStrategy];
@@ -519,6 +556,7 @@ function renderAnalysisLoading(symbol) {
       <span class="mobile-skeleton h-8 w-20 rounded-full"></span>
     `;
   }
+  renderMobileStrategyCardsLoading(symbol);
 }
 
 function alertToneClasses(tone) {
@@ -620,6 +658,12 @@ function queueAlertsRetry(forceRefresh = false, delayMs = 2500) {
 
 function renderAnalysis(analysis) {
   state.latestAnalysis = analysis;
+  if (analysis?.symbol) {
+    state.strategySnapshots[analysis.symbol] = {
+      ...(state.strategySnapshots[analysis.symbol] || {}),
+      [analysis.strategy || state.selectedStrategy]: analysis,
+    };
+  }
   const strategy = analysis?.strategy || state.selectedStrategy;
   elements.selectedStrategyBadge.textContent = STRATEGY_LABELS[strategy] || titleCase(strategy);
   if (analysis && !analysis.no_data) {
@@ -634,6 +678,7 @@ function renderAnalysis(analysis) {
     elements.recommendationValue.textContent = "NO DATA";
     elements.confidenceValue.className = "mt-2 text-2xl font-semibold text-slate-200";
     elements.confidenceValue.textContent = "--";
+    setConfidenceBar(0, "NO_DATA");
     elements.confidenceHint.textContent = "No confidence without data";
     elements.analysisSummary.textContent = reason;
     elements.analysisGeneratedAt.textContent = "No analysis";
@@ -655,6 +700,8 @@ function renderAnalysis(analysis) {
     elements.stopLossReason.textContent = "No stop loss without data.";
     elements.warningsList.innerHTML =
       '<span class="rounded-full border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-200">No live data</span>';
+    renderMobileStrategyCards();
+    syncMobileFavoriteButton();
     return;
   }
 
@@ -667,6 +714,7 @@ function renderAnalysis(analysis) {
   elements.recommendationValue.textContent = label;
   elements.confidenceValue.className = `mt-2 text-2xl font-semibold ${confidenceToneClass(analysis.confidence)}`;
   elements.confidenceValue.textContent = `${Math.round(Number(analysis.confidence || 0))}%`;
+  setConfidenceBar(analysis.confidence, analysis.data_quality);
   elements.confidenceHint.textContent = confidenceHint(analysis);
   elements.analysisSummary.textContent = analysis.reason || analysis.summary || "No summary available.";
   elements.analysisGeneratedAt.textContent = analysis.generated_at
@@ -702,6 +750,178 @@ function renderAnalysis(analysis) {
         })
         .join("")
     : '<span class="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-200">No urgent warnings</span>';
+  renderMobileStrategyCards();
+  syncMobileFavoriteButton();
+}
+
+function strategyToneClasses(label) {
+  if (label === "BUY") {
+    return "border-emerald-400/20 bg-emerald-500/10 text-emerald-200";
+  }
+  if (label === "SELL") {
+    return "border-rose-400/20 bg-rose-500/10 text-rose-200";
+  }
+  return "border-white/10 bg-white/5 text-slate-200";
+}
+
+function renderMobileStrategyCardsLoading(symbol) {
+  if (!elements.mobileStrategyCards) {
+    return;
+  }
+  elements.mobileStrategyCards.innerHTML = Object.entries(STRATEGY_LABELS)
+    .map(
+      ([key, label]) => `
+        <button type="button" class="mobile-strategy-card mobile-only rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-left" data-mobile-strategy="${key}">
+          <div class="flex items-center justify-between gap-3">
+            <p class="text-sm font-semibold text-white">${label}</p>
+            <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-slate-300">Loading</span>
+          </div>
+          <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/10"><div class="mobile-skeleton h-full w-1/2 rounded-full"></div></div>
+          <p class="mt-3 text-sm text-slate-400">Checking ${label} setup for ${symbol}...</p>
+        </button>
+      `,
+    )
+    .join("");
+  bindMobileStrategyCards();
+}
+
+function renderMobileStrategyCards() {
+  if (!elements.mobileStrategyCards || !isMobileViewport()) {
+    return;
+  }
+  const snapshots = state.strategySnapshots[state.selectedSymbol] || {};
+  elements.mobileStrategyCards.innerHTML = Object.entries(STRATEGY_LABELS)
+    .map(([key, label]) => {
+      const analysis = snapshots[key];
+      const current = key === state.selectedStrategy;
+      const recommendation = recommendationLabel(analysis || { no_data: true });
+      const confidence = analysis?.no_data ? "--" : `${Math.round(Number(analysis?.confidence || 0))}%`;
+      const reason =
+        analysis?.reason ||
+        (analysis?.no_data ? analysis.no_data_reason : `Loading ${label} analysis...`);
+      const tone = strategyToneClasses(recommendation);
+      const active = current ? "ring-1 ring-cyan-300/40 shadow-lg shadow-cyan-500/10" : "";
+      return `
+        <button type="button" class="mobile-strategy-card mobile-only rounded-2xl border p-4 text-left ${tone} ${active}" data-mobile-strategy="${key}">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-sm font-semibold text-white">${label}</p>
+              <p class="mt-2 text-xl font-black tracking-[-0.03em]">${recommendation}</p>
+            </div>
+            <div class="text-right">
+              <p class="text-[11px] font-medium uppercase tracking-[0.2em] opacity-70">Confidence</p>
+              <p class="mt-2 text-base font-semibold text-white">${confidence}</p>
+            </div>
+          </div>
+          <p class="mt-3 line-clamp-2 text-sm leading-6 text-slate-200/90">${reason}</p>
+        </button>
+      `;
+    })
+    .join("");
+  bindMobileStrategyCards();
+}
+
+function bindMobileStrategyCards() {
+  elements.mobileStrategyCards?.querySelectorAll("[data-mobile-strategy]").forEach((card) => {
+    card.addEventListener("click", async () => {
+      const nextStrategy = card.dataset.mobileStrategy;
+      if (!nextStrategy || nextStrategy === state.selectedStrategy) {
+        return;
+      }
+      persistSelectedStrategy(nextStrategy);
+      renderStrategyButtons();
+      await loadSymbol(state.selectedSymbol, true);
+    });
+  });
+}
+
+function syncMobileFavoriteButton() {
+  if (!elements.mobileFavoriteButton) {
+    return;
+  }
+  const active = isFavoriteSymbol(state.selectedSymbol);
+  elements.mobileFavoriteButton.innerHTML = `
+    <span class="text-lg">${active ? "★" : "☆"}</span>
+    <span>${active ? "Saved" : "Favorite"}</span>
+  `;
+  elements.mobileFavoriteButton.classList.toggle("mobile-quick-action-active", active);
+}
+
+function showPortfolioSheetLoading() {
+  elements.portfolioSheetSummary.innerHTML = `
+    <div class="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+      <div class="mobile-skeleton h-4 w-24"></div>
+      <div class="mt-3 mobile-skeleton h-8 w-32"></div>
+    </div>
+  `;
+  elements.portfolioSheetPositions.innerHTML = `
+    <div class="rounded-2xl border border-white/10 bg-slate-900/70 p-4"><div class="mobile-skeleton h-4 w-full"></div><div class="mt-3 mobile-skeleton h-4 w-10/12"></div></div>
+  `;
+}
+
+function renderPortfolioSheet(portfolio) {
+  const pnlTone = Number(portfolio.total_pnl || 0) >= 0 ? "text-emerald-300" : "text-rose-300";
+  elements.portfolioSheetSummary.innerHTML = `
+    <article class="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+      <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-500">Market value</p>
+      <p class="mt-3 text-3xl font-semibold text-white">${currency(portfolio.market_value || 0)}</p>
+      <p class="mt-2 text-sm ${pnlTone}">${percent(portfolio.total_pnl_percent || 0)} · ${currency(portfolio.total_pnl || 0)}</p>
+    </article>
+  `;
+  if (!portfolio.positions?.length) {
+    elements.portfolioSheetPositions.innerHTML = `
+      <article class="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+        <p class="text-sm font-semibold text-white">No positions yet</p>
+        <p class="mt-2 text-sm leading-6 text-slate-400">Add portfolio positions later to track allocation and PnL here.</p>
+      </article>
+    `;
+    return;
+  }
+  elements.portfolioSheetPositions.innerHTML = portfolio.positions
+    .map((position) => {
+      const allocation = portfolio.market_value ? ((position.market_value / portfolio.market_value) * 100).toFixed(1) : "0.0";
+      const tone = Number(position.pnl || 0) >= 0 ? "text-emerald-300" : "text-rose-300";
+      return `
+        <article class="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <p class="text-sm font-semibold text-white">${position.symbol}</p>
+              <p class="mt-1 text-xs text-slate-400">${allocation}% allocation</p>
+            </div>
+            <p class="text-sm font-semibold ${tone}">${currency(position.pnl || 0)}</p>
+          </div>
+          <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+            <div><p class="text-slate-500">Value</p><p class="mt-1 font-medium text-white">${currency(position.market_value || 0)}</p></div>
+            <div><p class="text-slate-500">Entry</p><p class="mt-1 font-medium text-white">${currency(position.average_price || 0)}</p></div>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function openPortfolioSheet() {
+  if (!elements.portfolioSheet || !elements.portfolioSheetBackdrop) {
+    return;
+  }
+  elements.portfolioSheetBackdrop.classList.remove("hidden");
+  elements.portfolioSheet.classList.remove("hidden");
+  showPortfolioSheetLoading();
+  api("/api/portfolio", { timeoutMs: 18000, retryCount: 1 })
+    .then(renderPortfolioSheet)
+    .catch((error) => {
+      elements.portfolioSheetPositions.innerHTML = `
+        <article class="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
+          <p class="text-sm font-semibold text-white">Portfolio unavailable</p>
+          <p class="mt-2 text-sm leading-6 text-slate-300">${error.message || "Portfolio data could not load right now."}</p>
+        </article>
+      `;
+    });
+}
+
+function closePortfolioSheet() {
+  elements.portfolioSheetBackdrop?.classList.add("hidden");
+  elements.portfolioSheet?.classList.add("hidden");
 }
 
 function setAuthenticated(value) {
@@ -772,6 +992,7 @@ function toggleFavorite(symbol) {
   persistFavoriteSymbols();
   renderWatchlist(state.watchlist);
   renderFavorites();
+  syncMobileFavoriteButton();
 }
 
 function renderFavoriteButton(symbol) {
@@ -890,6 +1111,7 @@ function showAppShell() {
   elements.authOverlay.hidden = true;
   elements.appShell.classList.remove("hidden");
   elements.appShell.hidden = false;
+  elements.mobileQuickActions?.classList.remove("hidden");
 }
 
 function showLoginOverlay() {
@@ -897,6 +1119,8 @@ function showLoginOverlay() {
   elements.appShell.hidden = true;
   elements.authOverlay.classList.remove("hidden");
   elements.authOverlay.hidden = false;
+  elements.mobileQuickActions?.classList.add("hidden");
+  closePortfolioSheet();
   elements.authError.hidden = true;
   elements.authForm.reset();
 }
@@ -1145,6 +1369,11 @@ function renderCompanyDetails(overview) {
 function queueTradingViewRender(symbol, exchange = "") {
   const requestId = ++state.chartRequestId;
   window.clearTimeout(state.chartRenderId);
+  state.pendingChart = { symbol, exchange, requestId };
+  if (isMobileViewport() && !state.chartInView) {
+    showTradingViewLoader("Chart loads when you scroll.");
+    return;
+  }
   const hasRenderedChart = Boolean(elements.tradingviewChart.querySelector("iframe"));
   if (!hasRenderedChart || state.tvWidgetSymbol !== toTradingViewSymbol(symbol, exchange)) {
     showTradingViewLoader();
@@ -1308,6 +1537,44 @@ function showTradingViewLoader(message = "Loading TradingView chart...") {
   elements.tradingviewChart.innerHTML = `<div class="tv-loader">${message}</div>`;
 }
 
+function initChartObserver() {
+  if (!elements.chartSection || !("IntersectionObserver" in window)) {
+    state.chartInView = !isMobileViewport();
+    return;
+  }
+  if (state.chartObserver) {
+    state.chartObserver.disconnect();
+  }
+  state.chartObserver = new IntersectionObserver(
+    (entries) => {
+      const visible = entries.some((entry) => entry.isIntersecting);
+      state.chartInView = visible || !isMobileViewport();
+      if (state.chartInView && state.pendingChart) {
+        const { symbol, exchange, requestId } = state.pendingChart;
+        window.clearTimeout(state.chartRenderId);
+        state.chartRenderId = window.setTimeout(() => {
+          renderTradingView(symbol, exchange, requestId);
+        }, 80);
+      }
+    },
+    { rootMargin: "180px 0px" },
+  );
+  state.chartObserver.observe(elements.chartSection);
+}
+
+function handleViewportFeatures() {
+  state.chartInView = !isMobileViewport();
+  if (isMobileViewport()) {
+    initChartObserver();
+  } else if (state.pendingChart) {
+    const { symbol, exchange, requestId } = state.pendingChart;
+    window.clearTimeout(state.chartRenderId);
+    state.chartRenderId = window.setTimeout(() => renderTradingView(symbol, exchange, requestId), 80);
+  }
+  syncMobileFavoriteButton();
+  renderMobileStrategyCards();
+}
+
 async function renderTradingView(symbol, exchange = "", requestId = state.chartRequestId) {
   const tvSymbol = toTradingViewSymbol(symbol, exchange);
   const hasRenderedChart = Boolean(elements.tradingviewChart.querySelector("iframe"));
@@ -1390,6 +1657,7 @@ async function loadSymbol(symbol, forceRefresh = false) {
   const requestId = ++state.activeRequest;
   const normalized = symbol.trim().toUpperCase();
   persistSelectedSymbol(normalized);
+  state.strategySnapshots[normalized] = {};
   clearError();
   renderWatchlist(state.watchlist);
   renderAnalysisLoading(normalized);
@@ -1466,6 +1734,14 @@ async function loadSymbol(symbol, forceRefresh = false) {
       });
     }
 
+    if (isMobileViewport()) {
+      scheduleLowPriorityTask(() => {
+        loadStrategySnapshots(normalized, forceRefresh).catch((error) => {
+          console.error("[frontend] mobile strategy snapshot load failed", error);
+        });
+      }, 120);
+    }
+
     void newsPromise;
 
     if (overviewResult.status === "rejected") {
@@ -1480,6 +1756,35 @@ async function loadSymbol(symbol, forceRefresh = false) {
       no_data: true,
       no_data_reason: error.message || "Analysis unavailable.",
     });
+  }
+}
+
+async function loadStrategySnapshots(symbol, forceRefresh = false) {
+  const strategies = Object.keys(STRATEGY_LABELS);
+  const existing = state.strategySnapshots[symbol] || {};
+  const params = new URLSearchParams();
+  if (forceRefresh) {
+    params.set("refresh", "1");
+  }
+  await Promise.all(
+    strategies.map(async (strategy) => {
+      if (!forceRefresh && existing[strategy]) {
+        return;
+      }
+      const query = new URLSearchParams(params);
+      query.set("strategy", strategy);
+      const analysis = await api(`/api/analysis/${encodeURIComponent(symbol)}?${query.toString()}`, {
+        timeoutMs: 22000,
+        retryCount: 1,
+      });
+      state.strategySnapshots[symbol] = {
+        ...(state.strategySnapshots[symbol] || {}),
+        [strategy]: analysis,
+      };
+    }),
+  );
+  if (symbol === state.selectedSymbol) {
+    renderMobileStrategyCards();
   }
 }
 
@@ -1563,6 +1868,7 @@ function bindAuth() {
 
 function bindApp() {
   renderStrategyButtons();
+  handleViewportFeatures();
 
   elements.logoutButton.addEventListener("click", () => {
     setAuthenticated(false);
@@ -1578,6 +1884,22 @@ function bindApp() {
       await loadSymbol(state.watchlist[0].symbol);
     }
   });
+
+  elements.mobileFavoriteButton?.addEventListener("click", () => {
+    toggleFavorite(state.selectedSymbol);
+    syncMobileFavoriteButton();
+  });
+
+  elements.mobileAlertButton?.addEventListener("click", () => {
+    elements.alertsSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  elements.mobilePortfolioButton?.addEventListener("click", () => {
+    openPortfolioSheet();
+  });
+
+  elements.portfolioSheetClose?.addEventListener("click", closePortfolioSheet);
+  elements.portfolioSheetBackdrop?.addEventListener("click", closePortfolioSheet);
 
   elements.strategyButtons.forEach((button) => {
     button.addEventListener("click", async () => {
@@ -1646,6 +1968,10 @@ function bindApp() {
     ) {
       hideSearchSuggestions();
     }
+  });
+
+  window.addEventListener("resize", () => {
+    handleViewportFeatures();
   });
 }
 
