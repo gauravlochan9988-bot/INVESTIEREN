@@ -585,7 +585,15 @@ async function renderTradingView(symbol) {
     style: "1",
     locale: "en",
     allow_symbol_change: false,
-    hide_top_toolbar: false,
+    hide_top_toolbar: true,
+    hide_side_toolbar: true,
+    withdateranges: false,
+    details: false,
+    hotlist: false,
+    calendar: false,
+    save_image: false,
+    studies: [],
+    toolbar_bg: "#020617",
     container_id: "tradingviewChart",
   });
 }
