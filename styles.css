@@ -734,6 +734,17 @@ body {
     font-size: 0.98rem;
   }
 
+  #sidebarBrandBlock {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 10px 24px rgba(2, 6, 23, 0.12);
+  }
+
+  #sidebarBrandBlock p:last-child {
+    white-space: normal;
+    line-height: 1.35;
+  }
+
   #watchlistSection .text-xs {
     letter-spacing: 0.18em;
   }
