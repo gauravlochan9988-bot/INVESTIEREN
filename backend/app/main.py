@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Optional, Union
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -53,6 +54,16 @@ def create_app() -> FastAPI:
 
     @app.on_event("startup")
     def ensure_database_tables() -> None:
+        parsed = urlparse(settings.database_url)
+        print(
+            "database_target",
+            {
+                "scheme": parsed.scheme,
+                "username": parsed.username,
+                "hostname": parsed.hostname,
+                "port": parsed.port,
+            },
+        )
         Base.metadata.create_all(bind=get_engine())
 
     @app.get("/")

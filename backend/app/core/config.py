@@ -57,6 +57,8 @@ class Settings(BaseSettings):
         if not isinstance(value, str):
             return value
 
+        value = value.strip()
+
         if value.startswith("postgres://"):
             return value.replace("postgres://", "postgresql+psycopg2://", 1)
 
