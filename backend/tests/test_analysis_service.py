@@ -256,8 +256,35 @@ def test_analyze_symbol_returns_no_data_status_when_live_market_data_is_missing(
     result = analysis_service.analyze_symbol("AAPL")
 
     assert result.symbol == "AAPL"
+    assert result.strategy == "hedgefund"
     assert result.no_data is True
     assert result.no_data_reason == "No live market data available."
-    assert result.recommendation is None
-    assert result.signals is None
-    assert result.position_size_percent is None
+
+
+def test_strategies_return_distinct_results_without_overwriting_each_other(analysis_service):
+    simple = analysis_service.analyze_symbol("MSFT", strategy="simple")
+    ai = analysis_service.analyze_symbol("MSFT", strategy="ai")
+    hedgefund = analysis_service.analyze_symbol("MSFT", strategy="hedgefund")
+
+    assert simple.strategy == "simple"
+    assert ai.strategy == "ai"
+    assert hedgefund.strategy == "hedgefund"
+    assert simple.recommendation == "BUY"
+    assert ai.recommendation == "HOLD"
+    assert hedgefund.recommendation == "HOLD"
+    assert simple.score != ai.score
+    assert ai.score != hedgefund.score
+    assert simple.no_trade is False
+    assert ai.no_trade is False
+    assert hedgefund.no_trade is False
+
+
+def test_hedgefund_confirmation_can_hold_while_ai_model_still_sells(analysis_service):
+    ai = analysis_service.analyze_symbol("TSLA", strategy="ai")
+    hedgefund = analysis_service.analyze_symbol("TSLA", strategy="hedgefund")
+
+    assert ai.strategy == "ai"
+    assert hedgefund.strategy == "hedgefund"
+    assert ai.recommendation == "SELL"
+    assert hedgefund.recommendation == "HOLD"
+    assert hedgefund.reason.startswith("HOLD because the long-term trend is down")

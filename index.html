@@ -127,7 +127,34 @@
             </button>
           </form>
 
-          <div class="flex flex-wrap items-center gap-3">
+          <div class="flex flex-wrap items-center gap-3 xl:justify-end">
+            <div
+              id="strategyToggle"
+              class="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/60 p-1"
+              aria-label="Trading strategy"
+            >
+              <button
+                type="button"
+                class="strategy-button rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-300 transition"
+                data-strategy="simple"
+              >
+                Simple
+              </button>
+              <button
+                type="button"
+                class="strategy-button rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-300 transition"
+                data-strategy="ai"
+              >
+                AI
+              </button>
+              <button
+                type="button"
+                class="strategy-button rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-300 transition"
+                data-strategy="hedgefund"
+              >
+                Hedgefund
+              </button>
+            </div>
             <div
               id="backendStatus"
               class="dashboard-chip rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-300"
@@ -208,12 +235,20 @@
                   <p class="text-[11px] uppercase tracking-[0.35em] text-slate-500">Trade Decision</p>
                   <h3 class="mt-2 text-xl font-semibold">Recommendation & risk</h3>
                 </div>
-                <span
-                  id="analysisGeneratedAt"
-                  class="rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400"
-                >
-                  Waiting for analysis
-                </span>
+                <div class="flex flex-wrap items-center gap-2">
+                  <span
+                    id="selectedStrategyBadge"
+                    class="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-cyan-200"
+                  >
+                    Hedgefund
+                  </span>
+                  <span
+                    id="analysisGeneratedAt"
+                    class="rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400"
+                  >
+                    Waiting for analysis
+                  </span>
+                </div>
               </div>
 
               <div class="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,0.9fr)]">

@@ -11,10 +11,12 @@ Timeframe = Literal["short_term", "mid_term", "unclear"]
 MacroTrend = Literal["bullish", "neutral", "bearish"]
 InterestRateEffect = Literal["positive", "neutral", "negative"]
 UsdStrength = Literal["weak", "neutral", "strong"]
+Strategy = Literal["simple", "ai", "hedgefund"]
 
 
 class AnalyzeRequest(BaseModel):
     symbol: str
+    strategy: Strategy = "hedgefund"
 
 
 class SignalResult(BaseModel):
@@ -45,6 +47,7 @@ class MacroContext(BaseModel):
 
 class AnalysisResponse(BaseModel):
     symbol: str
+    strategy: Strategy
     no_data: bool = False
     no_data_reason: Optional[str] = None
     recommendation: Optional[Recommendation] = None

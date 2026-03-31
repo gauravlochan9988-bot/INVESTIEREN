@@ -72,11 +72,12 @@ def test_search_universe_endpoint_returns_full_known_catalog(client):
 
 
 def test_analyze_endpoint_returns_decision_payload(client):
-    response = client.post("/api/analyze", json={"symbol": "AAPL"})
+    response = client.post("/api/analyze", json={"symbol": "AAPL", "strategy": "hedgefund"})
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["symbol"] == "AAPL"
+    assert payload["strategy"] == "hedgefund"
     assert payload["no_data"] is False
     assert payload["no_data_reason"] is None
     assert payload["recommendation"] in {"BUY", "HOLD", "SELL"}
@@ -114,21 +115,23 @@ def test_analyze_endpoint_returns_decision_payload(client):
 
 
 def test_analyze_endpoint_accepts_symbol_outside_watchlist(client):
-    response = client.post("/api/analyze", json={"symbol": "NFLX"})
+    response = client.post("/api/analyze", json={"symbol": "NFLX", "strategy": "simple"})
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["symbol"] == "NFLX"
+    assert payload["strategy"] == "simple"
     assert payload["no_data"] is False
     assert payload["recommendation"] in {"BUY", "HOLD", "SELL"}
 
 
 def test_analysis_get_endpoint_returns_nested_signal_block(client):
-    response = client.get("/api/analysis/AAPL")
+    response = client.get("/api/analysis/AAPL", params={"strategy": "ai"})
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["symbol"] == "AAPL"
+    assert payload["strategy"] == "ai"
     assert payload["no_data"] is False
     assert payload["recommendation"] in {"BUY", "HOLD", "SELL"}
     assert "no_trade" in payload
@@ -167,15 +170,38 @@ def test_analyze_endpoint_returns_no_data_status_when_live_market_data_is_missin
     )
     client.app.dependency_overrides[get_analysis_service] = lambda: analysis_service
 
-    response = client.post("/api/analyze", json={"symbol": "AAPL"})
+    response = client.post("/api/analyze", json={"symbol": "AAPL", "strategy": "simple"})
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["symbol"] == "AAPL"
+    assert payload["strategy"] == "simple"
     assert payload["no_data"] is True
     assert payload["no_data_reason"] == "No live market data available."
     assert payload["recommendation"] is None
     assert payload["signals"] is None
+
+
+def test_strategy_query_returns_selected_strategy_without_frontend_overrides(client):
+    simple = client.get("/api/analysis/MSFT", params={"strategy": "simple"})
+    ai = client.get("/api/analysis/MSFT", params={"strategy": "ai"})
+    hedgefund = client.get("/api/analysis/MSFT", params={"strategy": "hedgefund"})
+
+    assert simple.status_code == 200
+    assert ai.status_code == 200
+    assert hedgefund.status_code == 200
+
+    simple_payload = simple.json()
+    ai_payload = ai.json()
+    hedgefund_payload = hedgefund.json()
+
+    assert simple_payload["strategy"] == "simple"
+    assert ai_payload["strategy"] == "ai"
+    assert hedgefund_payload["strategy"] == "hedgefund"
+    assert simple_payload["recommendation"] == "BUY"
+    assert ai_payload["recommendation"] == "HOLD"
+    assert hedgefund_payload["recommendation"] == "HOLD"
+    assert simple_payload["score"] != ai_payload["score"]
 
 
 def test_portfolio_crud_flow(client, sample_position_payload):

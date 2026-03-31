@@ -8,10 +8,18 @@ const AUTH_PASSWORD = "9988";
 const STORAGE_KEYS = {
   authenticated: "investieren:authenticated",
   selectedSymbol: "investieren:selectedSymbol",
+  selectedStrategy: "investieren:selectedStrategy",
+};
+
+const STRATEGY_LABELS = {
+  simple: "Simple",
+  ai: "AI",
+  hedgefund: "Hedgefund",
 };
 
 const state = {
   selectedSymbol: window.sessionStorage.getItem(STORAGE_KEYS.selectedSymbol) || "AAPL",
+  selectedStrategy: window.sessionStorage.getItem(STORAGE_KEYS.selectedStrategy) || "hedgefund",
   watchlist: [],
   tvReady: typeof window.TradingView !== "undefined",
   tvScriptPromise: null,
@@ -32,6 +40,7 @@ const elements = {
   appShell: document.getElementById("appShell"),
   backendStatus: document.getElementById("backendStatus"),
   errorBanner: document.getElementById("errorBanner"),
+  strategyButtons: Array.from(document.querySelectorAll(".strategy-button")),
   logoutButton: document.getElementById("logoutButton"),
   refreshButton: document.getElementById("refreshButton"),
   brandHomeButton: document.getElementById("brandHomeButton"),
@@ -51,6 +60,7 @@ const elements = {
   recommendationCard: document.getElementById("recommendationCard"),
   recommendationValue: document.getElementById("recommendationValue"),
   analysisSummary: document.getElementById("analysisSummary"),
+  selectedStrategyBadge: document.getElementById("selectedStrategyBadge"),
   analysisGeneratedAt: document.getElementById("analysisGeneratedAt"),
   biasValue: document.getElementById("biasValue"),
   noTradeReason: document.getElementById("noTradeReason"),
@@ -125,16 +135,19 @@ function biasLabel(analysis) {
     return "neutral setup";
   }
   const score = Number(analysis.score || 0);
-  if (score >= 55) {
+  const strategy = analysis.strategy || state.selectedStrategy;
+  const strongThreshold = strategy === "simple" ? 3 : 55;
+  const weakThreshold = strategy === "simple" ? 1 : 0;
+  if (score >= strongThreshold) {
     return "strong bullish bias";
   }
-  if (score > 0) {
+  if (score > weakThreshold) {
     return "weak bullish bias";
   }
-  if (score <= -55) {
+  if (score <= -strongThreshold) {
     return "strong bearish bias";
   }
-  if (score < 0) {
+  if (score < -weakThreshold) {
     return "weak bearish bias";
   }
   return "neutral setup";
@@ -357,7 +370,8 @@ function renderAnalysisLoading(symbol) {
   elements.recommendationCard.className = "rounded-[28px] border border-white/10 bg-slate-950/70 p-5";
   elements.recommendationValue.className = "text-5xl font-black tracking-[-0.05em] text-white";
   elements.recommendationValue.textContent = "LOADING";
-  elements.analysisSummary.textContent = `Building analysis for ${symbol}...`;
+  elements.analysisSummary.textContent = `Building ${STRATEGY_LABELS[state.selectedStrategy]} analysis for ${symbol}...`;
+  elements.selectedStrategyBadge.textContent = STRATEGY_LABELS[state.selectedStrategy];
   elements.analysisGeneratedAt.textContent = "Running analysis";
   elements.biasValue.textContent = "neutral setup";
   elements.noTradeReason.textContent = "Analysis is loading.";
@@ -381,6 +395,8 @@ function renderAnalysisLoading(symbol) {
 
 function renderAnalysis(analysis) {
   state.latestAnalysis = analysis;
+  const strategy = analysis?.strategy || state.selectedStrategy;
+  elements.selectedStrategyBadge.textContent = STRATEGY_LABELS[strategy] || titleCase(strategy);
 
   if (!analysis || analysis.no_data) {
     const reason = analysis?.no_data_reason || "No live market data available.";
@@ -468,6 +484,26 @@ function isAuthenticated() {
 function persistSelectedSymbol(symbol) {
   state.selectedSymbol = symbol;
   window.sessionStorage.setItem(STORAGE_KEYS.selectedSymbol, symbol);
+}
+
+function persistSelectedStrategy(strategy) {
+  state.selectedStrategy = strategy;
+  window.sessionStorage.setItem(STORAGE_KEYS.selectedStrategy, strategy);
+}
+
+function renderStrategyButtons() {
+  elements.strategyButtons.forEach((button) => {
+    const active = button.dataset.strategy === state.selectedStrategy;
+    button.className = [
+      "strategy-button rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.24em] transition",
+      active
+        ? "border border-cyan-300/30 bg-cyan-300/15 text-cyan-100 shadow-lg shadow-cyan-500/10"
+        : "border border-transparent text-slate-300 hover:border-white/10 hover:bg-white/5",
+    ].join(" ");
+  });
+  if (elements.selectedStrategyBadge) {
+    elements.selectedStrategyBadge.textContent = STRATEGY_LABELS[state.selectedStrategy];
+  }
 }
 
 function showAppShell() {
@@ -777,10 +813,14 @@ async function loadSymbol(symbol, forceRefresh = false) {
   renderTradingView(normalized);
 
   try {
-    const suffix = forceRefresh ? "?refresh=1" : "";
+    const analysisParams = new URLSearchParams({ strategy: state.selectedStrategy });
+    if (forceRefresh) {
+      analysisParams.set("refresh", "1");
+    }
+    const overviewSuffix = forceRefresh ? "?refresh=1" : "";
     const [overviewResult, analysisResult] = await Promise.allSettled([
-      api(`/api/dashboard/symbol/${encodeURIComponent(normalized)}${suffix}`, { timeoutMs: 12000 }),
-      api(`/api/analysis/${encodeURIComponent(normalized)}${suffix}`, { timeoutMs: 18000 }),
+      api(`/api/dashboard/symbol/${encodeURIComponent(normalized)}${overviewSuffix}`, { timeoutMs: 12000 }),
+      api(`/api/analysis/${encodeURIComponent(normalized)}?${analysisParams.toString()}`, { timeoutMs: 18000 }),
     ]);
 
     if (requestId !== state.activeRequest) {
@@ -866,6 +906,8 @@ ensureTradingView().catch(() => {
 });
 
 function bindApp() {
+  renderStrategyButtons();
+
   elements.logoutButton.addEventListener("click", () => {
     setAuthenticated(false);
     showLoginOverlay();
@@ -879,6 +921,20 @@ function bindApp() {
     if (state.watchlist.length) {
       await loadSymbol(state.watchlist[0].symbol);
     }
+  });
+
+  elements.strategyButtons.forEach((button) => {
+    button.addEventListener("click", async () => {
+      const nextStrategy = button.dataset.strategy;
+      if (!nextStrategy || nextStrategy === state.selectedStrategy) {
+        return;
+      }
+      persistSelectedStrategy(nextStrategy);
+      renderStrategyButtons();
+      if (isAuthenticated()) {
+        await loadSymbol(state.selectedSymbol, true);
+      }
+    });
   });
 
   elements.searchForm.addEventListener("submit", async (event) => {
