@@ -134,7 +134,11 @@ class AnalysisService:
 
         probability_up = self._probability_from_edge(raw_edge)
         probability_down = round(1 - probability_up, 4)
-        recommendation = self._recommendation_from_probability(probability_up)
+        recommendation = self._recommendation_from_signals(
+            signal_map=signal_map,
+            probability_up=probability_up,
+            conflicts=conflicts,
+        )
         confidence = self._confidence(
             signal_map=signal_map,
             probability_up=probability_up,
@@ -533,7 +537,7 @@ class AnalysisService:
             warnings.append("Market Uncertain")
         if len(conflicts) >= 2:
             warnings.append("Too Many Conflicting Signals")
-        if abs(probability_up - 0.5) <= 0.05 or no_trade:
+        if abs(probability_up - 0.5) <= 0.04 or no_trade:
             warnings.append("Setup Unclear")
         if risk_level == "HIGH" and confidence < 0.55:
             warnings.append("High Risk / Low Confidence")
@@ -602,22 +606,30 @@ class AnalysisService:
         mixed_noise = self._mixed_signal_noise(
             [self._direction_bucket(signal_map[key].probability_impact) for key in directional_keys]
         )
-
         reasons: list[str] = []
-        if 0.45 <= probability_up <= 0.55:
-            reasons.append("the probability edge is too small")
-        if len(conflicts) >= 2:
+        if len(conflicts) >= 4 and confidence < 0.45:
             reasons.append("too many core signals are conflicting")
-        elif conflicts and signal_map["trend"].probability_impact > 0.2 and news_snapshot.news_score < -0.2:
-            reasons.append("trend and news are pointing in different directions")
-        if volatility_30d >= 0.32 and signal_map["trend_strength"].strength < 0.4:
+        elif (
+            len(conflicts) >= 3
+            and 0.47 <= probability_up <= 0.53
+            and confidence < 0.42
+        ):
+            reasons.append("signal conflict is too high for a disciplined trade")
+        if (
+            volatility_30d >= 0.48
+            and signal_map["trend_strength"].strength < 0.15
+            and confidence < 0.38
+        ):
             reasons.append("volatility is high while the trend stays weak")
-        if risk_level == "HIGH" and confidence < 0.55:
-            reasons.append("risk is high while confidence remains low")
-        if signal_map["trend_strength"].strength < 0.35 and mixed_noise >= 0.45:
-            reasons.append("there is no clean trend to lean on")
-        if macro_snapshot.market_trend == "bearish" and probability_up < 0.58 and confidence < 0.62:
-            reasons.append("the broader market backdrop is not supportive enough")
+        if risk_level == "HIGH" and confidence < 0.3 and mixed_noise >= 0.62:
+            reasons.append("risk is extreme while confidence remains too low")
+        if (
+            news_snapshot.article_count
+            and news_snapshot.news_score <= -0.65
+            and macro_snapshot.market_trend == "bearish"
+            and confidence < 0.34
+        ):
+            reasons.append("news and macro pressure are too heavy for a clean setup")
 
         if reasons:
             return True, reasons[0].capitalize() + "."
@@ -708,14 +720,14 @@ class AnalysisService:
             [self._direction_bucket(signal_map[key].probability_impact) for key in directional_keys]
         )
 
-        risk_score = 0.18
-        risk_score += volatility_penalty * 0.28
-        risk_score += conflict_risk * 0.20
-        risk_score += weak_trend_risk * 0.18
-        risk_score += overextension_risk * 0.14
-        risk_score += drawdown_risk * 0.12
-        risk_score += negative_news_penalty * 0.10
-        risk_score += mixed_noise * 0.12
+        risk_score = 0.16
+        risk_score += volatility_penalty * 0.24
+        risk_score += conflict_risk * 0.16
+        risk_score += weak_trend_risk * 0.16
+        risk_score += overextension_risk * 0.12
+        risk_score += drawdown_risk * 0.10
+        risk_score += negative_news_penalty * 0.08
+        risk_score += mixed_noise * 0.10
         risk_score += self._macro_risk_adjustment(
             macro_snapshot=macro_snapshot,
             signal_map=signal_map,
@@ -726,9 +738,9 @@ class AnalysisService:
         if volatility_penalty > 0.55 and negative_news_penalty > 0.25:
             risk_score += 0.08
 
-        if risk_score < 0.38:
+        if risk_score < 0.42:
             risk_level: RiskLevel = "LOW"
-        elif risk_score < 0.68:
+        elif risk_score < 0.72:
             risk_level = "MEDIUM"
         else:
             risk_level = "HIGH"
@@ -1002,12 +1014,39 @@ class AnalysisService:
             return "short_term"
         return "unclear"
 
-    def _recommendation_from_probability(self, probability_up: float) -> Recommendation:
-        if probability_up > 0.62:
-            return "BUY"
-        if probability_up >= 0.44:
+    def _recommendation_from_signals(
+        self,
+        *,
+        signal_map: dict[str, SignalResult],
+        probability_up: float,
+        conflicts: Sequence[str],
+    ) -> Recommendation:
+        directional_keys = (
+            "trend",
+            "sma_crossover",
+            "rsi",
+            "momentum",
+            "news_sentiment",
+            "trend_strength",
+        )
+        directional_buckets = [
+            self._direction_bucket(signal_map[key].probability_impact) for key in directional_keys
+        ]
+        bullish = sum(1 for bucket in directional_buckets if bucket > 0)
+        bearish = sum(1 for bucket in directional_buckets if bucket < 0)
+        net_bias = bullish - bearish
+
+        if len(conflicts) >= 2 and abs(net_bias) <= 2:
             return "HOLD"
-        return "SELL"
+        if probability_up >= 0.60 and net_bias >= 2:
+            return "BUY"
+        if probability_up <= 0.40 and net_bias <= -2:
+            return "SELL"
+        if probability_up >= 0.66:
+            return "BUY"
+        if probability_up <= 0.34:
+            return "SELL"
+        return "HOLD"
 
     def _probability_from_edge(self, edge: float) -> float:
         probability_up = 0.5 + (edge * 0.32)

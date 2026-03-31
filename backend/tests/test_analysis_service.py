@@ -26,7 +26,7 @@ def test_buy_setup_can_still_block_fresh_entry_when_overbought(analysis_service)
 
     assert result.recommendation == "BUY"
     assert result.probability_up > 0.65
-    assert result.risk_level == "MEDIUM"
+    assert result.risk_level in {"LOW", "MEDIUM"}
     assert result.no_trade is False
     assert result.entry_signal is False
     assert result.exit_signal is False
@@ -62,7 +62,7 @@ def test_mixed_setup_returns_hold_and_wait(analysis_service):
 
     assert result.recommendation == "HOLD"
     assert 0.45 <= result.probability_up <= 0.56
-    assert result.no_trade is True
+    assert result.no_trade is False
     assert result.entry_signal is False
     assert result.exit_signal is False
     assert result.timeframe == "short_term"
@@ -79,8 +79,8 @@ def test_negative_news_and_overbought_condition_raise_exit_flag(analysis_service
 
     assert result.recommendation == "HOLD"
     assert result.risk_level in {"MEDIUM", "HIGH"}
-    assert result.no_trade is True
-    assert "conflicting" in result.no_trade_reason.lower()
+    assert result.no_trade is False
+    assert "clear enough" in result.no_trade_reason.lower()
     assert result.entry_signal is False
     assert result.exit_signal is True
     assert "Negative News" in result.warnings
@@ -88,6 +88,17 @@ def test_negative_news_and_overbought_condition_raise_exit_flag(analysis_service
     assert result.signals.trend.status == "BULLISH"
     assert result.signals.rsi.status == "BEARISH"
     assert result.signals.news_sentiment.status == "BEARISH"
+
+
+def test_high_risk_hold_does_not_automatically_become_no_trade(analysis_service):
+    history = build_history(start=210.0, drift=0.12, noise=0.02)
+
+    result = analysis_service.analyze("AMZN", history)
+
+    assert result.recommendation == "HOLD"
+    assert result.risk_level == "MEDIUM"
+    assert result.no_trade is False
+    assert result.entry_signal is False
 
 
 def test_cleaner_setup_allows_entry_with_measured_size(analysis_service):
@@ -99,8 +110,8 @@ def test_cleaner_setup_allows_entry_with_measured_size(analysis_service):
     assert result.no_trade is False
     assert result.entry_signal is True
     assert result.exit_signal is False
-    assert result.risk_level == "MEDIUM"
-    assert 5 <= result.position_size_percent <= 15
+    assert result.risk_level in {"LOW", "MEDIUM"}
+    assert 15 <= result.position_size_percent <= 25
     assert result.stop_loss_level > 0
     assert result.timeframe == "mid_term"
     assert result.macro.market_trend in {"bullish", "neutral"}

@@ -121,7 +121,7 @@ function titleCase(value) {
 }
 
 function biasLabel(analysis) {
-  if (!analysis || analysis.no_data || analysis.no_trade) {
+  if (!analysis || analysis.no_data) {
     return "neutral setup";
   }
   const probability = Number(analysis.probability_up || 0.5);
@@ -141,13 +141,13 @@ function biasLabel(analysis) {
 }
 
 function recommendationLabel(analysis) {
-  if (!analysis || analysis.no_data || analysis.no_trade || analysis.risk_level === "HIGH") {
+  if (!analysis || analysis.no_data) {
+    return "NO DATA";
+  }
+  if (analysis.no_trade) {
     return "NO TRADE";
   }
-  if (analysis.recommendation === "HOLD") {
-    return "NO TRADE";
-  }
-  return analysis.recommendation || "NO TRADE";
+  return analysis.recommendation || "HOLD";
 }
 
 function recommendationPalette(label) {
@@ -421,9 +421,8 @@ function renderAnalysis(analysis) {
     ? `Updated ${new Date(analysis.generated_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
     : "Analysis ready";
   elements.biasValue.textContent = biasLabel(analysis);
-  elements.noTradeReason.textContent = analysis.no_trade
-    ? analysis.no_trade_reason || "Setup is not clean enough."
-    : "Setup is actionable if the broader context stays stable.";
+  elements.noTradeReason.textContent =
+    analysis.no_trade_reason || analysis.summary || "Backend analysis loaded.";
   elements.riskValue.className = `mt-3 text-2xl font-semibold ${toneClassForRisk(analysis.risk_level)}`;
   elements.riskValue.textContent = analysis.risk_level || "--";
   elements.timeframeValue.textContent = titleCase(analysis.timeframe);
