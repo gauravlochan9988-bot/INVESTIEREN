@@ -47,6 +47,14 @@ body {
   z-index: 0;
 }
 
+.dashboard-topbar,
+.dashboard-panel,
+.dashboard-card,
+.chart-panel,
+.signal-hero {
+  will-change: transform;
+}
+
 .dashboard-panel,
 .dashboard-card,
 .signal-hero {
@@ -218,6 +226,94 @@ body {
   border-radius: 999px;
 }
 
+@media (min-width: 769px) {
+  #appShell > div {
+    gap: 0;
+  }
+
+  .dashboard-topbar {
+    gap: 1.1rem;
+  }
+
+  #brandHomeButton {
+    min-width: 0;
+  }
+
+  #searchForm {
+    align-self: stretch;
+  }
+
+  #searchSuggestions {
+    top: calc(100% + 12px);
+  }
+
+  #alertsList {
+    align-items: stretch;
+  }
+
+  .dashboard-panel {
+    backdrop-filter: blur(16px);
+  }
+
+  .dashboard-card {
+    min-height: 126px;
+  }
+
+  #watchlistBody,
+  #favoritesBody {
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  #companyDetails {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem;
+  }
+
+  #companyDetails > div {
+    height: 100%;
+  }
+
+  #analysisSummary {
+    max-width: 56ch;
+  }
+
+  #tradingviewChart {
+    min-height: 420px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .dashboard-topbar {
+    padding-inline: 1.5rem !important;
+  }
+
+  .dashboard-panel {
+    padding: 1.35rem !important;
+  }
+
+  .dashboard-card {
+    padding: 1rem !important;
+  }
+
+  #strategyToggle {
+    justify-content: flex-end;
+  }
+
+  #searchForm .action-primary {
+    min-width: 118px;
+  }
+
+  #warningsList {
+    align-content: flex-start;
+  }
+
+  #selectedSymbolName {
+    letter-spacing: -0.04em;
+  }
+}
+
 @media (max-width: 768px) {
   #appShell > div {
     padding: 10px;
@@ -263,6 +359,11 @@ body {
     width: 100%;
   }
 
+  #strategyToggle,
+  .dashboard-topbar .grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .strategy-button {
     flex: 1 1 calc(33.333% - 0.5rem);
     min-width: 0;
@@ -294,6 +395,11 @@ body {
   #watchlistBody button,
   #favoritesBody button {
     padding: 0.85rem;
+  }
+
+  #companyDetails {
+    display: grid;
+    gap: 0.75rem;
   }
 
   #recommendationValue {
@@ -337,6 +443,10 @@ body {
     background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.14), rgba(255,255,255,0.06));
     background-size: 200% 100%;
     animation: mobile-skeleton-pulse 1.2s ease-in-out infinite;
+  }
+
+  .dashboard-card {
+    min-height: unset;
   }
 }
 
