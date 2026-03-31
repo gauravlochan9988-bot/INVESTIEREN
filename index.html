@@ -131,8 +131,14 @@
                 placeholder="Search stocks, ETFs or companies"
                 class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-5 py-4 pr-12 text-base text-white outline-none transition focus:border-cyan-300/50"
                 autocomplete="off"
+                aria-autocomplete="list"
+                aria-controls="searchSuggestions"
               />
               <span class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-500">⌕</span>
+              <div
+                id="searchSuggestions"
+                class="absolute left-0 right-0 top-[calc(100%+10px)] z-20 hidden max-h-80 overflow-y-auto rounded-3xl border border-white/10 bg-slate-950/95 p-2 shadow-2xl shadow-black/40 backdrop-blur"
+              ></div>
             </div>
             <button
               type="submit"

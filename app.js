@@ -16,6 +16,9 @@ const state = {
   tvReady: typeof window.TradingView !== "undefined",
   tvScriptPromise: null,
   tvWidgetSymbol: null,
+  searchResults: [],
+  searchRequestId: 0,
+  searchDebounceId: null,
   activeRequest: 0,
   latestAnalysis: null,
 };
@@ -34,6 +37,7 @@ const elements = {
   brandHomeButton: document.getElementById("brandHomeButton"),
   searchForm: document.getElementById("searchForm"),
   searchInput: document.getElementById("searchInput"),
+  searchSuggestions: document.getElementById("searchSuggestions"),
   watchlistMeta: document.getElementById("watchlistMeta"),
   watchlistBody: document.getElementById("watchlistBody"),
   selectedSymbolName: document.getElementById("selectedSymbolName"),
@@ -212,6 +216,89 @@ function showError(message) {
 function clearError() {
   elements.errorBanner.hidden = true;
   elements.errorBanner.textContent = "";
+}
+
+function hideSearchSuggestions() {
+  elements.searchSuggestions.classList.add("hidden");
+  elements.searchSuggestions.innerHTML = "";
+  state.searchResults = [];
+}
+
+function renderSearchSuggestions(results, query) {
+  state.searchResults = results;
+
+  if (!query.trim()) {
+    hideSearchSuggestions();
+    return;
+  }
+
+  if (!results.length) {
+    elements.searchSuggestions.innerHTML = `
+      <div class="rounded-2xl px-4 py-4 text-sm text-slate-400">
+        No stocks found for "${query}".
+      </div>
+    `;
+    elements.searchSuggestions.classList.remove("hidden");
+    return;
+  }
+
+  elements.searchSuggestions.innerHTML = results
+    .map(
+      (item) => `
+        <button
+          type="button"
+          class="search-suggestion flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left transition hover:bg-white/5"
+          data-symbol="${item.symbol}"
+        >
+          <div>
+            <p class="text-sm font-semibold text-white">${item.symbol}</p>
+            <p class="mt-1 text-xs text-slate-400">${item.name}</p>
+          </div>
+          <span class="text-xs uppercase tracking-[0.24em] text-slate-500">Open</span>
+        </button>
+      `,
+    )
+    .join("");
+  elements.searchSuggestions.classList.remove("hidden");
+
+  elements.searchSuggestions.querySelectorAll(".search-suggestion").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const symbol = button.dataset.symbol;
+      elements.searchInput.value = symbol;
+      hideSearchSuggestions();
+      await loadSymbol(symbol, true);
+    });
+  });
+}
+
+async function searchSymbols(query) {
+  const trimmed = query.trim();
+  const requestId = ++state.searchRequestId;
+
+  if (!trimmed) {
+    hideSearchSuggestions();
+    return;
+  }
+
+  try {
+    const results = await api(`/api/search?q=${encodeURIComponent(trimmed)}&limit=8`, {
+      timeoutMs: 10000,
+    });
+    if (requestId !== state.searchRequestId) {
+      return;
+    }
+    renderSearchSuggestions(results, trimmed);
+  } catch (error) {
+    if (requestId !== state.searchRequestId) {
+      return;
+    }
+    elements.searchSuggestions.innerHTML = `
+      <div class="rounded-2xl px-4 py-4 text-sm text-rose-300">
+        Search is unavailable right now.
+      </div>
+    `;
+    elements.searchSuggestions.classList.remove("hidden");
+  }
 }
 
 function renderAnalysisLoading(symbol) {
@@ -727,7 +814,31 @@ function bindApp() {
       showError("Enter a stock symbol like AAPL or MSFT.");
       return;
     }
+    hideSearchSuggestions();
     await loadSymbol(symbol, true);
+  });
+
+  elements.searchInput.addEventListener("input", () => {
+    const query = elements.searchInput.value;
+    window.clearTimeout(state.searchDebounceId);
+    state.searchDebounceId = window.setTimeout(() => {
+      searchSymbols(query);
+    }, 220);
+  });
+
+  elements.searchInput.addEventListener("focus", () => {
+    if (elements.searchInput.value.trim()) {
+      searchSymbols(elements.searchInput.value);
+    }
+  });
+
+  document.addEventListener("click", (event) => {
+    if (
+      event.target !== elements.searchInput &&
+      !elements.searchSuggestions.contains(event.target)
+    ) {
+      hideSearchSuggestions();
+    }
   });
 }
 
