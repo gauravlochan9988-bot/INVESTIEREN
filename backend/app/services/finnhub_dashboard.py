@@ -12,6 +12,7 @@ from app.schemas.dashboard import (
     DashboardWatchlistItem,
 )
 from app.services.cache import TTLCache
+from app.services.news import NewsSentimentService
 
 
 class FinnhubDashboardService:
@@ -21,11 +22,13 @@ class FinnhubDashboardService:
         self,
         api_key: str,
         watchlist: Iterable[str],
+        news_sentiment_service: NewsSentimentService | None = None,
         ttl_seconds: int = 30,
         timeout_seconds: float = 10.0,
     ) -> None:
         self.api_key = api_key.strip()
         self.watchlist = [symbol.strip().upper() for symbol in watchlist if symbol.strip()]
+        self.news_sentiment_service = news_sentiment_service
         self.timeout_seconds = timeout_seconds
         self.watchlist_cache: TTLCache[list[DashboardWatchlistItem]] = TTLCache(ttl_seconds)
         self.symbol_cache: TTLCache[DashboardSymbolOverview] = TTLCache(ttl_seconds)
@@ -72,6 +75,101 @@ class FinnhubDashboardService:
         if not isinstance(payload, dict) or not payload.get("ticker"):
             raise ExternalServiceError(f"No Finnhub profile available for {symbol}.")
         return payload
+
+    def _fallback_symbol_overview(self, symbol: str) -> DashboardSymbolOverview:
+        try:
+            import yfinance as yf
+        except ImportError as exc:
+            raise ExternalServiceError(
+                f"No live market data available for {symbol}."
+            ) from exc
+
+        try:
+            ticker = yf.Ticker(symbol)
+            history = ticker.history(
+                period="5d",
+                interval="1d",
+                auto_adjust=False,
+                actions=False,
+                raise_errors=False,
+            )
+        except Exception as exc:
+            raise ExternalServiceError(f"No live market data available for {symbol}.") from exc
+
+        if history.empty:
+            raise ExternalServiceError(f"No live market data available for {symbol}.")
+
+        history = history.dropna(subset=["Close"])
+        if history.empty:
+            raise ExternalServiceError(f"No live market data available for {symbol}.")
+
+        current_row = history.iloc[-1]
+        previous_row = history.iloc[-2] if len(history.index) > 1 else current_row
+        current = float(current_row["Close"])
+        previous = float(previous_row["Close"])
+        change_percent = ((current - previous) / previous * 100) if previous else 0.0
+
+        try:
+            info = ticker.info or {}
+        except Exception:
+            info = {}
+
+        name = (
+            info.get("longName")
+            or info.get("shortName")
+            or info.get("displayName")
+            or symbol
+        )
+        exchange = info.get("exchange") or info.get("fullExchangeName")
+        industry = info.get("industry")
+        ipo = info.get("ipoExpectedDate") or info.get("firstTradeDateEpochUtc")
+        logo = info.get("logo_url") or info.get("logoUrl")
+        website = info.get("website")
+        market_cap = info.get("marketCap")
+        shares_outstanding = info.get("sharesOutstanding")
+
+        return DashboardSymbolOverview(
+            symbol=symbol,
+            name=name,
+            exchange=exchange,
+            finnhub_industry=industry,
+            ipo=str(ipo) if ipo is not None else None,
+            logo=logo,
+            weburl=website,
+            market_capitalization=float(market_cap) if market_cap else None,
+            share_outstanding=float(shares_outstanding) if shares_outstanding else None,
+            price=round(current, 2),
+            change_percent=round(change_percent, 2),
+            high=round(float(current_row.get("High") or current), 2),
+            low=round(float(current_row.get("Low") or current), 2),
+            open=round(float(current_row.get("Open") or current), 2),
+            previous_close=round(previous, 2),
+        )
+
+    def _fallback_company_news(self, symbol: str) -> list[DashboardNewsItem]:
+        if self.news_sentiment_service is None:
+            return []
+
+        try:
+            snapshot = self.news_sentiment_service.get_sentiment(symbol)
+        except Exception:
+            return []
+
+        items: list[DashboardNewsItem] = []
+        for article in snapshot.articles[:6]:
+            if not article.url or not article.title:
+                continue
+            items.append(
+                DashboardNewsItem(
+                    headline=article.title,
+                    source=article.publisher or "News",
+                    summary=article.summary,
+                    url=article.url,
+                    image=None,
+                    published_at=article.published_at or datetime.now(timezone.utc),
+                )
+            )
+        return items
 
     def _build_watchlist_item(self, symbol: str) -> DashboardWatchlistItem:
         quote = self._fetch_quote(symbol)
@@ -120,26 +218,29 @@ class FinnhubDashboardService:
         if cached is not None:
             return cached
 
-        quote = self._fetch_quote(normalized)
-        profile = self._fetch_profile(normalized)
+        try:
+            quote = self._fetch_quote(normalized)
+            profile = self._fetch_profile(normalized)
 
-        overview = DashboardSymbolOverview(
-            symbol=normalized,
-            name=profile.get("name") or normalized,
-            exchange=profile.get("exchange"),
-            finnhub_industry=profile.get("finnhubIndustry"),
-            ipo=profile.get("ipo"),
-            logo=profile.get("logo"),
-            weburl=profile.get("weburl"),
-            market_capitalization=profile.get("marketCapitalization"),
-            share_outstanding=profile.get("shareOutstanding"),
-            price=float(quote.get("c") or 0),
-            change_percent=float(quote.get("dp") or 0),
-            high=float(quote.get("h") or 0),
-            low=float(quote.get("l") or 0),
-            open=float(quote.get("o") or 0),
-            previous_close=float(quote.get("pc") or 0),
-        )
+            overview = DashboardSymbolOverview(
+                symbol=normalized,
+                name=profile.get("name") or normalized,
+                exchange=profile.get("exchange"),
+                finnhub_industry=profile.get("finnhubIndustry"),
+                ipo=profile.get("ipo"),
+                logo=profile.get("logo"),
+                weburl=profile.get("weburl"),
+                market_capitalization=profile.get("marketCapitalization"),
+                share_outstanding=profile.get("shareOutstanding"),
+                price=float(quote.get("c") or 0),
+                change_percent=float(quote.get("dp") or 0),
+                high=float(quote.get("h") or 0),
+                low=float(quote.get("l") or 0),
+                open=float(quote.get("o") or 0),
+                previous_close=float(quote.get("pc") or 0),
+            )
+        except ExternalServiceError:
+            overview = self._fallback_symbol_overview(normalized)
         return self.symbol_cache.set(cache_key, overview)
 
     def get_company_news(
@@ -162,10 +263,10 @@ class FinnhubDashboardService:
                 **{"from": start.isoformat(), "to": today.isoformat()},
             )
         except ExternalServiceError:
-            return self.news_cache.set(cache_key, [])
+            return self.news_cache.set(cache_key, self._fallback_company_news(normalized))
 
         if not isinstance(payload, list):
-            return self.news_cache.set(cache_key, [])
+            return self.news_cache.set(cache_key, self._fallback_company_news(normalized))
 
         items: list[DashboardNewsItem] = []
         for article in payload[:6]:
@@ -189,4 +290,6 @@ class FinnhubDashboardService:
                 )
             )
 
-        return self.news_cache.set(cache_key, items)
+        if items:
+            return self.news_cache.set(cache_key, items)
+        return self.news_cache.set(cache_key, self._fallback_company_news(normalized))

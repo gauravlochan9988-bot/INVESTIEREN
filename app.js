@@ -34,6 +34,7 @@ const state = {
   searchDebounceId: null,
   activeRequest: 0,
   latestAnalysis: null,
+  latestNews: [],
   favoriteSymbols: new Set(),
   alertsRetryId: null,
   alertsRetryAttempt: 0,
@@ -1085,10 +1086,13 @@ function renderOverview(overview) {
 
   renderCompanyDetails(overview);
   writeCachedJson(STORAGE_KEYS.cachedOverview, overview);
+  renderTradingView(overview.symbol, overview.exchange);
 }
 
-function toTradingViewSymbol(symbol) {
+function toTradingViewSymbol(symbol, exchange = "") {
   const plain = symbol.toUpperCase();
+  const normalizedExchange = String(exchange || "").toUpperCase();
+  const normalizedPlain = plain.replace(/-/g, ".");
   const mapping = {
     AAPL: "NASDAQ:AAPL",
     MSFT: "NASDAQ:MSFT",
@@ -1097,7 +1101,40 @@ function toTradingViewSymbol(symbol) {
     META: "NASDAQ:META",
     TSLA: "NASDAQ:TSLA",
   };
-  return mapping[plain] || plain;
+  if (mapping[plain]) {
+    return mapping[plain];
+  }
+
+  const suffixMappings = [
+    [".NS", "NSE"],
+    [".DE", "XETR"],
+    [".PA", "EPA"],
+    [".AS", "EURONEXT"],
+    [".SW", "SIX"],
+    [".L", "LSE"],
+  ];
+
+  for (const [suffix, market] of suffixMappings) {
+    if (plain.endsWith(suffix)) {
+      return `${market}:${normalizedPlain.slice(0, -suffix.length)}`;
+    }
+  }
+
+  if (normalizedExchange.includes("NASDAQ")) {
+    return `NASDAQ:${normalizedPlain}`;
+  }
+  if (normalizedExchange.includes("NEW YORK STOCK EXCHANGE") || normalizedExchange === "NYSE") {
+    return `NYSE:${normalizedPlain}`;
+  }
+  if (
+    normalizedExchange.includes("ARCA") ||
+    normalizedExchange.includes("AMEX") ||
+    normalizedExchange.includes("BATS")
+  ) {
+    return `AMEX:${normalizedPlain}`;
+  }
+
+  return normalizedPlain;
 }
 
 function ensureTradingView() {
@@ -1143,8 +1180,8 @@ function showTradingViewLoader(message = "Loading TradingView chart...") {
   elements.tradingviewChart.innerHTML = `<div class="tv-loader">${message}</div>`;
 }
 
-async function renderTradingView(symbol) {
-  const tvSymbol = toTradingViewSymbol(symbol);
+async function renderTradingView(symbol, exchange = "") {
+  const tvSymbol = toTradingViewSymbol(symbol, exchange);
 
   if (state.tvWidgetSymbol === tvSymbol && elements.tradingviewChart.childElementCount > 0) {
     return;
@@ -1212,13 +1249,17 @@ async function loadSymbol(symbol, forceRefresh = false) {
       analysisParams.set("refresh", "1");
     }
     const overviewSuffix = forceRefresh ? "?refresh=1" : "";
-    const [overviewResult, analysisResult] = await Promise.allSettled([
+    const [overviewResult, analysisResult, newsResult] = await Promise.allSettled([
       api(`/api/dashboard/symbol/${encodeURIComponent(normalized)}${overviewSuffix}`, {
         timeoutMs: 22000,
         retryCount: 1,
       }),
       api(`/api/analysis/${encodeURIComponent(normalized)}?${analysisParams.toString()}`, {
         timeoutMs: 30000,
+        retryCount: 1,
+      }),
+      api(`/api/dashboard/news/${encodeURIComponent(normalized)}${overviewSuffix}`, {
+        timeoutMs: 18000,
         retryCount: 1,
       }),
     ]);
@@ -1244,6 +1285,8 @@ async function loadSymbol(symbol, forceRefresh = false) {
             : analysisResult.reason?.message || "Analysis unavailable.",
       });
     }
+
+    state.latestNews = newsResult.status === "fulfilled" ? newsResult.value : [];
 
     renderWatchlist(state.watchlist);
   } catch (error) {

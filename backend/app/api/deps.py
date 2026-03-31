@@ -100,6 +100,7 @@ def get_finnhub_dashboard_service_instance() -> FinnhubDashboardService:
     return FinnhubDashboardService(
         api_key=settings.finnhub_api_key,
         watchlist=DASHBOARD_WATCHLIST,
+        news_sentiment_service=get_news_sentiment_service_instance(),
         ttl_seconds=settings.market_cache_ttl_seconds,
     )
 
