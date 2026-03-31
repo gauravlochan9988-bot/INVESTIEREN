@@ -287,6 +287,7 @@ def test_hedgefund_confirmation_can_hold_while_ai_model_still_sells(analysis_ser
     assert hedgefund.strategy == "hedgefund"
     assert ai.recommendation == "SELL"
     assert hedgefund.recommendation == "HOLD"
+    assert "weak" in ai.reason.lower()
     assert hedgefund.reason.startswith("HOLD because the long-term trend is down")
 
 

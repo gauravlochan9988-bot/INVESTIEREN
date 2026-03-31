@@ -797,6 +797,30 @@ class AnalysisService:
     ) -> str:
         positive = [name for name, value in signal_scores.items() if value > 0]
         negative = [name for name, value in signal_scores.items() if value < 0]
+        top_positive = " + ".join(positive[:2]) or "positive factors"
+        top_negative = " + ".join(negative[:2]) or "negative factors"
+
+        if label == "AI":
+            if recommendation == "BUY":
+                return (
+                    f"BUY because strong {top_positive} support the setup. "
+                    f"Confidence {confidence:.0f}/100."
+                )
+            if recommendation == "SELL":
+                return (
+                    f"SELL because weak {top_negative} are driving the setup lower. "
+                    f"Confidence {confidence:.0f}/100."
+                )
+            if positive and negative:
+                return (
+                    f"HOLD because {top_positive} are being offset by {top_negative}. "
+                    f"Confidence {confidence:.0f}/100."
+                )
+            return (
+                f"HOLD because the AI setup is not strong enough to justify a trade yet. "
+                f"Confidence {confidence:.0f}/100."
+            )
+
         if recommendation == "BUY":
             return f"BUY because {', '.join(positive[:2]) or 'positive factors'} lead the {label} model. Confidence {confidence:.0f}/100."
         if recommendation == "SELL":
