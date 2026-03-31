@@ -634,9 +634,9 @@ class AnalysisService:
         momentum_up = context["momentum_5d"] > 0
         momentum_down = context["momentum_5d"] < 0
         if trend_up:
-            recommendation: Recommendation = "BUY" if score >= 35 and momentum_up else "HOLD"
+            recommendation: Recommendation = "BUY" if score >= 30 and momentum_up else "HOLD"
         elif trend_down:
-            recommendation = "SELL" if score <= -40 and momentum_down else "HOLD"
+            recommendation = "SELL" if score <= -30 and momentum_down else "HOLD"
         else:
             recommendation = "HOLD"
         conflicts = self._simple_conflicts(signal_scores)
@@ -1004,9 +1004,9 @@ class AnalysisService:
             return f"BUY because {', '.join(positive[:2]) or 'positive factors'} align and trend plus momentum confirm. Confidence {confidence:.0f}/100."
         if recommendation == "SELL":
             return f"SELL because {', '.join(negative[:2]) or 'negative factors'} align and trend plus momentum confirm. Confidence {confidence:.0f}/100."
-        if trend_up and not momentum_up and score >= 35:
+        if trend_up and not momentum_up and score >= 30:
             return f"HOLD because the long-term trend is up but momentum does not confirm the buy. Confidence {confidence:.0f}/100."
-        if (not trend_up) and not momentum_down and score <= -35:
+        if (not trend_up) and not momentum_down and score <= -30:
             return f"HOLD because the long-term trend is down but momentum does not confirm the sell. Confidence {confidence:.0f}/100."
         if positive and negative:
             return f"HOLD because hedgefund factors are mixed between {positive[0]} and {negative[0]}. Confidence {confidence:.0f}/100."

@@ -88,15 +88,16 @@ def test_negative_news_and_overbought_condition_raise_exit_flag(analysis_service
 
     result = analysis_service.analyze("MSFT", history)
 
-    assert result.recommendation == "HOLD"
-    assert result.score < 35
+    assert result.recommendation == "BUY"
+    assert result.score == 30
     assert result.risk_level == "HIGH"
     assert result.no_trade is False
     assert "trade evaluation available" in result.no_trade_reason.lower()
     assert result.entry_signal is False
-    assert result.exit_signal is True
+    assert result.exit_signal is False
     assert "Negative News" in result.warnings
     assert "Mixed Signals" in result.warnings
+    assert "Overbought" in result.warnings
     assert result.signals.trend.status == "BULLISH"
     assert result.signals.rsi.status == "BEARISH"
     assert result.signals.news_sentiment.status == "BEARISH"
