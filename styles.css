@@ -206,3 +206,66 @@ body {
   background: rgba(148, 163, 184, 0.35);
   border-radius: 999px;
 }
+
+@media (max-width: 767px) {
+  .dashboard-chip {
+    width: 100%;
+    white-space: normal;
+    text-align: center;
+  }
+
+  #strategyToggle {
+    width: 100%;
+  }
+
+  .strategy-button {
+    flex: 1 1 calc(33.333% - 0.5rem);
+    min-width: 0;
+  }
+
+  #searchForm .action-primary,
+  #refreshButton,
+  #logoutButton {
+    width: 100%;
+  }
+
+  #alertsList {
+    grid-template-columns: 1fr;
+  }
+
+  #watchlistBody button,
+  #favoritesBody button {
+    padding: 0.95rem;
+  }
+
+  #recommendationValue {
+    font-size: 2.25rem;
+    line-height: 1;
+  }
+
+  #metricPrice,
+  #metricHigh,
+  #metricLow,
+  #metricOpen,
+  #metricPrevClose,
+  #riskValue,
+  #timeframeValue,
+  #coverageValue,
+  #entryValue,
+  #exitValue,
+  #positionSizeValue,
+  #stopLossValue {
+    font-size: 1.4rem;
+    line-height: 1.2;
+  }
+
+  #analysisSummary,
+  #noTradeReason,
+  #coverageReason,
+  #entryReason,
+  #exitReason,
+  #positionSizeReason,
+  #stopLossReason {
+    line-height: 1.55;
+  }
+}
