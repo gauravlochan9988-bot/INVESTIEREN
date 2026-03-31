@@ -1,6 +1,8 @@
+from copy import deepcopy
 from functools import lru_cache
 from pathlib import Path
-from typing import Generator, Optional
+from typing import Any, Generator, Optional
+from urllib.parse import urlparse
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
@@ -9,6 +11,13 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.config import get_settings
 
 _runtime_database_url: Optional[str] = None
+_database_status: dict[str, Any] = {
+    "backend": "unknown",
+    "mode": "primary",
+    "fallback_active": False,
+    "healthy": False,
+    "reason": None,
+}
 
 
 def _engine_options(database_url: str) -> dict:
@@ -26,6 +35,19 @@ def _fallback_sqlite_url() -> str:
     return f"sqlite+pysqlite:///{Path('/tmp/investieren.db').as_posix()}"
 
 
+def _database_backend_label(database_url: str) -> str:
+    if database_url.startswith("sqlite"):
+        return "sqlite"
+
+    parsed = urlparse(database_url)
+    hostname = (parsed.hostname or "").lower()
+    if "supabase" in hostname:
+        return "supabase"
+    if parsed.scheme.startswith("postgresql"):
+        return "postgres"
+    return parsed.scheme or "unknown"
+
+
 def get_database_url() -> str:
     if _runtime_database_url:
         return _runtime_database_url
@@ -36,6 +58,29 @@ def set_runtime_database_url(database_url: str) -> None:
     global _runtime_database_url
     _runtime_database_url = database_url
     reset_database_state()
+
+
+def mark_database_status(
+    database_url: str,
+    *,
+    healthy: bool,
+    mode: str = "primary",
+    reason: Optional[str] = None,
+) -> None:
+    global _database_status
+    _database_status = {
+        "backend": _database_backend_label(database_url),
+        "mode": mode,
+        "fallback_active": mode == "fallback",
+        "healthy": healthy,
+        "reason": reason,
+    }
+
+
+def get_database_status() -> dict[str, Any]:
+    if _database_status["backend"] == "unknown":
+        mark_database_status(get_database_url(), healthy=False)
+    return deepcopy(_database_status)
 
 
 @lru_cache

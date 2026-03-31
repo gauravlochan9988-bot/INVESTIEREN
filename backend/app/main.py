@@ -11,7 +11,13 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .api.router import api_router
 from .core.config import get_settings
-from .core.database import get_database_url, get_engine, set_runtime_database_url
+from .core.database import (
+    get_database_status,
+    get_database_url,
+    get_engine,
+    mark_database_status,
+    set_runtime_database_url,
+)
 from .core.exceptions import AppError, ExternalServiceError, NotFoundError, ValidationError
 from .models import Base
 
@@ -67,6 +73,7 @@ def create_app() -> FastAPI:
         )
         try:
             Base.metadata.create_all(bind=get_engine())
+            mark_database_status(database_url, healthy=True)
         except Exception as exc:
             fallback_url = "sqlite+pysqlite:////tmp/investieren.db"
             print(
@@ -79,6 +86,12 @@ def create_app() -> FastAPI:
             )
             set_runtime_database_url(fallback_url)
             Base.metadata.create_all(bind=get_engine())
+            mark_database_status(
+                fallback_url,
+                healthy=True,
+                mode="fallback",
+                reason=f"{type(exc).__name__}: {exc}",
+            )
 
     @app.get("/")
     def root():
@@ -129,7 +142,11 @@ def create_app() -> FastAPI:
 
     @app.get("/api/health")
     def healthcheck() -> dict:
-        return {"status": "ok", "environment": settings.app_env}
+        return {
+            "status": "ok",
+            "environment": settings.app_env,
+            "database": get_database_status(),
+        }
 
     @app.exception_handler(NotFoundError)
     async def not_found_handler(_: Request, exc: NotFoundError) -> JSONResponse:

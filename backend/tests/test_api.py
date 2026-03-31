@@ -204,6 +204,19 @@ def test_strategy_query_returns_selected_strategy_without_frontend_overrides(cli
     assert simple_payload["score"] != ai_payload["score"]
 
 
+def test_healthcheck_exposes_active_database_status(client):
+    response = client.get("/api/health")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ok"
+    assert "database" in payload
+    assert payload["database"]["backend"] == "sqlite"
+    assert payload["database"]["mode"] == "primary"
+    assert payload["database"]["fallback_active"] is False
+    assert payload["database"]["healthy"] is True
+
+
 def test_portfolio_crud_flow(client, sample_position_payload):
     create_response = client.post("/api/portfolio/positions", json=sample_position_payload)
 
