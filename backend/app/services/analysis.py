@@ -235,6 +235,13 @@ class AnalysisService:
             float(decision["confidence"]),
             data_quality,
         )
+        decision["reason"] = self._strategy_reason(
+            strategy=strategy,
+            context=context,
+            recommendation=decision["recommendation"],
+            score=int(decision["score"]),
+            confidence=float(decision["confidence"]),
+        )
         probability_up = self._probability_from_strategy_score(
             strategy=strategy,
             score=decision["score"],
@@ -553,9 +560,9 @@ class AnalysisService:
 
         if strategy == "simple":
             if abs(score) <= 2:
-                partial_reasons.append("the simple score is still in a middle range")
-        elif abs(score) < 45:
-            partial_reasons.append("the weighted score is still in a middle range")
+                partial_reasons.append("the simple score is still near its trade threshold")
+        elif abs(score) <= 40:
+            partial_reasons.append("the weighted score is still near its trade threshold")
 
         if recommendation == "HOLD" and abs(score) > 0:
             partial_reasons.append("the setup is not clean enough for a full-strength signal")
@@ -593,6 +600,47 @@ class AnalysisService:
             return self._ai_strategy(context)
         return self._hedgefund_strategy(context)
 
+    def _strategy_reason(
+        self,
+        *,
+        strategy: Strategy,
+        context: dict,
+        recommendation: Recommendation,
+        score: int,
+        confidence: float,
+    ) -> str:
+        if strategy == "simple":
+            return self._simple_strategy_reason(
+                recommendation=recommendation,
+                signal_scores={
+                    "trend": 1 if context["latest_price"] >= context["sma50"] else -1,
+                    "rsi": 1 if context["rsi14"] < 30 else -1 if context["rsi14"] > 70 else 0,
+                    "momentum": 1 if context["momentum_5d"] > 0 else -1 if context["momentum_5d"] < 0 else 0,
+                    "news": 1
+                    if context["news_snapshot"].article_count and context["news_snapshot"].news_score > 0.15
+                    else -1
+                    if context["news_snapshot"].article_count and context["news_snapshot"].news_score < -0.15
+                    else 0,
+                },
+                confidence=confidence,
+            )
+        if strategy == "ai":
+            return self._weighted_strategy_reason(
+                recommendation=recommendation,
+                signal_scores=self._ai_signal_scores(context["factor_scores"]),
+                confidence=confidence,
+                label="AI",
+            )
+        return self._hedgefund_strategy_reason(
+            recommendation=recommendation,
+            score=score,
+            confidence=confidence,
+            trend_up=context["latest_price"] > context["sma200"],
+            momentum_up=context["momentum_5d"] > 0,
+            momentum_down=context["momentum_5d"] < 0,
+            signal_scores=context["factor_scores"],
+        )
+
     def _simple_strategy(self, context: dict) -> dict[str, object]:
         news_snapshot: NewsSentimentSnapshot = context["news_snapshot"]
         signal_scores = {
@@ -606,9 +654,9 @@ class AnalysisService:
             else 0,
         }
         score = sum(signal_scores.values())
-        if score >= 1:
+        if score >= 2:
             recommendation: Recommendation = "BUY"
-        elif score <= -1:
+        elif score <= -2:
             recommendation = "SELL"
         else:
             recommendation = "HOLD"
@@ -641,7 +689,7 @@ class AnalysisService:
         signal_scores = self._ai_signal_scores(context["factor_scores"])
         score = self._total_score(signal_scores)
         recommendation: Recommendation
-        if score >= 30:
+        if score >= 35:
             recommendation = "BUY"
         elif score <= -35:
             recommendation = "SELL"
@@ -681,9 +729,9 @@ class AnalysisService:
         momentum_up = context["momentum_5d"] > 0
         momentum_down = context["momentum_5d"] < 0
         if trend_up:
-            recommendation: Recommendation = "BUY" if score >= 30 and momentum_up else "HOLD"
+            recommendation: Recommendation = "BUY" if score >= 35 and momentum_up else "HOLD"
         elif trend_down:
-            recommendation = "SELL" if score <= -30 and momentum_down else "HOLD"
+            recommendation = "SELL" if score <= -35 and momentum_down else "HOLD"
         else:
             recommendation = "HOLD"
         conflicts = self._simple_conflicts(signal_scores)
@@ -830,7 +878,7 @@ class AnalysisService:
     ) -> RiskLevel:
         if volatility_30d >= 0.32 or len(conflicts) >= 2:
             return "HIGH"
-        if abs(score) <= 1 or volatility_30d >= 0.22 or conflicts:
+        if abs(score) <= 2 or volatility_30d >= 0.22 or conflicts:
             return "MEDIUM"
         return "LOW"
 
@@ -859,7 +907,7 @@ class AnalysisService:
     ) -> RiskLevel:
         if volatility_30d >= 0.32 or len(conflicts) >= 2:
             return "HIGH"
-        if abs(score) < 45 or conflicts or volatility_30d >= 0.22:
+        if abs(score) < 50 or conflicts or volatility_30d >= 0.22:
             return "MEDIUM"
         return "LOW"
 
@@ -1051,9 +1099,9 @@ class AnalysisService:
             return f"BUY because {', '.join(positive[:2]) or 'positive factors'} align and trend plus momentum confirm. Confidence {confidence:.0f}/100."
         if recommendation == "SELL":
             return f"SELL because {', '.join(negative[:2]) or 'negative factors'} align and trend plus momentum confirm. Confidence {confidence:.0f}/100."
-        if trend_up and not momentum_up and score >= 30:
+        if trend_up and not momentum_up and score >= 35:
             return f"HOLD because the long-term trend is up but momentum does not confirm the buy. Confidence {confidence:.0f}/100."
-        if (not trend_up) and not momentum_down and score <= -30:
+        if (not trend_up) and not momentum_down and score <= -35:
             return f"HOLD because the long-term trend is down but momentum does not confirm the sell. Confidence {confidence:.0f}/100."
         if positive and negative:
             return f"HOLD because hedgefund factors are mixed between {positive[0]} and {negative[0]}. Confidence {confidence:.0f}/100."

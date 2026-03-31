@@ -272,7 +272,7 @@ def test_strategy_query_returns_selected_strategy_without_frontend_overrides(cli
     assert simple_payload["strategy"] == "simple"
     assert ai_payload["strategy"] == "ai"
     assert hedgefund_payload["strategy"] == "hedgefund"
-    assert simple_payload["recommendation"] == "BUY"
+    assert simple_payload["recommendation"] == "HOLD"
     assert ai_payload["recommendation"] == "BUY"
     assert hedgefund_payload["recommendation"] == "BUY"
     assert simple_payload["data_quality"] == "PARTIAL"

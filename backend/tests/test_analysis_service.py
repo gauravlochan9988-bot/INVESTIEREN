@@ -66,21 +66,21 @@ def test_bearish_setup_triggers_exit_and_zero_size(analysis_service):
     assert result.signals.trend_strength.status == "BEARISH"
 
 
-def test_simple_strategy_now_triggers_buy_on_plus_one_score(analysis_service):
+def test_simple_strategy_now_holds_on_plus_one_score(analysis_service):
     history = build_history(start=180.0, drift=0.6, noise=0.004)
 
     result = analysis_service.analyze("MSFT", history, strategy="simple")
 
-    assert result.recommendation == "BUY"
+    assert result.recommendation == "HOLD"
     assert result.score == 1
-    assert result.probability_up >= 0.68
+    assert 0.5 < result.probability_up < 0.68
     assert result.data_quality == "PARTIAL"
     assert result.no_trade is False
     assert result.entry_signal is False
-    assert result.exit_signal is False
+    assert result.exit_signal is True
     assert result.position_size_percent == 0.0
     assert "Mixed Signals" in result.warnings
-    assert "buy" in result.reason.lower()
+    assert "hold" in result.reason.lower()
 
 
 def test_negative_news_and_overbought_condition_raise_exit_flag(analysis_service):
@@ -88,13 +88,13 @@ def test_negative_news_and_overbought_condition_raise_exit_flag(analysis_service
 
     result = analysis_service.analyze("MSFT", history)
 
-    assert result.recommendation == "BUY"
+    assert result.recommendation == "HOLD"
     assert result.score == 30
     assert result.risk_level == "HIGH"
     assert result.no_trade is False
     assert "trade evaluation available" in result.no_trade_reason.lower()
     assert result.entry_signal is False
-    assert result.exit_signal is False
+    assert result.exit_signal is True
     assert "Negative News" in result.warnings
     assert "Mixed Signals" in result.warnings
     assert "Overbought" in result.warnings
@@ -479,7 +479,7 @@ def test_strategies_return_distinct_results_without_overwriting_each_other(analy
     assert simple.strategy == "simple"
     assert ai.strategy == "ai"
     assert hedgefund.strategy == "hedgefund"
-    assert simple.recommendation == "BUY"
+    assert simple.recommendation == "HOLD"
     assert ai.recommendation == "BUY"
     assert hedgefund.recommendation == "BUY"
     assert simple.score != ai.score
