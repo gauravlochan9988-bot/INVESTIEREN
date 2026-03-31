@@ -39,6 +39,7 @@ const state = {
   alertsRetryId: null,
   alertsRetryAttempt: 0,
   chartRenderId: null,
+  chartRetryAttempt: 0,
 };
 
 const elements = {
@@ -1238,6 +1239,7 @@ function toTradingViewSymbol(symbol, exchange = "") {
 function ensureTradingView() {
   if (window.TradingView && typeof window.TradingView.widget === "function") {
     state.tvReady = true;
+    state.tvScriptPromise = null;
     return Promise.resolve(window.TradingView);
   }
 
@@ -1245,23 +1247,25 @@ function ensureTradingView() {
     return state.tvScriptPromise;
   }
 
-  const existingScript = document.querySelector('script[src="https://s3.tradingview.com/tv.js"]');
-
   state.tvScriptPromise = new Promise((resolve, reject) => {
+    const cleanupFailedScript = () => {
+      document
+        .querySelectorAll('script[src="https://s3.tradingview.com/tv.js"]')
+        .forEach((node) => node.remove());
+      state.tvScriptPromise = null;
+      state.tvReady = false;
+    };
+
     const onLoad = () => {
       state.tvReady = true;
+      state.tvScriptPromise = null;
       resolve(window.TradingView);
     };
 
     const onError = () => {
+      cleanupFailedScript();
       reject(new Error("TradingView widget failed to load."));
     };
-
-    if (existingScript) {
-      existingScript.addEventListener("load", onLoad, { once: true });
-      existingScript.addEventListener("error", onError, { once: true });
-      return;
-    }
 
     const script = document.createElement("script");
     script.src = "https://s3.tradingview.com/tv.js";
@@ -1290,10 +1294,22 @@ async function renderTradingView(symbol, exchange = "") {
   try {
     await ensureTradingView();
   } catch (error) {
-    showTradingViewLoader("TradingView widget failed to load.");
+    state.chartRetryAttempt += 1;
+    showTradingViewLoader(
+      state.chartRetryAttempt <= 2
+        ? "Retrying TradingView chart..."
+        : "TradingView widget failed to load."
+    );
+    if (state.chartRetryAttempt <= 2) {
+      window.clearTimeout(state.chartRenderId);
+      state.chartRenderId = window.setTimeout(() => {
+        renderTradingView(symbol, exchange);
+      }, 1200 * state.chartRetryAttempt);
+    }
     return;
   }
 
+  state.chartRetryAttempt = 0;
   state.tvWidgetSymbol = tvSymbol;
   elements.tradingviewChart.innerHTML = "";
   new window.TradingView.widget({
@@ -1493,10 +1509,6 @@ function bindAuth() {
     await bootDashboard();
   });
 }
-
-ensureTradingView().catch(() => {
-  state.tvReady = false;
-});
 
 function bindApp() {
   renderStrategyButtons();
