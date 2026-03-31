@@ -268,17 +268,6 @@
               </div>
             </div>
 
-            <div id="chartSection" class="dashboard-panel chart-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px]">
-              <div class="mb-4 flex flex-wrap items-center justify-between gap-3 px-1">
-                <div class="min-w-0">
-                  <p class="text-xs font-medium text-slate-500">Chart</p>
-                  <h3 class="mt-2 text-xl font-semibold">TradingView</h3>
-                </div>
-                <span id="chartSymbolBadge" class="rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-semibold tracking-[0.25em] text-slate-400">AAPL</span>
-              </div>
-              <div id="tradingviewChart" class="h-[320px] overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/70 sm:h-[420px] lg:h-[500px] 2xl:h-[560px]"></div>
-            </div>
-
             <section id="alertsSection" class="dashboard-panel rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
               <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
@@ -294,9 +283,39 @@
                 </article>
               </div>
             </section>
+
+            <div id="chartSection" class="dashboard-panel chart-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px]">
+              <div class="mb-4 flex flex-wrap items-center justify-between gap-3 px-1">
+                <div class="min-w-0">
+                  <p class="text-xs font-medium text-slate-500">Chart</p>
+                  <h3 class="mt-2 text-xl font-semibold">TradingView</h3>
+                </div>
+                <span id="chartSymbolBadge" class="rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-semibold tracking-[0.25em] text-slate-400">AAPL</span>
+              </div>
+              <div id="tradingviewChart" class="h-[320px] overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/70 sm:h-[420px] lg:h-[500px] 2xl:h-[560px]"></div>
+            </div>
           </section>
 
           <aside id="decisionRail" class="min-w-0 space-y-5">
+            <aside id="companySection" class="min-w-0 space-y-5">
+            <section class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
+              <p class="text-xs font-medium text-slate-500">Company snapshot</p>
+              <div class="mt-5 flex items-center gap-4">
+                <img
+                  id="companyLogo"
+                  src=""
+                  alt=""
+                  class="hidden h-14 w-14 rounded-2xl border border-white/10 bg-white object-contain p-2"
+                />
+                <div>
+                  <h3 id="companyHeadline" class="text-xl font-semibold">Select a symbol</h3>
+                  <p id="companyExchange" class="text-sm text-slate-400">Exchange will appear here</p>
+                </div>
+              </div>
+              <dl id="companyDetails" class="mt-6 space-y-4"></dl>
+            </section>
+            </aside>
+
             <section id="tradeDecisionSection" class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
               <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
                 <div class="min-w-0">
@@ -400,25 +419,6 @@
                 </article>
               </div>
             </section>
-
-            <aside id="companySection" class="min-w-0 space-y-5">
-            <section class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
-              <p class="text-xs font-medium text-slate-500">Company snapshot</p>
-              <div class="mt-5 flex items-center gap-4">
-                <img
-                  id="companyLogo"
-                  src=""
-                  alt=""
-                  class="hidden h-14 w-14 rounded-2xl border border-white/10 bg-white object-contain p-2"
-                />
-                <div>
-                  <h3 id="companyHeadline" class="text-xl font-semibold">Select a symbol</h3>
-                  <p id="companyExchange" class="text-sm text-slate-400">Exchange will appear here</p>
-                </div>
-              </div>
-              <dl id="companyDetails" class="mt-6 space-y-4"></dl>
-            </section>
-            </aside>
           </aside>
         </main>
       </div>
