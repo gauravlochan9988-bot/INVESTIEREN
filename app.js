@@ -301,6 +301,30 @@ async function searchSymbols(query) {
   }
 }
 
+function looksLikeTicker(value) {
+  return /^[A-Za-z.\-]{1,10}$/.test(value.trim());
+}
+
+async function resolveSearchSelection(query) {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (looksLikeTicker(trimmed)) {
+    return trimmed.toUpperCase();
+  }
+
+  if (state.searchResults.length) {
+    return state.searchResults[0].symbol;
+  }
+
+  const results = await api(`/api/search?q=${encodeURIComponent(trimmed)}&limit=1`, {
+    timeoutMs: 10000,
+  });
+  return results[0]?.symbol || null;
+}
+
 function renderAnalysisLoading(symbol) {
   state.latestAnalysis = null;
   elements.recommendationCard.className = "rounded-[28px] border border-white/10 bg-slate-950/70 p-5";
@@ -811,13 +835,23 @@ function bindApp() {
 
   elements.searchForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const symbol = elements.searchInput.value.trim();
-    if (!symbol) {
+    const query = elements.searchInput.value.trim();
+    if (!query) {
       showError("Enter a stock symbol like AAPL or MSFT.");
       return;
     }
-    hideSearchSuggestions();
-    await loadSymbol(symbol, true);
+    try {
+      const symbol = await resolveSearchSelection(query);
+      if (!symbol) {
+        showError(`No stock found for "${query}".`);
+        return;
+      }
+      elements.searchInput.value = symbol;
+      hideSearchSuggestions();
+      await loadSymbol(symbol, true);
+    } catch (error) {
+      showError(error.message || "Search failed.");
+    }
   });
 
   elements.searchInput.addEventListener("input", () => {
