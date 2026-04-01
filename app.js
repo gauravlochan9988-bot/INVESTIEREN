@@ -70,6 +70,10 @@ const elements = {
   authPassword: document.getElementById("authPassword"),
   authError: document.getElementById("authError"),
   authCancelButton: document.getElementById("authCancelButton"),
+  authGoogleButton: document.getElementById("authGoogleButton"),
+  authAppleButton: document.getElementById("authAppleButton"),
+  authCreateAccountButton: document.getElementById("authCreateAccountButton"),
+  authLoginButton: document.getElementById("authLoginButton"),
   appShell: document.getElementById("appShell"),
   backendStatus: document.getElementById("backendStatus"),
   errorBanner: document.getElementById("errorBanner"),
@@ -2014,9 +2018,21 @@ function bindAuth() {
     elements.authError.hidden = true;
   });
 
+  const showPrivateAccessHint = () => {
+    elements.authError.textContent = "Public login comes next. For now, use private access code 9988.";
+    elements.authError.hidden = false;
+    elements.authPassword.focus();
+  };
+
+  elements.authGoogleButton?.addEventListener("click", showPrivateAccessHint);
+  elements.authAppleButton?.addEventListener("click", showPrivateAccessHint);
+  elements.authCreateAccountButton?.addEventListener("click", showPrivateAccessHint);
+  elements.authLoginButton?.addEventListener("click", showPrivateAccessHint);
+
   elements.authForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (elements.authPassword.value.trim() !== AUTH_PASSWORD) {
+      elements.authError.textContent = "Wrong password";
       elements.authError.hidden = false;
       elements.authPassword.select();
       return;

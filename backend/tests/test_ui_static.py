@@ -5,8 +5,7 @@ def test_root_serves_static_dashboard(client):
     assert "Investieren AI" in response.text
     assert 'id="authOverlay"' in response.text
     assert "Secure access" in response.text
-    assert "Access Dashboard" in response.text
-    assert "Gaurav Quant" in response.text
+    assert "Private Access" in response.text
     assert 'placeholder="Search"' in response.text
     assert "Live Quotes" in response.text
     assert "TradingView" in response.text

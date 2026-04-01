@@ -11,7 +11,7 @@
     <meta name="color-scheme" content="dark" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://s3.tradingview.com; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' http://127.0.0.1:8000 http://localhost:8000 https://investieren-api.onrender.com https://*.tradingview.com; frame-src 'self' https://*.tradingview.com; child-src 'self' https://*.tradingview.com; font-src 'self' https: data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+      content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://s3.tradingview.com; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; media-src 'self' https://v1.pinimg.com data: blob:; connect-src 'self' http://127.0.0.1:8000 http://localhost:8000 https://investieren-api.onrender.com https://*.tradingview.com; frame-src 'self' https://*.tradingview.com; child-src 'self' https://*.tradingview.com; font-src 'self' https: data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
     />
     <title>Investieren AI</title>
     <link rel="dns-prefetch" href="//investieren-api.onrender.com" />
@@ -41,51 +41,71 @@
       <section
         class="relative z-10 mx-4 grid w-full max-w-6xl grid-cols-1 gap-8 sm:mx-6 sm:gap-10 auth-overlay-content login-container"
       >
-        <div class="space-y-8 px-1 sm:space-y-10 sm:px-2 lg:px-10 auth-copy-block">
-          <div class="flex items-center gap-4 auth-brand-row login-header">
-            <div
-              class="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-300 to-emerald-400 text-lg font-black text-slate-950 shadow-2xl shadow-emerald-400/20 sm:h-16 sm:w-16 sm:text-xl logo-box"
-            >
-              GQ
-            </div>
-            <div class="logo-copy">
-              <p class="text-xl font-semibold tracking-tight sm:text-2xl">Gaurav Quant</p>
-              <p class="text-sm text-slate-400">Private Trading Workspace</p>
+        <div class="auth-desktop-shell">
+          <div class="auth-desktop-left">
+            <div class="auth-desktop-mark" aria-hidden="true">GQ</div>
+            <div class="auth-desktop-copy">
+              <h1 class="auth-desktop-title">AI helps you trade smarter</h1>
+              <p class="auth-desktop-subtext">Access your private trading workspace</p>
             </div>
           </div>
 
-          <div class="auth-bottom-card login-card">
-            <div class="space-y-5 auth-copy-text">
-              <p class="text-base text-slate-300 auth-byline">by Gaurav Lochan</p>
-              <h1 class="max-w-xl text-4xl font-semibold leading-[0.95] tracking-tight sm:text-6xl auth-title">
-                Secure access
-              </h1>
-            </div>
-
-            <form id="authForm" class="w-full max-w-md space-y-5 auth-form-panel" novalidate>
-              <div class="space-y-2">
-                <label for="authPassword" class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-                  Password
-                </label>
-                <input
-                  id="authPassword"
-                  name="password"
-                  type="password"
-                  placeholder="Password"
-                  autocomplete="current-password"
-                  class="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base text-white outline-none transition focus:border-emerald-400/60 focus:bg-white/10 login-input"
-                  required
-                />
+          <div class="auth-desktop-right">
+            <div class="auth-bottom-card login-card auth-desktop-card">
+              <div class="space-y-3 auth-copy-text">
+                <h2 class="auth-panel-title">Secure access</h2>
+                <p class="auth-panel-copy">
+                  Choose Google, Apple, or enter your private access code for the desktop dashboard.
+                </p>
               </div>
 
-              <button
-                type="submit"
-                class="rounded-2xl bg-gradient-to-r from-cyan-300 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px] login-button"
-              >
-                Access Dashboard
-              </button>
-              <p id="authError" class="text-sm text-rose-400" hidden>Wrong password</p>
-            </form>
+              <div class="auth-social-stack">
+                <button id="authGoogleButton" type="button" class="auth-social-button">
+                  <span class="auth-social-mark">G</span>
+                  <span>Continue with Google</span>
+                </button>
+                <button id="authAppleButton" type="button" class="auth-social-button">
+                  <span class="auth-social-mark"></span>
+                  <span>Continue with Apple</span>
+                </button>
+              </div>
+
+              <div class="auth-divider"><span>OR</span></div>
+
+              <div class="auth-action-stack">
+                <button id="authCreateAccountButton" type="button" class="auth-primary-action">
+                  Create Account
+                </button>
+                <button id="authLoginButton" type="button" class="auth-secondary-action">
+                  Login
+                </button>
+              </div>
+
+              <form id="authForm" class="w-full max-w-md space-y-4 auth-form-panel auth-private-panel" novalidate>
+                <div class="space-y-2">
+                  <label for="authPassword" class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                    Private Access
+                  </label>
+                  <input
+                    id="authPassword"
+                    name="password"
+                    type="password"
+                    placeholder="Password"
+                    autocomplete="current-password"
+                    class="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base text-white outline-none transition focus:border-emerald-400/60 focus:bg-white/10 login-input"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  class="auth-private-button rounded-2xl bg-gradient-to-r from-cyan-300 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px] login-button"
+                >
+                  Private Access
+                </button>
+                <p id="authError" class="text-sm text-rose-400" hidden>Wrong password</p>
+              </form>
+            </div>
           </div>
         </div>
 
