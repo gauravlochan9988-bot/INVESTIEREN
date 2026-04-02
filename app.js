@@ -25,6 +25,7 @@ const STRATEGY_LABELS = {
 };
 
 const MAX_SIDEBAR_SLOTS = 10;
+const OPPORTUNITY_LIMIT = 4;
 const DEFAULT_SIDEBAR_ITEMS = [
   { symbol: "AAPL", name: "Apple Inc" },
   { symbol: "MSFT", name: "Microsoft" },
@@ -68,6 +69,7 @@ const state = {
   suppressStrategyClick: false,
   latestOverview: null,
   learningStats: null,
+  opportunities: [],
 };
 
 const elements = {
@@ -82,6 +84,9 @@ const elements = {
   alertsSection: document.getElementById("alertsSection"),
   alertsMeta: document.getElementById("alertsMeta"),
   alertsList: document.getElementById("alertsList"),
+  opportunitySection: document.getElementById("opportunitySection"),
+  opportunityMeta: document.getElementById("opportunityMeta"),
+  opportunityList: document.getElementById("opportunityList"),
   strategyToggle: document.getElementById("strategyToggle"),
   strategyToggleThumb: document.getElementById("strategyToggleThumb"),
   strategyButtons: Array.from(document.querySelectorAll(".strategy-button")),
@@ -882,6 +887,204 @@ function renderAlertsWarning(message) {
     </article>
   `;
   requestAnimationFrame(syncCompanySectionAlignment);
+}
+
+function opportunityToneClass(recommendation) {
+  if (recommendation === "BUY") {
+    return "opportunity-buy";
+  }
+  if (recommendation === "SELL") {
+    return "opportunity-sell";
+  }
+  return "opportunity-hold";
+}
+
+function opportunityMetricLabel(entry) {
+  return `${entry.symbol} · ${entry.recommendation} · ${Math.round(entry.confidence)}%`;
+}
+
+function renderOpportunityLoading() {
+  if (!elements.opportunityList || !elements.opportunityMeta) {
+    return;
+  }
+  elements.opportunityMeta.textContent = "Scanning top setups...";
+  elements.opportunityList.innerHTML = Array.from({ length: 3 })
+    .map(
+      () => `
+        <article class="animate-pulse rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+          <div class="h-4 w-24 rounded bg-white/10"></div>
+          <div class="mt-3 h-16 rounded-2xl bg-white/10"></div>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function buildOpportunitySection(title, tone, entries, emptyMessage) {
+  if (!entries.length) {
+    return `
+      <article class="opportunity-group">
+        <div class="opportunity-group-head">
+          <p class="opportunity-group-title">${title}</p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-4 text-sm leading-6 text-slate-400">
+          No opportunities.
+          <span class="block mt-1 text-xs text-slate-500">${emptyMessage}</span>
+        </div>
+      </article>
+    `;
+  }
+
+  return `
+    <article class="opportunity-group">
+      <div class="opportunity-group-head">
+        <p class="opportunity-group-title">${title}</p>
+      </div>
+      <div class="space-y-2.5">
+        ${entries
+          .map(
+            (entry) => `
+              <button
+                type="button"
+                class="opportunity-card ${opportunityToneClass(entry.recommendation)} ${entry.symbol === state.selectedSymbol ? "opportunity-card-current" : ""}"
+                data-symbol="${entry.symbol}"
+                aria-pressed="${entry.symbol === state.selectedSymbol ? "true" : "false"}"
+              >
+                <div class="min-w-0">
+                  <div class="flex items-center justify-between gap-3">
+                    <p class="truncate text-sm font-semibold text-white">${entry.symbol}</p>
+                    <span class="opportunity-pill">${entry.recommendation}</span>
+                  </div>
+                  <p class="mt-1 truncate text-xs text-slate-400">${entry.name}</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-sm font-semibold text-white">${Math.round(entry.confidence)}%</p>
+                  <p class="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500">Score ${entry.scoreLabel}</p>
+                </div>
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
+    </article>
+  `;
+}
+
+function renderOpportunityPanel(entries) {
+  if (!elements.opportunityList || !elements.opportunityMeta) {
+    return;
+  }
+  state.opportunities = entries;
+  const fullCount = entries.filter((entry) => entry.dataQuality === "FULL").length;
+  elements.opportunityMeta.textContent = `${entries.length} ranked · ${fullCount} full data`;
+
+  const topBuy = entries
+    .filter((entry) => entry.recommendation === "BUY")
+    .sort((left, right) => right.rank - left.rank)
+    .slice(0, OPPORTUNITY_LIMIT);
+
+  const topSell = entries
+    .filter((entry) => entry.recommendation === "SELL")
+    .sort((left, right) => left.score - right.score || right.confidence - left.confidence)
+    .slice(0, OPPORTUNITY_LIMIT);
+
+  const highConfidence = entries
+    .filter((entry) => entry.confidence > 75)
+    .sort((left, right) => right.confidence - left.confidence || Math.abs(right.score) - Math.abs(left.score))
+    .slice(0, OPPORTUNITY_LIMIT);
+
+  elements.opportunityList.innerHTML = [
+    buildOpportunitySection("Top BUY", "BUY", topBuy, "No strong BUY opportunities right now."),
+    buildOpportunitySection("Top SELL", "SELL", topSell, "No urgent SELL risks right now."),
+    buildOpportunitySection("High confidence", "HOLD", highConfidence, "No high-confidence setups crossed the threshold."),
+  ].join("");
+
+  elements.opportunityList.querySelectorAll(".opportunity-card").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const symbol = button.dataset.symbol;
+      if (!symbol) {
+        return;
+      }
+      await loadSymbol(symbol, true);
+    });
+  });
+}
+
+function renderOpportunityWarning(message) {
+  if (!elements.opportunityList || !elements.opportunityMeta) {
+    return;
+  }
+  elements.opportunityMeta.textContent = message;
+  elements.opportunityList.innerHTML = `
+    <article class="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
+      <p class="text-sm font-semibold text-white">Opportunity panel is warming up</p>
+      <p class="mt-2 text-sm leading-6 text-slate-300">The scanner is still ranking the best BUY, SELL and high-confidence setups.</p>
+    </article>
+  `;
+}
+
+async function loadOpportunities(forceRefresh = false) {
+  if (!elements.opportunityList || !elements.opportunityMeta) {
+    return [];
+  }
+  renderOpportunityLoading();
+  const symbols = Array.from(
+    new Set(
+      [state.selectedSymbol, ...state.watchlist.map((item) => item.symbol)]
+        .map((symbol) => normalizeTickerSymbol(symbol))
+        .filter(Boolean),
+    ),
+  ).slice(0, Math.max(MAX_SIDEBAR_SLOTS, 10));
+
+  if (!symbols.length) {
+    renderOpportunityWarning("No symbols to rank yet");
+    return [];
+  }
+
+  const params = new URLSearchParams({ strategy: state.selectedStrategy });
+  if (forceRefresh) {
+    params.set("refresh", "1");
+  }
+
+  const responses = await Promise.allSettled(
+    symbols.map((symbol) =>
+      api(`/api/analysis/${encodeURIComponent(symbol)}?${params.toString()}`, {
+        timeoutMs: 22000,
+        retryCount: 1,
+      }).then((analysis) => ({ symbol, analysis })),
+    ),
+  );
+
+  const watchlistMap = new Map(state.watchlist.map((item) => [normalizeTickerSymbol(item.symbol), item]));
+  const entries = responses
+    .filter((result) => result.status === "fulfilled")
+    .map((result) => result.value)
+    .filter(({ analysis }) => analysis && !analysis.no_data)
+    .map(({ symbol, analysis }) => {
+      const confidence = normalizeConfidencePercent(analysis.confidence);
+      const score = Number(analysis.score || 0);
+      const dataQuality = String(analysis.data_quality || "NO_DATA").toUpperCase();
+      const watchlistItem = watchlistMap.get(symbol);
+      return {
+        symbol,
+        name: watchlistItem?.name || analysis.name || symbol,
+        recommendation: analysis.recommendation || "HOLD",
+        score,
+        scoreLabel: score >= 0 ? `+${score}` : `${score}`,
+        confidence,
+        dataQuality,
+        rank: score + confidence / 100,
+      };
+    })
+    .filter((entry) => entry.dataQuality === "FULL" || entry.dataQuality === "PARTIAL");
+
+  if (!entries.length) {
+    renderOpportunityWarning("No ranked opportunities yet");
+    return [];
+  }
+
+  renderOpportunityPanel(entries);
+  return entries;
 }
 
 function queueAlertsRetry(forceRefresh = false, delayMs = 2500) {
@@ -1977,7 +2180,7 @@ function normalizeTickerSymbol(value) {
 function updateChartCompareUi() {
   const primary = normalizeTickerSymbol(state.selectedSymbol);
   const compare = normalizeTickerSymbol(state.compareSymbol);
-  elements.chartSymbolBadge.textContent = compare ? `${primary} VS ${compare}` : primary;
+  elements.chartSymbolBadge.textContent = compare ? `${primary} VS ${compare}` : `CHART · ${primary}`;
   if (elements.chartCompareInput && document.activeElement !== elements.chartCompareInput) {
     elements.chartCompareInput.value = compare;
   }
@@ -2731,6 +2934,13 @@ async function bootDashboard(forceRefresh = false) {
       });
     }, 180);
 
+    scheduleLowPriorityTask(() => {
+      loadOpportunities(forceRefresh).catch((error) => {
+        console.error("[frontend] opportunity load failed", error);
+        renderOpportunityWarning("Retrying opportunities...");
+      });
+    }, 220);
+
     if (watchlistResult.status === "rejected") {
       throw watchlistResult.reason;
     }
@@ -2803,6 +3013,10 @@ function bindApp() {
           renderAlertsWarning("Retrying alerts...");
         }
         queueAlertsRetry(true);
+      });
+      loadOpportunities(true).catch((error) => {
+        console.error("[frontend] opportunity refresh failed", error);
+        renderOpportunityWarning("Retrying opportunities...");
       });
       await loadSymbol(state.selectedSymbol, true);
     }
