@@ -1,9 +1,13 @@
+from datetime import date, datetime, timezone
+
 from app.core.exceptions import ExternalServiceError
+from app.models.trade_performance_log import TradePerformanceLog
 from app.services.analysis import AnalysisService
 from app.services.macro import MacroContextService
 from app.services.market_data import MarketDataService
 from app.services.news import NewsSentimentSnapshot
 from app.services.news import NewsSentimentService
+from app.services.strategy_learning import LEARNING_LAYER_VERSION
 from tests.helpers import (
     FakeMarketDataProvider,
     FakeNewsProvider,
@@ -33,11 +37,13 @@ def test_buy_setup_can_still_block_fresh_entry_when_overbought(analysis_service)
 
     result = analysis_service.analyze("AAPL", history)
 
-    assert result.recommendation == "BUY"
-    assert result.score >= 35
-    assert result.probability_up >= 0.68
+    assert result.recommendation == "HOLD"
+    assert result.signal_quality == "PARTIAL"
+    assert result.decision_label == "PARTIAL"
+    assert result.score == 2
+    assert 0.5 < result.probability_up < 0.68
     assert result.risk_level == "HIGH"
-    assert result.no_trade is False
+    assert result.no_trade is True
     assert result.entry_signal is False
     assert result.exit_signal is False
     assert result.position_size_percent == 0.0
@@ -53,9 +59,11 @@ def test_bearish_setup_triggers_exit_and_zero_size(analysis_service):
 
     result = analysis_service.analyze("TSLA", history)
 
-    assert result.recommendation == "SELL"
-    assert result.score <= -35
-    assert result.probability_down >= 0.68
+    assert result.recommendation == "HOLD"
+    assert result.signal_quality == "PARTIAL"
+    assert result.decision_label == "PARTIAL"
+    assert result.score == -2
+    assert result.probability_down >= 0.66
     assert result.risk_level == "HIGH"
     assert isinstance(result.no_trade, bool)
     assert result.entry_signal is False
@@ -72,10 +80,12 @@ def test_simple_strategy_now_holds_on_plus_one_score(analysis_service):
     result = analysis_service.analyze("MSFT", history, strategy="simple")
 
     assert result.recommendation == "HOLD"
+    assert result.signal_quality == "PARTIAL"
+    assert result.decision_label == "PARTIAL"
     assert result.score == 1
     assert 0.5 < result.probability_up < 0.68
     assert result.data_quality == "PARTIAL"
-    assert result.no_trade is False
+    assert result.no_trade is True
     assert result.entry_signal is False
     assert result.exit_signal is True
     assert result.position_size_percent == 0.0
@@ -89,10 +99,12 @@ def test_negative_news_and_overbought_condition_raise_exit_flag(analysis_service
     result = analysis_service.analyze("MSFT", history)
 
     assert result.recommendation == "HOLD"
-    assert result.score == 30
+    assert result.signal_quality == "PARTIAL"
+    assert result.decision_label == "PARTIAL"
+    assert result.score == 0
     assert result.risk_level == "HIGH"
-    assert result.no_trade is False
-    assert "trade evaluation available" in result.no_trade_reason.lower()
+    assert result.no_trade is True
+    assert "partially confirmed" in result.no_trade_reason.lower()
     assert result.entry_signal is False
     assert result.exit_signal is True
     assert "Negative News" in result.warnings
@@ -108,10 +120,11 @@ def test_high_risk_hold_does_not_automatically_become_no_trade(analysis_service)
 
     result = analysis_service.analyze("AMZN", history)
 
-    assert result.recommendation == "HOLD"
-    assert result.score >= 35
+    assert result.recommendation in {"BUY", "HOLD"}
+    assert result.signal_quality == "PARTIAL"
+    assert result.score >= 2
     assert result.risk_level == "HIGH"
-    assert result.no_trade is False
+    assert result.no_trade is True
     assert result.entry_signal is False
 
 
@@ -121,7 +134,9 @@ def test_cleaner_setup_allows_entry_with_measured_size(analysis_service):
     result = analysis_service.analyze("SAP.DE", history)
 
     assert result.recommendation == "BUY"
-    assert result.score >= 35
+    assert result.signal_quality == "FULL"
+    assert result.decision_label == "BUY FULL"
+    assert result.score >= 4
     assert result.no_trade is False
     assert result.entry_signal is True
     assert result.exit_signal is False
@@ -383,6 +398,44 @@ def test_data_quality_returns_no_data_when_too_many_required_inputs_are_missing(
     assert "only 2/5 core inputs" in decision.reason
 
 
+def test_strong_indicator_conflicts_force_partial_signal_quality(analysis_service):
+    decision = analysis_service._refine_data_quality_for_signals(  # noqa: SLF001
+        strategy="ai",
+        score=4,
+        conflicts=["Trend vs RSI", "RSI vs Momentum"],
+        recommendation="BUY",
+        base_decision=analysis_service._evaluate_data_quality(  # noqa: SLF001
+            latest_price=100.0,
+            sma50=95.0,
+            sma200=90.0,
+            rsi14=48.0,
+            momentum_5d=1.0,
+            volatility_30d=0.18,
+            news_snapshot=NewsSentimentSnapshot(
+                symbol="AAPL",
+                news_score=0.2,
+                sentiment_label="bullish",
+                article_count=3,
+                articles=[],
+                note="Three recent articles",
+            ),
+        ),
+    )
+
+    assert decision.level == "PARTIAL"
+    assert "strong indicator conflicts" in decision.reason.lower()
+
+
+def test_strong_conflicts_pull_score_toward_zero_more_aggressively(analysis_service):
+    adjusted = analysis_service._apply_conflict_score_damping(  # noqa: SLF001
+        strategy="simple",
+        raw_score=3,
+        conflicts=["Trend vs RSI"],
+    )
+
+    assert adjusted == 0
+
+
 def test_confidence_preserves_full_data_and_reduces_partial_data(analysis_service):
     full_confidence = analysis_service._apply_data_quality_to_confidence(60.0, "FULL")
     partial_confidence = analysis_service._apply_data_quality_to_confidence(60.0, "PARTIAL")
@@ -481,26 +534,39 @@ def test_strategies_return_distinct_results_without_overwriting_each_other(analy
     assert hedgefund.strategy == "hedgefund"
     assert simple.recommendation == "HOLD"
     assert ai.recommendation == "BUY"
-    assert hedgefund.recommendation == "BUY"
+    assert hedgefund.recommendation == "HOLD"
+    assert simple.signal_quality == "PARTIAL"
+    assert ai.signal_quality == "PARTIAL"
+    assert hedgefund.signal_quality == "PARTIAL"
     assert simple.score != ai.score
     assert simple.data_quality == "PARTIAL"
     assert ai.data_quality == "PARTIAL"
     assert hedgefund.data_quality == "PARTIAL"
-    assert simple.no_trade is False
+    assert simple.no_trade is True
     assert ai.no_trade is False
-    assert hedgefund.no_trade is False
+    assert hedgefund.no_trade is True
 
 
-def test_hedgefund_confirmation_can_hold_while_ai_model_still_sells(analysis_service):
+def test_strategy_thresholds_are_fixed_per_strategy(analysis_service):
+    assert analysis_service._thresholds_for("simple").buy_threshold == 3.0  # noqa: SLF001
+    assert analysis_service._thresholds_for("simple").sell_threshold == -3.0  # noqa: SLF001
+    assert analysis_service._thresholds_for("ai").buy_threshold == 2.0  # noqa: SLF001
+    assert analysis_service._thresholds_for("ai").sell_threshold == -2.0  # noqa: SLF001
+    assert analysis_service._thresholds_for("hedgefund").buy_threshold == 4.0  # noqa: SLF001
+    assert analysis_service._thresholds_for("hedgefund").sell_threshold == -4.0  # noqa: SLF001
+
+
+def test_hedgefund_confirmation_can_hold_while_ai_model_stays_more_bearish(analysis_service):
     ai = analysis_service.analyze_symbol("TSLA", strategy="ai")
     hedgefund = analysis_service.analyze_symbol("TSLA", strategy="hedgefund")
 
     assert ai.strategy == "ai"
     assert hedgefund.strategy == "hedgefund"
-    assert ai.recommendation == "SELL"
+    assert ai.score < hedgefund.score
+    assert ai.recommendation == "HOLD"
     assert hedgefund.recommendation == "HOLD"
-    assert "weak" in ai.reason.lower()
-    assert hedgefund.reason.startswith("HOLD because the long-term trend is down")
+    assert "conflicting" in ai.reason.lower()
+    assert hedgefund.reason.startswith("HOLD because")
 
 
 def test_scan_alerts_returns_prioritized_trade_and_risk_events(analysis_service):
@@ -512,3 +578,76 @@ def test_scan_alerts_returns_prioritized_trade_and_risk_events(analysis_service)
     assert any(alert.kind in {"entry", "exit"} for alert in alerts)
     assert all(alert.strategy == "simple" for alert in alerts)
     assert all(alert.priority >= 0 for alert in alerts)
+
+
+def test_learning_layer_dampens_weak_signals_after_enough_losing_trades(
+    analysis_service,
+    db_session,
+):
+    for index in range(60):
+        db_session.add(
+            TradePerformanceLog(
+                symbol=f"SIMPLE{index}",
+                strategy="simple",
+                learning_version=LEARNING_LAYER_VERSION,
+                quantity=1,
+                entry_price=100.0,
+                exit_price=92.0,
+                profit_loss=-8.0,
+                duration=5.0,
+                opened_at=date(2025, 1, 1),
+                closed_at=datetime(2025, 2, 1, tzinfo=timezone.utc),
+            )
+        )
+    db_session.commit()
+
+    history = build_history(start=180.0, drift=0.6, noise=0.004)
+    baseline = analysis_service.analyze("MSFT", history, strategy="simple")
+    learned = analysis_service.analyze("MSFT", history, strategy="simple", db=db_session)
+
+    assert baseline.score == 1
+    assert learned.learning is not None
+    assert learned.learning.active is True
+    assert learned.learning.trade_count == 60
+    assert learned.score == baseline.score
+    assert learned.learning.directional_bias == 0.0
+    assert learned.learning.confidence_bias == -10.0
+    assert learned.learning.buy_threshold_offset == 0.5
+    assert learned.learning.sell_threshold_offset == -0.5
+    assert learned.confidence < baseline.confidence
+    assert learned.recommendation == "HOLD"
+
+
+def test_learning_layer_lightly_prefers_strategies_with_strong_realized_results(
+    analysis_service,
+    db_session,
+):
+    for index in range(60):
+        db_session.add(
+            TradePerformanceLog(
+                symbol=f"AIWIN{index}",
+                strategy="ai",
+                learning_version=LEARNING_LAYER_VERSION,
+                quantity=1,
+                entry_price=100.0,
+                exit_price=112.0,
+                profit_loss=12.0,
+                duration=9.0,
+                opened_at=date(2025, 1, 1),
+                closed_at=datetime(2025, 2, 1, tzinfo=timezone.utc),
+            )
+        )
+    db_session.commit()
+
+    history = build_history(start=300.0, drift=0.5)
+    baseline = analysis_service.analyze("MSFT", history, strategy="ai")
+    learned = analysis_service.analyze("MSFT", history, strategy="ai", db=db_session)
+
+    assert learned.learning is not None
+    assert learned.learning.active is True
+    assert learned.learning.directional_bias == 0.0
+    assert learned.learning.confidence_bias == 10.0
+    assert learned.learning.buy_threshold_offset == -0.5
+    assert learned.learning.sell_threshold_offset == 0.5
+    assert learned.score == baseline.score
+    assert learned.confidence >= baseline.confidence

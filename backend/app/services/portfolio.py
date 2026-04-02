@@ -1,12 +1,25 @@
 from __future__ import annotations
 
+from datetime import datetime, time, timezone
+
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import NotFoundError, ValidationError
+from app.core.exceptions import ExternalServiceError, NotFoundError, ValidationError
 from app.models.portfolio_position import PortfolioPosition
+from app.models.trade_performance_log import TradePerformanceLog
+from app.repositories.analysis_log import AnalysisLogRepository
 from app.repositories.portfolio import PortfolioRepository
-from app.schemas.portfolio import PortfolioResponse, PositionCreate, PositionResponse, PositionUpdate
+from app.repositories.trade_performance import TradePerformanceRepository
+from app.schemas.portfolio import (
+    PortfolioResponse,
+    PositionClose,
+    PositionCreate,
+    PositionResponse,
+    PositionUpdate,
+    TradePerformanceResponse,
+)
 from app.services.market_data import MarketDataService
+from app.services.strategy_learning import LEARNING_LAYER_VERSION
 
 
 class PortfolioService:
@@ -14,9 +27,13 @@ class PortfolioService:
         self,
         market_data_service: MarketDataService,
         portfolio_repository: PortfolioRepository,
+        trade_performance_repository: TradePerformanceRepository,
+        analysis_log_repository: AnalysisLogRepository,
     ):
         self.market_data_service = market_data_service
         self.portfolio_repository = portfolio_repository
+        self.trade_performance_repository = trade_performance_repository
+        self.analysis_log_repository = analysis_log_repository
 
     def get_portfolio(self, db: Session, force_refresh: bool = False) -> PortfolioResponse:
         positions = self.portfolio_repository.list_positions(db)
@@ -117,10 +134,84 @@ class PortfolioService:
         return self._get_position_snapshot(db, saved_position.id)
 
     def delete_position(self, db: Session, position_id: int) -> None:
+        self.close_position(db, position_id, PositionClose())
+
+    def close_position(
+        self,
+        db: Session,
+        position_id: int,
+        payload: PositionClose,
+    ) -> TradePerformanceResponse:
         position = self.portfolio_repository.get_position(db, position_id)
         if position is None:
             raise NotFoundError("position not found")
-        self.portfolio_repository.delete(db, position)
+        if payload.exit_price is not None and payload.exit_price <= 0:
+            raise ValidationError("Exit price must be greater than zero.")
+
+        exit_price = payload.exit_price
+        if exit_price is None:
+            try:
+                exit_price = self.market_data_service.get_latest_quote(
+                    position.symbol,
+                    force_refresh=True,
+                ).price
+            except (ExternalServiceError, NotFoundError):
+                exit_price = None
+
+        closed_at = payload.closed_at or datetime.now(timezone.utc)
+        if closed_at.tzinfo is None:
+            closed_at = closed_at.replace(tzinfo=timezone.utc)
+
+        profit_loss = (
+            round((exit_price - position.average_price) * position.quantity, 2)
+            if exit_price is not None
+            else None
+        )
+        latest_analysis = self.analysis_log_repository.get_latest_for_symbol_strategy(
+            db,
+            symbol=position.symbol,
+            strategy=payload.strategy,
+        )
+        opened_at_datetime = datetime.combine(position.opened_at, time.min, tzinfo=timezone.utc)
+        duration = round(
+            max((closed_at - opened_at_datetime).total_seconds(), 0.0) / 86_400,
+            2,
+        )
+
+        trade = TradePerformanceLog(
+            symbol=position.symbol,
+            strategy=payload.strategy,
+            learning_version=LEARNING_LAYER_VERSION,
+            quantity=position.quantity,
+            entry_price=position.average_price,
+            exit_price=exit_price,
+            recommendation=payload.recommendation or getattr(latest_analysis, "recommendation", None),
+            score=payload.score if payload.score is not None else getattr(latest_analysis, "score", None),
+            confidence=(
+                payload.confidence
+                if payload.confidence is not None
+                else getattr(latest_analysis, "confidence", None)
+            ),
+            data_quality=(
+                payload.data_quality
+                if payload.data_quality is not None
+                else getattr(latest_analysis, "data_quality", None)
+            ),
+            profit_loss=profit_loss,
+            duration=duration,
+            opened_at=position.opened_at,
+            closed_at=closed_at,
+        )
+
+        self.trade_performance_repository.create(db, trade, commit=False)
+        self.portfolio_repository.delete(db, position, commit=False)
+        db.commit()
+        db.refresh(trade)
+        return TradePerformanceResponse.model_validate(trade)
+
+    def list_closed_trades(self, db: Session, limit: int = 200) -> list[TradePerformanceResponse]:
+        rows = self.trade_performance_repository.list_entries(db, limit=limit)
+        return [TradePerformanceResponse.model_validate(row) for row in reversed(rows)]
 
     def _validate_numeric_fields(self, quantity: float, average_price: float) -> None:
         if average_price is None:

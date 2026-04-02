@@ -1,7 +1,12 @@
 from functools import lru_cache
 
 from app.core.config import get_settings
+from app.core.database import get_session_factory
+from app.repositories.analysis_log import AnalysisLogRepository
+from app.repositories.analysis_threshold import AnalysisThresholdRepository
 from app.repositories.portfolio import PortfolioRepository
+from app.repositories.trade_performance import TradePerformanceRepository
+from app.services.analysis_calibration import AnalysisCalibrationService
 from app.services.analysis import AnalysisService
 from app.services.finnhub_dashboard import FinnhubDashboardService
 from app.services.macro import MacroContextService
@@ -14,7 +19,14 @@ from app.services.news import (
 )
 from app.services.portfolio import PortfolioService
 from app.services.search import StockSearchService, build_stock_search_service
+from app.services.strategy_learning import StrategyLearningService
 from app.services.summary import SummaryService
+
+FIXED_STRATEGY_THRESHOLDS: dict[str, tuple[float, float]] = {
+    "simple": (3.0, -3.0),
+    "ai": (2.0, -2.0),
+    "hedgefund": (4.0, -4.0),
+}
 
 
 DASHBOARD_WATCHLIST = ("AAPL", "MSFT", "NVDA", "AMZN", "META", "TSLA")
@@ -70,14 +82,34 @@ def get_news_sentiment_service_instance() -> NewsSentimentService:
 @lru_cache
 def get_analysis_service_instance() -> AnalysisService:
     settings = get_settings()
-    return AnalysisService(
+    service = AnalysisService(
         market_data_service=get_market_data_service_instance(),
         macro_context_service=get_macro_context_service_instance(),
         news_sentiment_service=get_news_sentiment_service_instance(),
         summary_service=get_summary_service_instance(),
+        strategy_learning_service=get_strategy_learning_service_instance(),
         analysis_cache_ttl_seconds=settings.analysis_cache_ttl_seconds,
+        indicator_cache_ttl_seconds=settings.indicators_cache_ttl_seconds,
         alerts_cache_ttl_seconds=settings.alerts_cache_ttl_seconds,
     )
+    session = get_session_factory()()
+    try:
+        rows = get_analysis_threshold_repository_instance().save_many(
+            session,
+            thresholds=[
+                (strategy, thresholds[0], thresholds[1])
+                for strategy, thresholds in FIXED_STRATEGY_THRESHOLDS.items()
+            ],
+        )
+        for row in rows:
+            service.set_strategy_thresholds(
+                strategy=row.strategy,
+                buy_threshold=row.buy_threshold,
+                sell_threshold=row.sell_threshold,
+            )
+    finally:
+        session.close()
+    return service
 
 
 @lru_cache
@@ -86,10 +118,35 @@ def get_portfolio_repository_instance() -> PortfolioRepository:
 
 
 @lru_cache
+def get_analysis_log_repository_instance() -> AnalysisLogRepository:
+    return AnalysisLogRepository()
+
+
+@lru_cache
+def get_analysis_threshold_repository_instance() -> AnalysisThresholdRepository:
+    return AnalysisThresholdRepository()
+
+
+@lru_cache
+def get_trade_performance_repository_instance() -> TradePerformanceRepository:
+    return TradePerformanceRepository()
+
+
+@lru_cache
+def get_strategy_learning_service_instance() -> StrategyLearningService:
+    return StrategyLearningService(
+        trade_performance_repository=get_trade_performance_repository_instance(),
+        analysis_threshold_repository=get_analysis_threshold_repository_instance(),
+    )
+
+
+@lru_cache
 def get_portfolio_service_instance() -> PortfolioService:
     return PortfolioService(
         market_data_service=get_market_data_service_instance(),
         portfolio_repository=get_portfolio_repository_instance(),
+        trade_performance_repository=get_trade_performance_repository_instance(),
+        analysis_log_repository=get_analysis_log_repository_instance(),
     )
 
 
@@ -102,7 +159,7 @@ def get_finnhub_dashboard_service_instance() -> FinnhubDashboardService:
     settings = get_settings()
     return FinnhubDashboardService(
         api_key=settings.finnhub_api_key,
-        watchlist=DASHBOARD_WATCHLIST,
+        watchlist={symbol: settings.watchlist.get(symbol, symbol) for symbol in DASHBOARD_WATCHLIST},
         news_sentiment_service=get_news_sentiment_service_instance(),
         ttl_seconds=settings.market_cache_ttl_seconds,
     )
@@ -118,6 +175,35 @@ def get_analysis_service() -> AnalysisService:
 
 def get_portfolio_service() -> PortfolioService:
     return get_portfolio_service_instance()
+
+
+def get_analysis_log_repository() -> AnalysisLogRepository:
+    return get_analysis_log_repository_instance()
+
+
+@lru_cache
+def get_analysis_calibration_service_instance() -> AnalysisCalibrationService:
+    return AnalysisCalibrationService(
+        analysis_log_repository=get_analysis_log_repository_instance(),
+        analysis_threshold_repository=get_analysis_threshold_repository_instance(),
+        analysis_service=get_analysis_service_instance(),
+    )
+
+
+def get_analysis_threshold_repository() -> AnalysisThresholdRepository:
+    return get_analysis_threshold_repository_instance()
+
+
+def get_analysis_calibration_service() -> AnalysisCalibrationService:
+    return get_analysis_calibration_service_instance()
+
+
+def get_trade_performance_repository() -> TradePerformanceRepository:
+    return get_trade_performance_repository_instance()
+
+
+def get_strategy_learning_service() -> StrategyLearningService:
+    return get_strategy_learning_service_instance()
 
 
 @lru_cache

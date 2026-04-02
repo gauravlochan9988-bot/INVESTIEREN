@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.api.deps import (
+    get_analysis_calibration_service,
     get_analysis_service,
     get_market_data_service,
     get_portfolio_service,
@@ -16,13 +17,18 @@ from app.api.deps import (
 )
 from app.core.database import get_db
 from app.models import Base
+from app.repositories.analysis_log import AnalysisLogRepository
+from app.repositories.analysis_threshold import AnalysisThresholdRepository
 from app.repositories.portfolio import PortfolioRepository
+from app.repositories.trade_performance import TradePerformanceRepository
 from app.services.analysis import AnalysisService
+from app.services.analysis_calibration import AnalysisCalibrationService
 from app.services.macro import MacroContextService
 from app.services.market_data import MarketDataService
 from app.services.news import NewsSentimentService
 from app.services.portfolio import PortfolioService
 from app.services.search import StockSearchService
+from app.services.strategy_learning import StrategyLearningService
 from app.main import create_app
 from tests.helpers import FakeMarketDataProvider, FakeNewsProvider, FakeSearchProvider, FakeSummaryService
 
@@ -74,6 +80,11 @@ def analysis_service(
         macro_context_service=macro_context_service,
         news_sentiment_service=news_sentiment_service,
         summary_service=FakeSummaryService(),
+        strategy_learning_service=StrategyLearningService(
+            trade_performance_repository=TradePerformanceRepository(),
+            analysis_threshold_repository=AnalysisThresholdRepository(),
+            min_trades_required=50,
+        ),
     )
 
 
@@ -112,6 +123,16 @@ def client(
     portfolio_service = PortfolioService(
         market_data_service=market_data_service,
         portfolio_repository=PortfolioRepository(),
+        trade_performance_repository=TradePerformanceRepository(),
+        analysis_log_repository=AnalysisLogRepository(),
+    )
+    calibration_service = AnalysisCalibrationService(
+        analysis_log_repository=AnalysisLogRepository(),
+        analysis_threshold_repository=AnalysisThresholdRepository(),
+        analysis_service=analysis_service,
+        minimum_samples=10,
+        tolerance_percent=3.0,
+        max_adjustment_step=0.5,
     )
 
     def override_db():
@@ -120,6 +141,7 @@ def client(
     app.dependency_overrides[get_db] = override_db
     app.dependency_overrides[get_market_data_service] = lambda: market_data_service
     app.dependency_overrides[get_analysis_service] = lambda: analysis_service
+    app.dependency_overrides[get_analysis_calibration_service] = lambda: calibration_service
     app.dependency_overrides[get_portfolio_service] = lambda: portfolio_service
     app.dependency_overrides[get_stock_search_service] = lambda: stock_search_service
 

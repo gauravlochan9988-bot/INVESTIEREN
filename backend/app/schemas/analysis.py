@@ -3,8 +3,11 @@ from typing import Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel, Field, computed_field
 
+from app.schemas.analysis_tracking import StrategyThresholds
+
 
 Recommendation = Literal["BUY", "HOLD", "SELL"]
+SignalQuality = Literal["FULL", "PARTIAL"]
 RiskLevel = Literal["LOW", "MEDIUM", "HIGH"]
 DataQuality = Literal["FULL", "PARTIAL", "NO_DATA"]
 SignalStatus = Literal["BULLISH", "NEUTRAL", "BEARISH"]
@@ -58,12 +61,36 @@ class MacroContext(BaseModel):
     macro_score: int
 
 
+class LearningInsight(BaseModel):
+    version: str
+    active: bool
+    trade_count: int
+    min_trades_required: int
+    win_rate: float
+    average_profit_loss: float
+    average_profit: float
+    average_loss: float
+    drawdown: float
+    buy_accuracy: float = 0.0
+    sell_error_rate: float = 0.0
+    confidence_bias: float
+    directional_bias: float
+    weak_signal_multiplier: float
+    buy_threshold_offset: float = 0.0
+    sell_threshold_offset: float = 0.0
+    thresholds: Optional[StrategyThresholds] = None
+    effective_thresholds: Optional[StrategyThresholds] = None
+    adjustment_count: int = 0
+    note: str
+
+
 class AnalysisResponse(BaseModel):
     symbol: str
     strategy: Strategy
     no_data: bool = False
     no_data_reason: Optional[str] = None
     recommendation: Optional[Recommendation] = None
+    signal_quality: Optional[SignalQuality] = None
     score: Optional[int] = None
     probability_up: Optional[float] = None
     probability_down: Optional[float] = None
@@ -87,6 +114,7 @@ class AnalysisResponse(BaseModel):
     summary: str
     generated_at: datetime
     signals: Optional[AnalysisSignals] = None
+    learning: Optional[LearningInsight] = None
 
     @computed_field
     @property
@@ -127,6 +155,19 @@ class AnalysisResponse(BaseModel):
     @property
     def risk(self) -> Optional[RiskLevel]:
         return self.risk_level
+
+    @computed_field
+    @property
+    def decision_label(self) -> str:
+        if self.no_data or self.recommendation is None:
+            return "NO_DATA"
+        if self.signal_quality == "PARTIAL":
+            if self.recommendation in {"BUY", "SELL"}:
+                return f"{self.recommendation} PARTIAL"
+            return "PARTIAL"
+        if self.signal_quality == "FULL" and self.recommendation in {"BUY", "SELL"}:
+            return f"{self.recommendation} FULL"
+        return self.recommendation
 
     @computed_field
     @property

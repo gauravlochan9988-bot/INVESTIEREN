@@ -1,9 +1,17 @@
+from datetime import date, datetime, timezone
+
 from app.api.deps import get_analysis_service
 from app.core.exceptions import ExternalServiceError
+from app.models.analysis_log import AnalysisLog
+from app.models.trade_performance_log import TradePerformanceLog
+from app.repositories.analysis_log import AnalysisLogRepository
+from app.repositories.analysis_threshold import AnalysisThresholdRepository
 from app.services.analysis import AnalysisService
+from app.services.analysis_calibration import AnalysisCalibrationService
 from app.services.macro import MacroContextService
 from app.services.market_data import MarketDataService
 from app.services.news import NewsSentimentService
+from app.services.strategy_learning import LEARNING_LAYER_VERSION
 from tests.helpers import FakeMarketDataProvider, FakeNewsProvider, FakeSummaryService
 
 
@@ -100,8 +108,10 @@ def test_analyze_endpoint_returns_decision_payload(client):
     assert payload["no_data"] is False
     assert payload["no_data_reason"] is None
     assert payload["recommendation"] in {"BUY", "HOLD", "SELL"}
+    assert payload["signal_quality"] in {"FULL", "PARTIAL"}
+    assert isinstance(payload["decision_label"], str)
     assert isinstance(payload["score"], int)
-    assert -100 <= payload["score"] <= 100
+    assert -5 <= payload["score"] <= 5
     assert payload["data_quality"] in {"FULL", "PARTIAL", "NO_DATA"}
     assert isinstance(payload["data_quality_reason"], str)
     assert payload["data_quality_reason"]
@@ -157,6 +167,7 @@ def test_analysis_get_endpoint_returns_nested_signal_block(client):
     assert payload["strategy"] == "ai"
     assert payload["no_data"] is False
     assert payload["recommendation"] in {"BUY", "HOLD", "SELL"}
+    assert payload["signal_quality"] in {"FULL", "PARTIAL"}
     assert "no_trade" in payload
     assert "no_trade_reason" in payload
     assert "entry_reason" in payload
@@ -205,6 +216,7 @@ def test_analyze_endpoint_returns_no_data_status_when_live_market_data_is_missin
     assert payload["data_quality_reason"] == "No live market data available."
     assert payload["confidence"] == 0.0
     assert payload["recommendation"] is None
+    assert payload["signal_quality"] is None
     assert payload["signals"] is None
 
 
@@ -250,6 +262,7 @@ def test_analyze_endpoint_returns_structured_no_data_for_invalid_symbol(client):
     assert payload["strategy"] == "ai"
     assert payload["no_data"] is True
     assert payload["recommendation"] is None
+    assert payload["signal_quality"] is None
     assert payload["confidence"] == 0.0
     assert payload["data_quality"] == "NO_DATA"
     assert payload["data_quality_reason"] == "No sufficient data available."
@@ -274,11 +287,100 @@ def test_strategy_query_returns_selected_strategy_without_frontend_overrides(cli
     assert hedgefund_payload["strategy"] == "hedgefund"
     assert simple_payload["recommendation"] == "HOLD"
     assert ai_payload["recommendation"] == "BUY"
-    assert hedgefund_payload["recommendation"] == "BUY"
+    assert hedgefund_payload["recommendation"] == "HOLD"
+    assert simple_payload["decision_label"] == "PARTIAL"
+    assert ai_payload["decision_label"] == "BUY PARTIAL"
+    assert hedgefund_payload["decision_label"] == "PARTIAL"
     assert simple_payload["data_quality"] == "PARTIAL"
     assert ai_payload["data_quality"] == "PARTIAL"
     assert hedgefund_payload["data_quality"] == "PARTIAL"
-    assert simple_payload["score"] != ai_payload["score"]
+
+
+def test_analysis_endpoint_logs_each_analysis_to_database(client, db_session):
+    response = client.get("/api/analysis/AAPL", params={"strategy": "ai"})
+
+    assert response.status_code == 200
+    rows = db_session.query(AnalysisLog).all()
+    assert len(rows) == 1
+    row = rows[0]
+    payload = response.json()
+    assert row.symbol == "AAPL"
+    assert row.strategy == "ai"
+    assert row.score == payload["score"]
+    assert row.recommendation == payload["recommendation"]
+    assert row.data_quality == payload["data_quality"]
+    assert row.confidence == payload["confidence"]
+
+
+def test_analysis_stats_route_returns_distribution_per_strategy(client):
+    client.get("/api/analysis/AAPL", params={"strategy": "simple"})
+    client.get("/api/analysis/MSFT", params={"strategy": "simple"})
+    client.get("/api/analysis/TSLA", params={"strategy": "ai"})
+    client.get("/api/analysis/AAPL", params={"strategy": "hedgefund"})
+
+    response = client.get("/api/analysis/stats")
+
+    assert response.status_code == 200
+    payload = response.json()
+    strategies = {item["strategy"]: item for item in payload["strategies"]}
+    assert {"simple", "ai", "hedgefund"}.issubset(strategies)
+    assert strategies["simple"]["total"] == 2
+    assert strategies["ai"]["total"] == 1
+    assert strategies["hedgefund"]["total"] == 1
+    for item in strategies.values():
+        assert set(item["thresholds"]) == {"buy_threshold", "sell_threshold", "updated_at"}
+        total_percent = round(
+            item["buy_percent"] + item["sell_percent"] + item["hold_percent"], 1
+        )
+        assert total_percent in {0.0, 100.0}
+
+
+def test_analysis_performance_route_returns_strategy_learning_metrics(client, db_session):
+    for index in range(55):
+        db_session.add(
+            TradePerformanceLog(
+                symbol=f"AI{index}",
+                strategy="ai",
+                learning_version=LEARNING_LAYER_VERSION,
+                quantity=1,
+                entry_price=100.0,
+                exit_price=112.0,
+                recommendation="BUY",
+                score=3,
+                confidence=74.0,
+                data_quality="FULL",
+                profit_loss=12.0,
+                duration=8.0,
+                opened_at=date(2025, 1, 1),
+                closed_at=datetime(2025, 3, 1, tzinfo=timezone.utc),
+            )
+        )
+    db_session.commit()
+
+    response = client.get("/api/analysis/performance")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["version"] == LEARNING_LAYER_VERSION
+    strategies = {item["strategy"]: item for item in payload["strategies"]}
+    ai = strategies["ai"]
+    assert ai["eligible"] is True
+    assert ai["trade_count"] == 55
+    assert ai["win_rate"] == 1.0
+    assert ai["average_profit_loss"] == 12.0
+    assert ai["drawdown"] == 0.0
+    assert ai["buy_accuracy"] == 1.0
+    assert ai["sell_error_rate"] == 0.0
+    assert ai["directional_bias"] > 0.0
+    assert ai["confidence_bias"] == 10.0
+    assert ai["weak_signal_multiplier"] == 1.0
+    assert ai["thresholds"]["buy_threshold"] == 1.5
+    assert ai["thresholds"]["sell_threshold"] == -1.5
+    assert ai["effective_thresholds"]["buy_threshold"] == 1.5
+    assert ai["effective_thresholds"]["sell_threshold"] == -1.5
+    assert ai["adjustment_count"] >= 1
+    assert set(ai["thresholds"]) == {"buy_threshold", "sell_threshold", "updated_at"}
+    assert set(ai["effective_thresholds"]) == {"buy_threshold", "sell_threshold", "updated_at"}
 
 
 def test_healthcheck_exposes_active_database_status(client):
@@ -336,8 +438,77 @@ def test_portfolio_crud_flow(client, sample_position_payload):
     assert final_snapshot["market_value"] == 0.0
 
 
+def test_close_position_logs_realized_trade_metrics(client, sample_position_payload):
+    create_response = client.post("/api/portfolio/positions", json=sample_position_payload)
+    created = create_response.json()
+
+    client.get("/api/analysis/AAPL", params={"strategy": "ai"})
+
+    close_response = client.post(
+        f"/api/portfolio/positions/{created['id']}/close",
+        json={
+            "strategy": "ai",
+            "exit_price": 170.0,
+            "closed_at": "2025-02-01T00:00:00Z",
+        },
+    )
+
+    assert close_response.status_code == 200
+    payload = close_response.json()
+    assert payload["strategy"] == "ai"
+    assert payload["learning_version"] == LEARNING_LAYER_VERSION
+    assert payload["entry_price"] == 155.5
+    assert payload["exit_price"] == 170.0
+    assert payload["recommendation"] in {"BUY", "SELL", "HOLD"}
+    assert payload["score"] is not None
+    assert payload["confidence"] is not None
+    assert payload["data_quality"] in {"FULL", "PARTIAL", "NO_DATA"}
+    assert payload["profit_loss"] == 43.5
+    assert payload["duration"] == 17.0
+
+    portfolio_snapshot = client.get("/api/portfolio").json()
+    assert portfolio_snapshot["positions"] == []
+
+    trade_history = client.get("/api/portfolio/trades").json()
+    assert len(trade_history) == 1
+    assert trade_history[0]["symbol"] == "AAPL"
+    assert trade_history[0]["recommendation"] == payload["recommendation"]
+    assert trade_history[0]["profit_loss"] == 43.5
+
+
 def test_error_payload_uses_consistent_error_shape(client):
     response = client.get("/api/stocks/ZZZZ/history?range=1mo")
 
     assert response.status_code == 404
     assert "error" in response.json()
+
+
+def test_calibration_service_syncs_saved_strategy_thresholds(
+    db_session,
+    analysis_service,
+):
+    threshold_repository = AnalysisThresholdRepository()
+    calibration_service = AnalysisCalibrationService(
+        analysis_log_repository=AnalysisLogRepository(),
+        analysis_threshold_repository=threshold_repository,
+        analysis_service=analysis_service,
+        minimum_samples=1,
+        tolerance_percent=0.0,
+        max_adjustment_step=0.5,
+    )
+    threshold_repository.save(
+        db_session,
+        strategy="simple",
+        buy_threshold=2.5,
+        sell_threshold=-2.5,
+    )
+
+    thresholds = calibration_service.recalibrate_strategy(db_session, "simple")
+
+    assert thresholds.buy_threshold == 2.5
+    assert thresholds.sell_threshold == -2.5
+
+    stats = calibration_service.get_distribution_stats(db_session)
+    simple = next(item for item in stats.strategies if item.strategy == "simple")
+    assert simple.thresholds.buy_threshold == 2.5
+    assert simple.thresholds.sell_threshold == -2.5

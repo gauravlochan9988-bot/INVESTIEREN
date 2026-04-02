@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import logging
 from math import isfinite, sqrt
-from typing import Sequence
+from typing import Any, Sequence
+
+from sqlalchemy.orm import Session
 
 from app.core.exceptions import ExternalServiceError, NotFoundError, ValidationError
 from app.schemas.analysis import (
@@ -13,15 +18,17 @@ from app.schemas.analysis import (
     DataQuality,
     Recommendation,
     RiskLevel,
+    SignalQuality,
     SignalResult,
     Strategy,
     Timeframe,
 )
 from app.services.macro import MacroContextService, MacroSnapshot
 from app.schemas.stocks import HistoryPoint
-from app.services.cache import TTLCache
+from app.services.cache import RequestDeduplicator, TTLCache
 from app.services.market_data import MarketDataService
 from app.services.news import NewsSentimentService, NewsSentimentSnapshot
+from app.services.strategy_learning import StrategyLearningProfile, StrategyLearningService
 from app.services.summary import SummaryService
 
 
@@ -32,6 +39,14 @@ VOLATILITY_WINDOW = 30
 DRAWDOWN_WINDOW = 50
 SUPPORT_WINDOW = 20
 MAX_WARNINGS = 3
+DEFAULT_BUY_BAND_THRESHOLD = 3.0
+DEFAULT_SELL_BAND_THRESHOLD = -3.0
+MIN_ACTIONABLE_BUY_SCORE = 3
+MIN_ACTIONABLE_SELL_SCORE = -3
+HIGH_UNCERTAINTY_VOLATILITY = 0.32
+EXTREME_UNCERTAINTY_VOLATILITY = 0.40
+
+logger = logging.getLogger(__name__)
 
 SIGNAL_WEIGHTS: dict[str, float] = {
     "trend": 0.19,
@@ -51,6 +66,27 @@ class DataQualityDecision:
     can_run_strategy: bool
 
 
+@dataclass(frozen=True)
+class PreparedAnalysisInputs:
+    context: dict[str, Any]
+    macro_context: dict[str, Any]
+    data_quality_decision: DataQualityDecision
+
+
+@dataclass(frozen=True)
+class StrategyThresholdConfig:
+    buy_threshold: float = DEFAULT_BUY_BAND_THRESHOLD
+    sell_threshold: float = DEFAULT_SELL_BAND_THRESHOLD
+
+
+@dataclass(frozen=True)
+class TradeFilterDecision:
+    recommendation: Recommendation
+    signal_quality: SignalQuality
+    confidence: float
+    block_reason: str | None = None
+
+
 class AnalysisService:
     def __init__(
         self,
@@ -58,21 +94,111 @@ class AnalysisService:
         macro_context_service: MacroContextService,
         summary_service: SummaryService,
         news_sentiment_service: NewsSentimentService,
+        strategy_learning_service: StrategyLearningService | None = None,
         analysis_cache_ttl_seconds: int = 90,
+        indicator_cache_ttl_seconds: int = 60,
         alerts_cache_ttl_seconds: int = 60,
     ):
         self.market_data_service = market_data_service
         self.macro_context_service = macro_context_service
         self.summary_service = summary_service
         self.news_sentiment_service = news_sentiment_service
+        self.strategy_learning_service = strategy_learning_service or StrategyLearningService()
         self.analysis_cache: TTLCache[AnalysisResponse] = TTLCache(analysis_cache_ttl_seconds)
+        self.indicator_cache: TTLCache[PreparedAnalysisInputs] = TTLCache(
+            indicator_cache_ttl_seconds
+        )
         self.alerts_cache: TTLCache[list[AnalysisAlert]] = TTLCache(alerts_cache_ttl_seconds)
+        self.request_deduper: RequestDeduplicator[AnalysisResponse | PreparedAnalysisInputs] = (
+            RequestDeduplicator()
+        )
+        self.strategy_threshold_overrides: ContextVar[dict[str, StrategyThresholdConfig] | None] = (
+            ContextVar("strategy_threshold_overrides", default=None)
+        )
+        self.strategy_thresholds: dict[Strategy, StrategyThresholdConfig] = {
+            "simple": StrategyThresholdConfig(buy_threshold=3.0, sell_threshold=-3.0),
+            "ai": StrategyThresholdConfig(buy_threshold=2.0, sell_threshold=-2.0),
+            "hedgefund": StrategyThresholdConfig(buy_threshold=4.0, sell_threshold=-4.0),
+        }
+
+    def set_strategy_thresholds(
+        self,
+        *,
+        strategy: Strategy | str,
+        buy_threshold: float,
+        sell_threshold: float,
+    ) -> None:
+        normalized_strategy = str(strategy).strip().lower()
+        if normalized_strategy not in self.strategy_thresholds:
+            return
+        current = self.strategy_thresholds[normalized_strategy]
+        updated = StrategyThresholdConfig(
+            buy_threshold=round(float(buy_threshold), 2),
+            sell_threshold=round(float(sell_threshold), 2),
+        )
+        self.strategy_thresholds[normalized_strategy] = updated
+        if current != updated:
+            self.analysis_cache.clear()
+            self.alerts_cache.clear()
+
+    def _thresholds_for(self, strategy: Strategy) -> StrategyThresholdConfig:
+        overrides = self.strategy_threshold_overrides.get()
+        if overrides is not None:
+            override = overrides.get(str(strategy))
+            if override is not None:
+                return override
+        return self.strategy_thresholds.get(strategy, StrategyThresholdConfig())
+
+    def _effective_buy_threshold(self, strategy: Strategy) -> int:
+        return max(
+            MIN_ACTIONABLE_BUY_SCORE,
+            int(round(self._thresholds_for(strategy).buy_threshold)),
+        )
+
+    def _effective_sell_threshold(self, strategy: Strategy) -> int:
+        return min(
+            MIN_ACTIONABLE_SELL_SCORE,
+            int(round(self._thresholds_for(strategy).sell_threshold)),
+        )
+
+    @contextmanager
+    def _temporary_threshold_override(
+        self,
+        *,
+        strategy: Strategy,
+        thresholds: StrategyThresholdConfig | None,
+    ):
+        if thresholds is None:
+            yield
+            return
+        active = dict(self.strategy_threshold_overrides.get() or {})
+        active[strategy] = thresholds
+        token = self.strategy_threshold_overrides.set(active)
+        try:
+            yield
+        finally:
+            self.strategy_threshold_overrides.reset(token)
+
+    def _learning_threshold_config(
+        self,
+        *,
+        strategy: Strategy,
+        profile: StrategyLearningProfile,
+    ) -> StrategyThresholdConfig | None:
+        thresholds = profile.effective_thresholds or profile.thresholds
+        if thresholds is None:
+            return None
+        return StrategyThresholdConfig(
+            buy_threshold=round(float(thresholds.buy_threshold), 2),
+            sell_threshold=round(float(thresholds.sell_threshold), 2),
+        )
 
     def analyze_symbol(
         self,
         symbol: str,
         force_refresh: bool = False,
         strategy: Strategy = "hedgefund",
+        db: Session | None = None,
     ) -> AnalysisResponse:
         try:
             normalized_symbol = self.market_data_service.ensure_supported_symbol(symbol)
@@ -82,6 +208,14 @@ class AnalysisService:
                 "No sufficient data available.",
                 strategy=strategy,
             )
+        if db is not None:
+            return self._load_analysis_response(
+                normalized_symbol,
+                force_refresh=force_refresh,
+                strategy=strategy,
+                db=db,
+            )
+
         cache_key = self._analysis_cache_key(normalized_symbol, strategy)
         if force_refresh:
             self.analysis_cache.delete(cache_key)
@@ -89,56 +223,202 @@ class AnalysisService:
             cached = self.analysis_cache.get(cache_key)
             if cached is not None:
                 return cached
-        try:
-            history = self.market_data_service.get_history(
-                normalized_symbol, "1y", force_refresh=force_refresh
+
+        def load_analysis() -> AnalysisResponse:
+            cached_inner = self.analysis_cache.get(cache_key)
+            if cached_inner is not None:
+                return cached_inner
+            response = self._load_analysis_response(
+                normalized_symbol,
+                force_refresh=force_refresh,
+                strategy=strategy,
+                db=None,
             )
-            if len(history) < MIN_HISTORY_POINTS:
-                return self.analysis_cache.set(
-                    cache_key,
-                    self._no_data_response(
-                        normalized_symbol,
-                        f"Not enough market history for a meaningful analysis: only {len(history)} daily closes are available.",
-                        strategy=strategy,
-                    ),
-                )
-            return self.analysis_cache.set(
-                cache_key,
-                self.analyze(normalized_symbol, history, strategy=strategy),
-            )
-        except NotFoundError as error:
-            return self.analysis_cache.set(
-                cache_key,
-                self._no_data_response(
-                    normalized_symbol,
-                    error.message,
-                    strategy=strategy,
-                ),
-            )
-        except ExternalServiceError as error:
-            message = error.message.rstrip(".")
-            return self.analysis_cache.set(
-                cache_key,
-                self._no_data_response(
-                    normalized_symbol, f"{message}.", strategy=strategy
-                ),
-            )
-        except ValidationError:
-            return self.analysis_cache.set(
-                cache_key,
-                self._no_data_response(
-                    normalized_symbol,
-                    "No sufficient data available.",
-                    strategy=strategy,
-                ),
-            )
+            return self.analysis_cache.set(cache_key, response)
+
+        return self.request_deduper.run(cache_key, load_analysis)
 
     def analyze(
         self,
         symbol: str,
         history: Sequence[HistoryPoint],
         strategy: Strategy = "hedgefund",
+        db: Session | None = None,
     ) -> AnalysisResponse:
+        normalized_symbol = symbol.strip().upper()
+        prepared = self._prepare_analysis_inputs(normalized_symbol, history)
+        return self._build_analysis_response(
+            normalized_symbol,
+            prepared,
+            strategy=strategy,
+            db=db,
+        )
+
+    def scan_alerts(
+        self,
+        *,
+        strategy: Strategy = "hedgefund",
+        symbols: Sequence[str] | None = None,
+        force_refresh: bool = False,
+        limit: int = 6,
+        db: Session | None = None,
+    ) -> list[AnalysisAlert]:
+        universe = list(symbols or self.market_data_service.allowed_symbols.keys())
+        if db is not None:
+            force_refresh = force_refresh
+        else:
+            cache_key = self._alerts_cache_key(strategy=strategy, symbols=universe, limit=limit)
+            if force_refresh:
+                self.alerts_cache.delete(cache_key)
+            else:
+                cached = self.alerts_cache.get(cache_key)
+                if cached is not None:
+                    return cached
+        alerts: list[AnalysisAlert] = []
+
+        for symbol in universe:
+            analysis = self.analyze_symbol(
+                symbol,
+                force_refresh=force_refresh,
+                strategy=strategy,
+                db=db,
+            )
+            if analysis.no_data or analysis.recommendation is None or analysis.signals is None:
+                continue
+            alerts.extend(self._alerts_from_analysis(analysis))
+
+        alerts.sort(key=lambda item: (-item.priority, item.symbol, item.title))
+        if db is None and len(alerts) <= limit:
+            return self.alerts_cache.set(cache_key, alerts)
+        if db is not None and len(alerts) <= limit:
+            return alerts
+
+        selected_keys: set[tuple[str, str, str]] = set()
+        selected: list[AnalysisAlert] = []
+
+        def include_first(predicate) -> None:
+            for alert in alerts:
+                key = (alert.symbol, alert.kind, alert.title)
+                if key in selected_keys or not predicate(alert):
+                    continue
+                selected.append(alert)
+                selected_keys.add(key)
+                return
+
+        include_first(lambda alert: alert.kind == "recommendation" and alert.tone == "bullish")
+        include_first(lambda alert: alert.kind == "recommendation" and alert.tone == "bearish")
+        include_first(lambda alert: alert.kind == "rsi")
+
+        for alert in alerts:
+            if len(selected) >= limit:
+                break
+            key = (alert.symbol, alert.kind, alert.title)
+            if key in selected_keys:
+                continue
+            selected.append(alert)
+            selected_keys.add(key)
+
+        selected.sort(key=lambda item: (-item.priority, item.symbol, item.title))
+        if db is not None:
+            return selected[:limit]
+        return self.alerts_cache.set(cache_key, selected[:limit])
+
+    def _load_analysis_response(
+        self,
+        symbol: str,
+        *,
+        force_refresh: bool,
+        strategy: Strategy,
+        db: Session | None,
+    ) -> AnalysisResponse:
+        try:
+            history = self.market_data_service.get_history(symbol, "1y", force_refresh=force_refresh)
+            if len(history) < MIN_HISTORY_POINTS:
+                return self._no_data_response(
+                    symbol,
+                    f"Not enough market history for a meaningful analysis: only {len(history)} daily closes are available.",
+                    strategy=strategy,
+                )
+            prepared = self._get_prepared_inputs(
+                symbol,
+                history,
+                force_refresh=force_refresh,
+            )
+            return self._build_analysis_response(
+                symbol,
+                prepared,
+                strategy=strategy,
+                db=db,
+            )
+        except NotFoundError as error:
+            return self._no_data_response(
+                symbol,
+                error.message,
+                strategy=strategy,
+            )
+        except ExternalServiceError as error:
+            message = error.message.rstrip(".")
+            return self._no_data_response(
+                symbol,
+                f"{message}.",
+                strategy=strategy,
+            )
+        except ValidationError:
+            return self._no_data_response(
+                symbol,
+                "No sufficient data available.",
+                strategy=strategy,
+            )
+
+    def _analysis_cache_key(self, symbol: str, strategy: Strategy) -> str:
+        return f"analysis:{strategy}:{symbol}"
+
+    def _prepared_inputs_cache_key(self, symbol: str) -> str:
+        return f"prepared:{symbol}"
+
+    def _alerts_cache_key(
+        self, *, strategy: Strategy, symbols: Sequence[str], limit: int
+    ) -> str:
+        return f"alerts:{strategy}:{limit}:{','.join(symbols)}"
+
+    def prime_symbol(self, symbol: str, force_refresh: bool = False) -> None:
+        normalized_symbol = self.market_data_service.ensure_supported_symbol(symbol)
+        history = self.market_data_service.get_history(
+            normalized_symbol,
+            "1y",
+            force_refresh=force_refresh,
+        )
+        if len(history) < MIN_HISTORY_POINTS:
+            return
+        self._get_prepared_inputs(normalized_symbol, history, force_refresh=force_refresh)
+
+    def _get_prepared_inputs(
+        self,
+        symbol: str,
+        history: Sequence[HistoryPoint],
+        *,
+        force_refresh: bool = False,
+    ) -> PreparedAnalysisInputs:
+        cache_key = self._prepared_inputs_cache_key(symbol)
+        if force_refresh:
+            self.indicator_cache.delete(cache_key)
+        else:
+            cached = self.indicator_cache.get(cache_key)
+            if cached is not None:
+                return cached
+
+        def build_prepared() -> PreparedAnalysisInputs:
+            cached_inner = self.indicator_cache.get(cache_key)
+            if cached_inner is not None:
+                return cached_inner
+            prepared = self._prepare_analysis_inputs(symbol, history)
+            return self.indicator_cache.set(cache_key, prepared)
+
+        return self.request_deduper.run(cache_key, build_prepared)
+
+    def _prepare_analysis_inputs(
+        self, symbol: str, history: Sequence[HistoryPoint]
+    ) -> PreparedAnalysisInputs:
         normalized_symbol = symbol.strip().upper()
         closes = [point.close for point in history]
         volumes = [max(point.volume, 0) for point in history]
@@ -177,7 +457,6 @@ class AnalysisService:
             "trend_strength": self._trend_strength_signal(price_vs_sma50, sma20_vs_sma50),
         }
         signals = AnalysisSignals(**signal_map)
-
         drawdown_risk = self._drawdown_risk(
             support_distance=support_distance,
             volatility_30d=volatility_30d,
@@ -201,13 +480,8 @@ class AnalysisService:
             volatility_30d=volatility_30d,
             news_snapshot=news_snapshot,
         )
-        if not data_quality_decision.can_run_strategy:
-            return self._no_data_response(
-                normalized_symbol,
-                data_quality_decision.reason,
-                strategy=strategy,
-            )
         context = {
+            "symbol": normalized_symbol,
             "latest_price": latest_price,
             "sma20": sma20,
             "sma50": sma50,
@@ -227,76 +501,179 @@ class AnalysisService:
             "factor_scores": factor_scores,
             "signal_map": signal_map,
             "signals": signals,
+            "base_data_quality_decision": data_quality_decision,
         }
-        decision = self._strategy_decision(strategy, context)
-        data_quality_decision = self._refine_data_quality_for_signals(
-            strategy=strategy,
-            score=int(decision["score"]),
-            conflicts=decision["conflicts"],
-            recommendation=decision["recommendation"],
-            base_decision=data_quality_decision,
-        )
-        data_quality = data_quality_decision.level
-        data_quality_reason = data_quality_decision.reason
-        decision["confidence"] = self._apply_data_quality_to_confidence(
-            float(decision["confidence"]),
-            data_quality,
-        )
-        decision["reason"] = self._strategy_reason(
-            strategy=strategy,
+        return PreparedAnalysisInputs(
             context=context,
-            recommendation=decision["recommendation"],
-            score=int(decision["score"]),
-            confidence=float(decision["confidence"]),
+            macro_context=macro_context,
+            data_quality_decision=data_quality_decision,
         )
-        probability_up = self._probability_from_strategy_score(
+
+    def _build_analysis_response(
+        self,
+        symbol: str,
+        prepared: PreparedAnalysisInputs,
+        *,
+        strategy: Strategy,
+        db: Session | None = None,
+    ) -> AnalysisResponse:
+        normalized_symbol = symbol.strip().upper()
+        context = prepared.context
+        base_data_quality_decision = prepared.data_quality_decision
+        if not base_data_quality_decision.can_run_strategy:
+            return self._no_data_response(
+                normalized_symbol,
+                base_data_quality_decision.reason,
+                strategy=strategy,
+            )
+
+        learning_profile = (
+            self.strategy_learning_service.get_profile(db, strategy)
+            if db is not None
+            else self.strategy_learning_service.inactive_profile(strategy)
+        )
+        learning_thresholds = self._learning_threshold_config(
             strategy=strategy,
-            score=decision["score"],
-            recommendation=decision["recommendation"],
+            profile=learning_profile,
         )
+        with self._temporary_threshold_override(
+            strategy=strategy,
+            thresholds=learning_thresholds,
+        ):
+            decision = self._strategy_decision(strategy, context)
+            data_quality_decision = self._refine_data_quality_for_signals(
+                strategy=strategy,
+                score=int(decision["score"]),
+                conflicts=decision["conflicts"],
+                recommendation=decision["recommendation"],
+                base_decision=base_data_quality_decision,
+            )
+            data_quality = data_quality_decision.level
+            data_quality_reason = data_quality_decision.reason
+            decision["score"] = self._apply_learning_score_adjustment(
+                strategy=strategy,
+                score=int(decision["score"]),
+                profile=learning_profile,
+            )
+            decision["score"] = self._clamp_normalized_score(int(decision["score"]))
+            decision["score_band"] = int(decision["score"])
+            decision["recommendation"] = self._recommendation_for_strategy(
+                strategy=strategy,
+                score_band=int(decision["score_band"]),
+                context=context,
+            )
+            decision["signal_quality"] = self._signal_quality_for_strategy(
+                strategy=strategy,
+                score=int(decision["score"]),
+                recommendation=decision["recommendation"],
+                data_quality=data_quality,
+                conflicts=decision["conflicts"],
+            )
+            decision["risk_level"] = self._risk_level_for_strategy(
+                strategy=strategy,
+                score=int(decision["score"]),
+                volatility_30d=context["volatility_30d"],
+                conflicts=decision["conflicts"],
+            )
+            confidence = self._confidence_for_strategy(
+                strategy=strategy,
+                score=int(decision["score"]),
+                risk_level=decision["risk_level"],
+                conflicts=decision["conflicts"],
+            )
+            decision["confidence"] = self._apply_data_quality_to_confidence(
+                confidence,
+                data_quality,
+            )
+            decision["confidence"] = self._apply_learning_confidence_adjustment(
+                confidence=float(decision["confidence"]),
+                profile=learning_profile,
+            )
+            trade_filter = self._trade_filter_decision(
+                strategy=strategy,
+                recommendation=decision["recommendation"],
+                score=int(decision["score"]),
+                signal_quality=decision["signal_quality"],
+                confidence=float(decision["confidence"]),
+                risk_level=decision["risk_level"],
+                context=context,
+                conflicts=decision["conflicts"],
+            )
+            decision["recommendation"] = trade_filter.recommendation
+            decision["signal_quality"] = trade_filter.signal_quality
+            decision["confidence"] = trade_filter.confidence
+            decision["reason"] = self._strategy_reason(
+                strategy=strategy,
+                context=context,
+                recommendation=decision["recommendation"],
+                score=int(decision["score"]),
+                confidence=float(decision["confidence"]),
+            )
+            if trade_filter.block_reason:
+                decision["reason"] = (
+                    f"HOLD because {trade_filter.block_reason}. "
+                    f"Confidence {float(decision['confidence']):.0f}/100."
+                )
+            probability_up = self._probability_from_strategy_score(
+                strategy=strategy,
+                score=decision["score"],
+                recommendation=decision["recommendation"],
+            )
         probability_down = round(1 - probability_up, 4)
         timeframe = self._timeframe(
-            signal_map=signal_map,
-            momentum_5d=momentum_5d,
-            price_vs_sma50=price_vs_sma50,
-            sma20_vs_sma50=sma20_vs_sma50,
+            signal_map=context["signal_map"],
+            momentum_5d=context["momentum_5d"],
+            price_vs_sma50=context["price_vs_sma50"],
+            sma20_vs_sma50=context["sma20_vs_sma50"],
         )
         warnings = self._strategy_warnings(
             strategy=strategy,
-            rsi14=rsi14,
-            volatility_30d=volatility_30d,
-            news_snapshot=news_snapshot,
+            rsi14=context["rsi14"],
+            volatility_30d=context["volatility_30d"],
+            news_snapshot=context["news_snapshot"],
             conflicts=decision["conflicts"],
-            drawdown_risk=drawdown_risk,
+            drawdown_risk=context["drawdown_risk"],
             confidence=decision["confidence"],
             risk_level=decision["risk_level"],
             score=decision["score"],
         )
         entry_signal, entry_reason = self._entry_decision_for_strategy(
             recommendation=decision["recommendation"],
+            signal_quality=decision["signal_quality"],
             risk_level=decision["risk_level"],
             confidence=decision["confidence"],
             score=decision["score"],
         )
         exit_signal, exit_reason = self._exit_decision_for_strategy(
             recommendation=decision["recommendation"],
+            signal_quality=decision["signal_quality"],
             risk_level=decision["risk_level"],
             score=decision["score"],
             warnings=warnings,
         )
         stop_loss_level, stop_loss_reason = self._stop_loss(
-            latest_price=latest_price,
-            sma50=sma50,
-            support_level=support_level,
-            volatility_30d=volatility_30d,
+            latest_price=context["latest_price"],
+            sma50=context["sma50"],
+            support_level=context["support_level"],
+            volatility_30d=context["volatility_30d"],
         )
         position_size_percent, position_size_reason = self._position_size_for_strategy(
             entry_signal=entry_signal,
             recommendation=decision["recommendation"],
+            signal_quality=decision["signal_quality"],
             risk_level=decision["risk_level"],
             confidence=decision["confidence"],
         )
         summary = decision["reason"]
+
+        no_trade = decision["recommendation"] == "HOLD" and decision["signal_quality"] == "PARTIAL"
+        no_trade_reason = "Trade evaluation available."
+        if no_trade:
+            no_trade_reason = (
+                f"{trade_filter.block_reason.capitalize()}."
+                if trade_filter.block_reason
+                else "The setup is only partially confirmed."
+            )
 
         return AnalysisResponse(
             symbol=normalized_symbol,
@@ -304,6 +681,7 @@ class AnalysisService:
             no_data=False,
             no_data_reason=None,
             recommendation=decision["recommendation"],
+            signal_quality=decision["signal_quality"],
             score=decision["score"],
             probability_up=probability_up,
             probability_down=probability_down,
@@ -311,9 +689,9 @@ class AnalysisService:
             risk_level=decision["risk_level"],
             data_quality=data_quality,
             data_quality_reason=data_quality_reason,
-            macro=macro_context,
-            no_trade=False,
-            no_trade_reason="Trade evaluation available.",
+            macro=prepared.macro_context,
+            no_trade=no_trade,
+            no_trade_reason=no_trade_reason,
             entry_signal=entry_signal,
             entry_reason=entry_reason,
             exit_signal=exit_signal,
@@ -326,72 +704,9 @@ class AnalysisService:
             warnings=warnings,
             summary=summary,
             generated_at=datetime.now(timezone.utc),
-            signals=signals,
+            signals=context["signals"],
+            learning=learning_profile.to_learning_insight(),
         )
-
-    def scan_alerts(
-        self,
-        *,
-        strategy: Strategy = "hedgefund",
-        symbols: Sequence[str] | None = None,
-        force_refresh: bool = False,
-        limit: int = 6,
-    ) -> list[AnalysisAlert]:
-        universe = list(symbols or self.market_data_service.allowed_symbols.keys())
-        cache_key = self._alerts_cache_key(strategy=strategy, symbols=universe, limit=limit)
-        if force_refresh:
-            self.alerts_cache.delete(cache_key)
-        else:
-            cached = self.alerts_cache.get(cache_key)
-            if cached is not None:
-                return cached
-        alerts: list[AnalysisAlert] = []
-
-        for symbol in universe:
-            analysis = self.analyze_symbol(symbol, force_refresh=force_refresh, strategy=strategy)
-            if analysis.no_data or analysis.recommendation is None or analysis.signals is None:
-                continue
-            alerts.extend(self._alerts_from_analysis(analysis))
-
-        alerts.sort(key=lambda item: (-item.priority, item.symbol, item.title))
-        if len(alerts) <= limit:
-            return self.alerts_cache.set(cache_key, alerts)
-
-        selected_keys: set[tuple[str, str, str]] = set()
-        selected: list[AnalysisAlert] = []
-
-        def include_first(predicate) -> None:
-            for alert in alerts:
-                key = (alert.symbol, alert.kind, alert.title)
-                if key in selected_keys or not predicate(alert):
-                    continue
-                selected.append(alert)
-                selected_keys.add(key)
-                return
-
-        include_first(lambda alert: alert.kind == "recommendation" and alert.tone == "bullish")
-        include_first(lambda alert: alert.kind == "recommendation" and alert.tone == "bearish")
-        include_first(lambda alert: alert.kind == "rsi")
-
-        for alert in alerts:
-            if len(selected) >= limit:
-                break
-            key = (alert.symbol, alert.kind, alert.title)
-            if key in selected_keys:
-                continue
-            selected.append(alert)
-            selected_keys.add(key)
-
-        selected.sort(key=lambda item: (-item.priority, item.symbol, item.title))
-        return self.alerts_cache.set(cache_key, selected[:limit])
-
-    def _analysis_cache_key(self, symbol: str, strategy: Strategy) -> str:
-        return f"analysis:{strategy}:{symbol}"
-
-    def _alerts_cache_key(
-        self, *, strategy: Strategy, symbols: Sequence[str], limit: int
-    ) -> str:
-        return f"alerts:{strategy}:{limit}:{','.join(symbols)}"
 
     def _alerts_from_analysis(self, analysis: AnalysisResponse) -> list[AnalysisAlert]:
         alerts: list[AnalysisAlert] = []
@@ -399,7 +714,7 @@ class AnalysisService:
         confidence = int(round(float(analysis.confidence or 0)))
         rsi_value = analysis.signals.rsi.value
 
-        if analysis.recommendation == "BUY":
+        if analysis.recommendation == "BUY" and analysis.signal_quality == "FULL" and not analysis.no_trade:
             alerts.append(
                 AnalysisAlert(
                     symbol=symbol,
@@ -411,7 +726,7 @@ class AnalysisService:
                     priority=100 + confidence,
                 )
             )
-        elif analysis.recommendation == "SELL":
+        elif analysis.recommendation == "SELL" and analysis.signal_quality == "FULL" and not analysis.no_trade:
             alerts.append(
                 AnalysisAlert(
                     symbol=symbol,
@@ -562,14 +877,17 @@ class AnalysisService:
             return base_decision
 
         partial_reasons: list[str] = []
-        if conflicts:
+        strong_conflicts = self._strong_conflicts(conflicts)
+
+        if strong_conflicts:
+            partial_reasons.append("strong indicator conflicts are present")
+        elif conflicts:
             partial_reasons.append("signals are conflicting")
 
-        if strategy == "simple":
-            if abs(score) <= 2:
-                partial_reasons.append("the simple score is still near its trade threshold")
-        elif abs(score) <= 40:
-            partial_reasons.append("the weighted score is still near its trade threshold")
+        buy_threshold = self._effective_buy_threshold(strategy)
+        sell_threshold = self._effective_sell_threshold(strategy)
+        if sell_threshold < score < buy_threshold:
+            partial_reasons.append("the score is still near its trade threshold")
 
         if recommendation == "HOLD" and abs(score) > 0:
             partial_reasons.append("the setup is not clean enough for a full-strength signal")
@@ -600,12 +918,333 @@ class AnalysisService:
         reduced = confidence * reduction_factor
         return round(self._clamp(reduced, 12, 70), 1)
 
+    def _signal_quality_for_strategy(
+        self,
+        *,
+        strategy: Strategy,
+        score: int,
+        recommendation: Recommendation,
+        data_quality: DataQuality,
+        conflicts: Sequence[str],
+    ) -> SignalQuality:
+        buy_threshold = self._effective_buy_threshold(strategy)
+        sell_threshold = self._effective_sell_threshold(strategy)
+        near_buy = (buy_threshold - 1) <= score < buy_threshold
+        near_sell = (sell_threshold + 1) >= score > sell_threshold
+
+        if recommendation in {"BUY", "SELL"}:
+            if data_quality == "FULL" and not conflicts:
+                return "FULL"
+            return "PARTIAL"
+
+        if data_quality == "PARTIAL" or conflicts or near_buy or near_sell:
+            return "PARTIAL"
+        return "FULL"
+
     def _strategy_decision(self, strategy: Strategy, context: dict) -> dict[str, object]:
         if strategy == "simple":
             return self._simple_strategy(context)
         if strategy == "ai":
             return self._ai_strategy(context)
         return self._hedgefund_strategy(context)
+
+    def _score_band(self, strategy: Strategy, score: float) -> int:
+        if strategy == "simple":
+            return int(self._clamp(round(score), -5, 5))
+        divisor = 10 if strategy == "ai" else 18
+        return int(self._clamp(round(score / divisor), -5, 5))
+
+    def _clamp_normalized_score(self, score: float) -> int:
+        return int(self._clamp(round(score), -5, 5))
+
+    def _apply_conflict_score_damping(
+        self,
+        *,
+        strategy: Strategy,
+        raw_score: int,
+        conflicts: Sequence[str],
+    ) -> int:
+        thresholds = self._thresholds_for(strategy)
+        if not conflicts or raw_score == 0:
+            return raw_score
+
+        strong_conflicts = self._strong_conflicts(conflicts)
+        if strategy == "simple":
+            if abs(raw_score) < thresholds.buy_threshold and not strong_conflicts:
+                return raw_score
+            penalty = min(len(conflicts) + len(strong_conflicts), 3)
+        elif strategy == "ai":
+            penalty = min((len(conflicts) * 5) + (len(strong_conflicts) * 2), 16)
+        else:
+            penalty = min((len(conflicts) * 6) + (len(strong_conflicts) * 3), 21)
+
+        if strategy == "simple" and strong_conflicts and abs(raw_score) <= thresholds.buy_threshold:
+            penalty = max(penalty, abs(raw_score))
+
+        if raw_score > 0:
+            return max(0, raw_score - penalty)
+        return min(0, raw_score + penalty)
+
+    def _apply_score_data_quality_damping(
+        self,
+        *,
+        score: int,
+        data_quality: DataQuality,
+    ) -> int:
+        if data_quality == "NO_DATA":
+            return 0
+        if data_quality == "PARTIAL":
+            return int(round(score * 0.7))
+        return score
+
+    def _recommendation_from_score_band(
+        self,
+        strategy: Strategy,
+        score_band: int,
+    ) -> Recommendation:
+        buy_threshold = self._effective_buy_threshold(strategy)
+        sell_threshold = self._effective_sell_threshold(strategy)
+        if score_band >= buy_threshold:
+            return "BUY"
+        if score_band <= sell_threshold:
+            return "SELL"
+        return "HOLD"
+
+    def _recommendation_for_strategy(
+        self,
+        *,
+        strategy: Strategy,
+        score_band: int,
+        context: dict[str, Any],
+    ) -> Recommendation:
+        if strategy != "hedgefund":
+            return self._recommendation_from_score_band(strategy, score_band)
+
+        buy_threshold = self._effective_buy_threshold(strategy)
+        sell_threshold = self._effective_sell_threshold(strategy)
+        trend_up = context["latest_price"] > context["sma200"]
+        trend_down = context["latest_price"] < context["sma200"]
+        momentum_up = context["momentum_5d"] > 0
+        momentum_down = context["momentum_5d"] < 0
+
+        if trend_up:
+            return "BUY" if score_band >= buy_threshold and momentum_up else "HOLD"
+        if trend_down:
+            return "SELL" if score_band <= sell_threshold and momentum_down else "HOLD"
+        return "HOLD"
+
+    def _aligned_factor_count(
+        self,
+        *,
+        recommendation: Recommendation,
+        signal_map: dict[str, SignalResult],
+    ) -> int:
+        if recommendation == "BUY":
+            checks = [
+                signal_map["trend"].probability_impact >= 0.20,
+                signal_map["sma_crossover"].probability_impact >= 0.15,
+                signal_map["rsi"].probability_impact >= 0.10,
+                signal_map["momentum"].probability_impact >= 0.15,
+                signal_map["news_sentiment"].probability_impact >= 0.20,
+                signal_map["trend_strength"].probability_impact >= 0.20,
+            ]
+        elif recommendation == "SELL":
+            checks = [
+                signal_map["trend"].probability_impact <= -0.20,
+                signal_map["sma_crossover"].probability_impact <= -0.15,
+                signal_map["rsi"].probability_impact <= -0.10,
+                signal_map["momentum"].probability_impact <= -0.15,
+                signal_map["news_sentiment"].probability_impact <= -0.20,
+                signal_map["trend_strength"].probability_impact <= -0.20,
+            ]
+        else:
+            return 0
+        return sum(1 for passed in checks if passed)
+
+    def _core_directional_confirmation(
+        self,
+        *,
+        recommendation: Recommendation,
+        signal_map: dict[str, SignalResult],
+    ) -> bool:
+        if recommendation == "BUY":
+            return any(
+                (
+                    signal_map["trend"].probability_impact >= 0.20,
+                    signal_map["momentum"].probability_impact >= 0.15,
+                    signal_map["trend_strength"].probability_impact >= 0.20,
+                )
+            )
+        if recommendation == "SELL":
+            return any(
+                (
+                    signal_map["trend"].probability_impact <= -0.20,
+                    signal_map["momentum"].probability_impact <= -0.15,
+                    signal_map["trend_strength"].probability_impact <= -0.20,
+                )
+            )
+        return False
+
+    def _opposing_factor_count(
+        self,
+        *,
+        recommendation: Recommendation,
+        signal_map: dict[str, SignalResult],
+    ) -> int:
+        if recommendation == "BUY":
+            return self._aligned_factor_count(recommendation="SELL", signal_map=signal_map)
+        if recommendation == "SELL":
+            return self._aligned_factor_count(recommendation="BUY", signal_map=signal_map)
+        return 0
+
+    def _trade_filter_decision(
+        self,
+        *,
+        strategy: Strategy,
+        recommendation: Recommendation,
+        score: int,
+        signal_quality: SignalQuality,
+        confidence: float,
+        risk_level: RiskLevel,
+        context: dict[str, Any],
+        conflicts: Sequence[str],
+    ) -> TradeFilterDecision:
+        if recommendation == "HOLD":
+            return TradeFilterDecision(
+                recommendation=recommendation,
+                signal_quality=signal_quality,
+                confidence=confidence,
+            )
+
+        signal_map: dict[str, SignalResult] = context["signal_map"]
+        aligned_count = self._aligned_factor_count(
+            recommendation=recommendation,
+            signal_map=signal_map,
+        )
+        opposing_count = self._opposing_factor_count(
+            recommendation=recommendation,
+            signal_map=signal_map,
+        )
+        strong_conflicts = self._strong_conflicts(conflicts)
+        strong_downtrend = (
+            context["latest_price"] < context["sma200"]
+            and signal_map["trend"].probability_impact <= -0.25
+            and signal_map["trend_strength"].probability_impact <= -0.20
+        )
+        strong_uptrend = (
+            context["latest_price"] > context["sma200"]
+            and signal_map["trend"].probability_impact >= 0.25
+            and signal_map["trend_strength"].probability_impact >= 0.20
+        )
+
+        block_reason: str | None = None
+        if recommendation == "BUY" and score < MIN_ACTIONABLE_BUY_SCORE:
+            block_reason = "the score is below the minimum buy threshold"
+        elif recommendation == "SELL" and score > MIN_ACTIONABLE_SELL_SCORE:
+            block_reason = "the score is above the minimum sell threshold"
+        elif aligned_count < 2:
+            block_reason = "fewer than two factors confirm the signal"
+        elif recommendation == "SELL" and not self._core_directional_confirmation(
+            recommendation="SELL",
+            signal_map=signal_map,
+        ):
+            block_reason = "the sell setup lacks clear bearish confirmation"
+        elif strong_conflicts or (conflicts and opposing_count >= 2):
+            block_reason = "signals are conflicting, so the setup is not clean enough"
+        elif recommendation == "BUY" and strong_downtrend:
+            block_reason = "the market is still in a strong downtrend"
+        elif recommendation == "SELL" and strong_uptrend:
+            block_reason = "the market is still in a strong uptrend"
+        elif context["volatility_30d"] >= EXTREME_UNCERTAINTY_VOLATILITY:
+            block_reason = "volatility is too high for a reliable trade"
+        elif (
+            context["volatility_30d"] >= HIGH_UNCERTAINTY_VOLATILITY
+            and (risk_level == "HIGH" or aligned_count < 3)
+        ):
+            block_reason = "volatility is high and uncertainty is elevated"
+
+        if block_reason is None:
+            return TradeFilterDecision(
+                recommendation=recommendation,
+                signal_quality=signal_quality,
+                confidence=confidence,
+            )
+
+        return TradeFilterDecision(
+            recommendation="HOLD",
+            signal_quality="PARTIAL",
+            confidence=round(min(confidence, 49.0), 1),
+            block_reason=block_reason,
+        )
+
+    def _apply_learning_score_adjustment(
+        self,
+        *,
+        strategy: Strategy,
+        score: int,
+        profile: StrategyLearningProfile,
+    ) -> int:
+        if not profile.eligible or score == 0:
+            return score
+
+        adjusted_score = score
+        weak_signal_cutoff = self._weak_signal_cutoff(strategy)
+        if abs(adjusted_score) <= weak_signal_cutoff:
+            adjusted_score = int(round(adjusted_score * profile.weak_signal_multiplier))
+
+        if profile.directional_bias > 0:
+            bias_points = int(round(profile.directional_bias))
+            adjusted_score = adjusted_score + (bias_points if adjusted_score > 0 else -bias_points)
+        elif profile.directional_bias < 0:
+            adjusted_score = self._pull_score_toward_zero(
+                adjusted_score,
+                abs(int(round(profile.directional_bias))),
+            )
+
+        return adjusted_score
+
+    def _apply_learning_confidence_adjustment(
+        self,
+        *,
+        confidence: float,
+        profile: StrategyLearningProfile,
+    ) -> float:
+        if not profile.eligible:
+            return confidence
+        return round(self._clamp(confidence + profile.confidence_bias, 0.0, 100.0), 1)
+
+    def _weak_signal_cutoff(self, strategy: Strategy) -> int:
+        thresholds = self._thresholds_for(strategy)
+        return max(1, int(round(abs(thresholds.buy_threshold) - 1)))
+
+    def _pull_score_toward_zero(self, score: int, amount: int) -> int:
+        if score == 0 or amount <= 0:
+            return score
+        if score > 0:
+            return max(0, score - amount)
+        return min(0, score + amount)
+
+    def _log_score_distribution(
+        self,
+        *,
+        strategy: Strategy,
+        symbol: str,
+        raw_score: int,
+        adjusted_score: int,
+        score_band: int,
+        data_quality: DataQuality,
+        conflicts: Sequence[str],
+    ) -> None:
+        logger.info(
+            "score_distribution strategy=%s symbol=%s raw_score=%s adjusted_score=%s band=%s data_quality=%s conflicts=%s",
+            strategy,
+            symbol,
+            raw_score,
+            adjusted_score,
+            score_band,
+            data_quality,
+            ",".join(conflicts) if conflicts else "none",
+        )
 
     def _strategy_reason(
         self,
@@ -660,27 +1299,43 @@ class AnalysisService:
             if news_snapshot.article_count and news_snapshot.news_score < -0.15
             else 0,
         }
-        score = sum(signal_scores.values())
+        raw_score = sum(signal_scores.values())
+        initial_band = self._score_band("simple", raw_score)
         trade_quality_conflicts = self._trade_quality_conflicts(
-            recommendation="BUY" if score >= 2 else "SELL" if score <= -2 else "HOLD",
+            recommendation=self._recommendation_from_score_band("simple", initial_band),
             context=context,
             signal_scores=signal_scores,
         )
-        if score >= 2 and not trade_quality_conflicts:
-            recommendation: Recommendation = "BUY"
-        elif score <= -2 and not trade_quality_conflicts:
-            recommendation = "SELL"
-        else:
-            recommendation = "HOLD"
         conflicts = self._simple_conflicts(signal_scores) + trade_quality_conflicts
         conflicts = list(dict.fromkeys(conflicts))[:4]
+        provisional_recommendation = self._recommendation_from_score_band("simple", initial_band)
+        provisional_data_quality = self._refine_data_quality_for_signals(
+            strategy="simple",
+            score=initial_band,
+            conflicts=conflicts,
+            recommendation=provisional_recommendation,
+            base_decision=context["base_data_quality_decision"],
+        )
+        adjusted_score = self._apply_conflict_score_damping(
+            strategy="simple",
+            raw_score=raw_score,
+            conflicts=conflicts,
+        )
+        adjusted_score = self._apply_score_data_quality_damping(
+            score=adjusted_score,
+            data_quality=context["base_data_quality_decision"].level,
+        )
+        normalized_score = self._score_band("simple", adjusted_score)
+        recommendation: Recommendation = self._recommendation_from_score_band(
+            "simple", normalized_score
+        )
         risk_level = self._simple_strategy_risk(
-            score=score,
+            score=adjusted_score,
             volatility_30d=context["volatility_30d"],
             conflicts=conflicts,
         )
         confidence = self._simple_strategy_confidence(
-            score=score,
+            score=adjusted_score,
             risk_level=risk_level,
             conflicts=conflicts,
         )
@@ -689,9 +1344,19 @@ class AnalysisService:
             signal_scores=signal_scores,
             confidence=confidence,
         )
+        self._log_score_distribution(
+            strategy="simple",
+            symbol=context["symbol"],
+            raw_score=raw_score,
+            adjusted_score=adjusted_score,
+            score_band=normalized_score,
+            data_quality=provisional_data_quality.level,
+            conflicts=conflicts,
+        )
         return {
             "recommendation": recommendation,
-            "score": score,
+            "score": normalized_score,
+            "score_band": normalized_score,
             "confidence": confidence,
             "risk_level": risk_level,
             "reason": reason,
@@ -700,35 +1365,43 @@ class AnalysisService:
 
     def _ai_strategy(self, context: dict) -> dict[str, object]:
         signal_scores = self._ai_signal_scores(context["factor_scores"])
-        score = self._total_score(signal_scores)
-        candidate: Recommendation
-        if score >= 35:
-            candidate = "BUY"
-        elif score <= -35:
-            candidate = "SELL"
-        else:
-            candidate = "HOLD"
+        raw_score = self._total_score(signal_scores)
+        initial_band = self._score_band("ai", raw_score)
+        candidate: Recommendation = self._recommendation_from_score_band("ai", initial_band)
         trade_quality_conflicts = self._trade_quality_conflicts(
             recommendation=candidate,
             context=context,
             signal_scores=signal_scores,
         )
-        recommendation: Recommendation
-        if candidate == "BUY" and not trade_quality_conflicts:
-            recommendation = "BUY"
-        elif candidate == "SELL" and not trade_quality_conflicts:
-            recommendation = "SELL"
-        else:
-            recommendation = "HOLD"
         conflicts = self._simple_conflicts(signal_scores) + trade_quality_conflicts
         conflicts = list(dict.fromkeys(conflicts))[:4]
+        provisional_data_quality = self._refine_data_quality_for_signals(
+            strategy="ai",
+            score=initial_band,
+            conflicts=conflicts,
+            recommendation=candidate,
+            base_decision=context["base_data_quality_decision"],
+        )
+        adjusted_score = self._apply_conflict_score_damping(
+            strategy="ai",
+            raw_score=raw_score,
+            conflicts=conflicts,
+        )
+        adjusted_score = self._apply_score_data_quality_damping(
+            score=adjusted_score,
+            data_quality=context["base_data_quality_decision"].level,
+        )
+        normalized_score = self._score_band("ai", adjusted_score)
+        recommendation: Recommendation = self._recommendation_from_score_band(
+            "ai", normalized_score
+        )
         risk_level = self._weighted_strategy_risk(
-            score=score,
+            score=adjusted_score,
             volatility_30d=context["volatility_30d"],
             conflicts=conflicts,
         )
         confidence = self._weighted_strategy_confidence(
-            score=score,
+            score=adjusted_score,
             risk_level=risk_level,
             conflicts=conflicts,
         )
@@ -738,9 +1411,19 @@ class AnalysisService:
             confidence=confidence,
             label="AI",
         )
+        self._log_score_distribution(
+            strategy="ai",
+            symbol=context["symbol"],
+            raw_score=raw_score,
+            adjusted_score=adjusted_score,
+            score_band=normalized_score,
+            data_quality=provisional_data_quality.level,
+            conflicts=conflicts,
+        )
         return {
             "recommendation": recommendation,
-            "score": score,
+            "score": normalized_score,
+            "score_band": normalized_score,
             "confidence": confidence,
             "risk_level": risk_level,
             "reason": reason,
@@ -748,47 +1431,90 @@ class AnalysisService:
         }
 
     def _hedgefund_strategy(self, context: dict) -> dict[str, object]:
+        buy_threshold = self._effective_buy_threshold("hedgefund")
+        sell_threshold = self._effective_sell_threshold("hedgefund")
         signal_scores = context["factor_scores"]
-        score = self._total_score(signal_scores)
+        raw_score = self._total_score(signal_scores)
         trend_up = context["latest_price"] > context["sma200"]
         trend_down = context["latest_price"] < context["sma200"]
         momentum_up = context["momentum_5d"] > 0
         momentum_down = context["momentum_5d"] < 0
+        initial_band = self._score_band("hedgefund", raw_score)
         candidate: Recommendation = "HOLD"
         if trend_up:
-            candidate = "BUY" if score >= 35 and momentum_up else "HOLD"
+            candidate = "BUY" if initial_band >= buy_threshold and momentum_up else "HOLD"
         elif trend_down:
-            candidate = "SELL" if score <= -35 and momentum_down else "HOLD"
+            candidate = (
+                "SELL" if initial_band <= sell_threshold and momentum_down else "HOLD"
+            )
         trade_quality_conflicts = self._trade_quality_conflicts(
             recommendation=candidate,
             context=context,
             signal_scores=signal_scores,
         )
-        recommendation: Recommendation = candidate if candidate != "HOLD" and not trade_quality_conflicts else "HOLD"
         conflicts = self._simple_conflicts(signal_scores) + trade_quality_conflicts
         conflicts = list(dict.fromkeys(conflicts))[:4]
+        provisional_data_quality = self._refine_data_quality_for_signals(
+            strategy="hedgefund",
+            score=initial_band,
+            conflicts=conflicts,
+            recommendation=candidate,
+            base_decision=context["base_data_quality_decision"],
+        )
+        adjusted_score = self._apply_conflict_score_damping(
+            strategy="hedgefund",
+            raw_score=raw_score,
+            conflicts=conflicts,
+        )
+        adjusted_score = self._apply_score_data_quality_damping(
+            score=adjusted_score,
+            data_quality=context["base_data_quality_decision"].level,
+        )
+        normalized_score = self._score_band("hedgefund", adjusted_score)
+        if trend_up:
+            recommendation: Recommendation = (
+                "BUY" if normalized_score >= buy_threshold and momentum_up else "HOLD"
+            )
+        elif trend_down:
+            recommendation = (
+                "SELL"
+                if normalized_score <= sell_threshold and momentum_down
+                else "HOLD"
+            )
+        else:
+            recommendation = "HOLD"
         risk_level = self._weighted_strategy_risk(
-            score=score,
+            score=adjusted_score,
             volatility_30d=context["volatility_30d"],
             conflicts=conflicts,
         )
         confidence = self._weighted_strategy_confidence(
-            score=score,
+            score=adjusted_score,
             risk_level=risk_level,
             conflicts=conflicts,
         )
         reason = self._hedgefund_strategy_reason(
             recommendation=recommendation,
-            score=score,
+            score=normalized_score,
             confidence=confidence,
             trend_up=trend_up,
             momentum_up=momentum_up,
             momentum_down=momentum_down,
             signal_scores=signal_scores,
         )
+        self._log_score_distribution(
+            strategy="hedgefund",
+            symbol=context["symbol"],
+            raw_score=raw_score,
+            adjusted_score=adjusted_score,
+            score_band=normalized_score,
+            data_quality=provisional_data_quality.level,
+            conflicts=conflicts,
+        )
         return {
             "recommendation": recommendation,
-            "score": score,
+            "score": normalized_score,
+            "score_band": normalized_score,
             "confidence": confidence,
             "risk_level": risk_level,
             "reason": reason,
@@ -875,11 +1601,28 @@ class AnalysisService:
             conflicts.append(f"{positives[0].title()} vs {negatives[0].title()}")
         if signal_scores["trend"] > 0 and signal_scores["rsi"] < 0:
             conflicts.append("Trend vs RSI")
+        if signal_scores["trend"] < 0 and signal_scores["rsi"] > 0:
+            conflicts.append("Trend vs RSI")
         if signal_scores["trend"] > 0 and signal_scores["momentum"] < 0:
             conflicts.append("Trend vs Momentum")
         if signal_scores["trend"] < 0 and signal_scores["momentum"] > 0:
             conflicts.append("Trend vs Momentum")
+        if signal_scores["rsi"] > 0 and signal_scores["momentum"] < 0:
+            conflicts.append("RSI vs Momentum")
+        if signal_scores["rsi"] < 0 and signal_scores["momentum"] > 0:
+            conflicts.append("RSI vs Momentum")
         return conflicts[:3]
+
+    def _strong_conflicts(self, conflicts: Sequence[str]) -> list[str]:
+        direct_conflicts = {
+            "Trend vs RSI",
+            "Trend vs Momentum",
+            "RSI vs Momentum",
+        }
+        strong = [conflict for conflict in conflicts if conflict in direct_conflicts]
+        if "Low Volume" in conflicts and "Weak Confirmation" in conflicts:
+            strong.append("Low Volume + Weak Confirmation")
+        return list(dict.fromkeys(strong))
 
     def _trade_quality_conflicts(
         self,
@@ -903,9 +1646,7 @@ class AnalysisService:
         )
         confirmation_count = self._confirmation_count(
             recommendation=recommendation,
-            signal_scores=signal_scores,
-            latest_volume=context["latest_volume"],
-            avg_volume_20=context["avg_volume_20"],
+            signal_map=context["signal_map"],
         )
 
         if low_volume:
@@ -920,25 +1661,12 @@ class AnalysisService:
         self,
         *,
         recommendation: Recommendation,
-        signal_scores: dict[str, int],
-        latest_volume: float,
-        avg_volume_20: float,
+        signal_map: dict[str, SignalResult],
     ) -> int:
-        checks = 0
-        if recommendation == "BUY":
-            if signal_scores.get("rsi", 0) >= 0:
-                checks += 1
-            if signal_scores.get("momentum", 0) > 0:
-                checks += 1
-        elif recommendation == "SELL":
-            if signal_scores.get("rsi", 0) <= 0:
-                checks += 1
-            if signal_scores.get("momentum", 0) < 0:
-                checks += 1
-
-        if not self._is_low_volume(latest_volume=latest_volume, avg_volume_20=avg_volume_20):
-            checks += 1
-        return checks
+        return self._aligned_factor_count(
+            recommendation=recommendation,
+            signal_map=signal_map,
+        )
 
     def _is_low_volume(self, *, latest_volume: float, avg_volume_20: float) -> bool:
         if latest_volume <= 0 or avg_volume_20 <= 0:
@@ -976,15 +1704,12 @@ class AnalysisService:
         score: int,
         recommendation: Recommendation,
     ) -> float:
-        if strategy == "simple":
-            probability_up = 0.5 + (score * 0.08)
-        else:
-            probability_up = 0.5 + (score / 200)
+        probability_up = 0.5 + (score * 0.08)
         if recommendation == "BUY":
             probability_up = max(probability_up, 0.68)
         elif recommendation == "SELL":
             probability_up = min(probability_up, 0.32)
-        return round(self._clamp(probability_up, 0.05, 0.95), 4)
+        return round(self._clamp(probability_up, 0.1, 0.9), 4)
 
     def _simple_strategy_risk(
         self,
@@ -1024,7 +1749,7 @@ class AnalysisService:
     ) -> RiskLevel:
         if volatility_30d >= 0.32 or len(conflicts) >= 2:
             return "HIGH"
-        if abs(score) < 50 or conflicts or volatility_30d >= 0.22:
+        if abs(score) < 3 or conflicts or volatility_30d >= 0.22:
             return "MEDIUM"
         return "LOW"
 
@@ -1035,7 +1760,7 @@ class AnalysisService:
         risk_level: RiskLevel,
         conflicts: Sequence[str],
     ) -> float:
-        confidence = 36 + (abs(score) * 0.72)
+        confidence = 36 + (abs(score) * 12)
         if conflicts:
             confidence -= min(len(conflicts), 3) * 6
         if risk_level == "MEDIUM":
@@ -1043,6 +1768,46 @@ class AnalysisService:
         elif risk_level == "HIGH":
             confidence -= 12
         return round(self._clamp(confidence, 24, 95), 1)
+
+    def _risk_level_for_strategy(
+        self,
+        *,
+        strategy: Strategy,
+        score: int,
+        volatility_30d: float,
+        conflicts: Sequence[str],
+    ) -> RiskLevel:
+        if strategy == "simple":
+            return self._simple_strategy_risk(
+                score=score,
+                volatility_30d=volatility_30d,
+                conflicts=conflicts,
+            )
+        return self._weighted_strategy_risk(
+            score=score,
+            volatility_30d=volatility_30d,
+            conflicts=conflicts,
+        )
+
+    def _confidence_for_strategy(
+        self,
+        *,
+        strategy: Strategy,
+        score: int,
+        risk_level: RiskLevel,
+        conflicts: Sequence[str],
+    ) -> float:
+        if strategy == "simple":
+            return self._simple_strategy_confidence(
+                score=score,
+                risk_level=risk_level,
+                conflicts=conflicts,
+            )
+        return self._weighted_strategy_confidence(
+            score=score,
+            risk_level=risk_level,
+            conflicts=conflicts,
+        )
 
     def _strategy_warnings(
         self,
@@ -1072,7 +1837,7 @@ class AnalysisService:
             warnings.append("Drawdown Risk")
         if risk_level == "HIGH" and confidence <= 45:
             warnings.append("High Risk")
-        if strategy != "simple" and abs(score) < 15:
+        if strategy != "simple" and abs(score) < 2:
             warnings.append("No Clear Edge")
         return warnings[:MAX_WARNINGS]
 
@@ -1080,17 +1845,20 @@ class AnalysisService:
         self,
         *,
         recommendation: Recommendation,
+        signal_quality: SignalQuality,
         risk_level: RiskLevel,
         confidence: float,
         score: int,
     ) -> tuple[bool, str]:
         if recommendation != "BUY":
             return False, "Fresh entry is not ideal because the strategy is not on a buy signal."
+        if signal_quality == "PARTIAL":
+            return False, "Fresh entry is not ideal because the buy setup is only partially confirmed."
         if risk_level == "HIGH":
             return False, "Fresh entry is not ideal because volatility and signal conflict are elevated."
         if confidence < 55:
             return False, "Fresh entry is not ideal because conviction is still limited."
-        if score >= 55:
+        if score >= 4:
             return True, "Multiple positive factors align, so a fresh entry looks reasonable."
         return True, "The selected strategy supports a measured buy entry."
 
@@ -1098,11 +1866,14 @@ class AnalysisService:
         self,
         *,
         recommendation: Recommendation,
+        signal_quality: SignalQuality,
         risk_level: RiskLevel,
         score: int,
         warnings: Sequence[str],
     ) -> tuple[bool, str]:
         if recommendation == "SELL":
+            if signal_quality == "PARTIAL":
+                return True, "A trim looks sensible because the sell setup is only partially confirmed."
             return True, "An exit or trim looks sensible because negative signals are in control."
         if recommendation == "HOLD" and risk_level == "HIGH" and score < 0:
             return True, "An exit or trim looks sensible because risk is high while momentum is fading."
@@ -1115,11 +1886,14 @@ class AnalysisService:
         *,
         entry_signal: bool,
         recommendation: Recommendation,
+        signal_quality: SignalQuality,
         risk_level: RiskLevel,
         confidence: float,
     ) -> tuple[float, str]:
         if recommendation != "BUY":
             return 0.0, "No fresh allocation is suggested unless the setup turns into a buy."
+        if signal_quality == "PARTIAL":
+            return 0.0, "No fresh allocation is suggested until the buy setup reaches full confirmation."
         if not entry_signal:
             return 0.0, "No fresh allocation is suggested until buy confirmation and risk improve."
         if risk_level == "LOW":
@@ -1212,13 +1986,15 @@ class AnalysisService:
     ) -> str:
         positive = [name for name, value in signal_scores.items() if value > 0]
         negative = [name for name, value in signal_scores.items() if value < 0]
+        buy_threshold = self._effective_buy_threshold("hedgefund")
+        sell_threshold = self._effective_sell_threshold("hedgefund")
         if recommendation == "BUY":
             return f"BUY because {', '.join(positive[:2]) or 'positive factors'} align and trend plus momentum confirm. Confidence {confidence:.0f}/100."
         if recommendation == "SELL":
             return f"SELL because {', '.join(negative[:2]) or 'negative factors'} align and trend plus momentum confirm. Confidence {confidence:.0f}/100."
-        if trend_up and not momentum_up and score >= 35:
+        if trend_up and not momentum_up and score >= max(2, buy_threshold - 1):
             return f"HOLD because the long-term trend is up but momentum does not confirm the buy. Confidence {confidence:.0f}/100."
-        if (not trend_up) and not momentum_down and score <= -35:
+        if (not trend_up) and not momentum_down and score <= min(-2, sell_threshold + 1):
             return f"HOLD because the long-term trend is down but momentum does not confirm the sell. Confidence {confidence:.0f}/100."
         if positive and negative:
             return f"HOLD because hedgefund factors are mixed between {positive[0]} and {negative[0]}. Confidence {confidence:.0f}/100."
@@ -1239,6 +2015,7 @@ class AnalysisService:
             no_data=True,
             no_data_reason=message,
             recommendation=None,
+            signal_quality=None,
             score=None,
             probability_up=None,
             probability_down=None,
@@ -1282,6 +2059,7 @@ class AnalysisService:
             no_data=True,
             no_data_reason=message,
             recommendation=None,
+            signal_quality=None,
             score=None,
             probability_up=None,
             probability_down=None,
