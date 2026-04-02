@@ -524,6 +524,39 @@ def test_scan_alerts_reuses_cached_alerts_without_recomputing_analysis():
     assert provider.history_calls == history_calls_after_first
 
 
+def test_scan_alerts_with_db_reuses_cached_symbol_analysis_when_preprimed(db_session):
+    provider = FakeMarketDataProvider()
+    market_data_service = MarketDataService(
+        provider=provider,
+        allowed_symbols={"AAPL": "Apple", "MSFT": "Microsoft"},
+        ttl_seconds=3600,
+    )
+    analysis_service = AnalysisService(
+        market_data_service=market_data_service,
+        macro_context_service=MacroContextService(
+            provider=provider,
+            ttl_seconds=3600,
+            market_symbol="SPY",
+            usd_symbol="DXY",
+            interest_rate_effect="neutral",
+        ),
+        news_sentiment_service=NewsSentimentService(
+            provider=FakeNewsProvider(),
+            ttl_seconds=3600,
+            headline_limit=8,
+        ),
+        summary_service=FakeSummaryService(),
+        analysis_cache_ttl_seconds=3600,
+        alerts_cache_ttl_seconds=3600,
+    )
+
+    analysis_service.scan_alerts(strategy="simple", limit=6)
+    history_calls_after_warmup = provider.history_calls
+    analysis_service.scan_alerts(strategy="simple", limit=6, db=db_session)
+
+    assert provider.history_calls == history_calls_after_warmup
+
+
 def test_strategies_return_distinct_results_without_overwriting_each_other(analysis_service):
     simple = analysis_service.analyze_symbol("MSFT", strategy="simple")
     ai = analysis_service.analyze_symbol("MSFT", strategy="ai")

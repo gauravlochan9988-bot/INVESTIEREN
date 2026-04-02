@@ -68,14 +68,12 @@ def get_alerts(
     refresh: bool = Query(default=False),
     strategy: Strategy = Query(default="hedgefund"),
     limit: int = Query(default=6, ge=1, le=12),
-    db: Session = Depends(get_db),
     analysis_service: AnalysisService = Depends(get_analysis_service),
 ) -> list[AnalysisAlert]:
     return analysis_service.scan_alerts(
         strategy=strategy,
         force_refresh=refresh,
         limit=limit,
-        db=db,
     )
 
 

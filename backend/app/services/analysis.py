@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -110,6 +111,9 @@ class AnalysisService:
         )
         self.alerts_cache: TTLCache[list[AnalysisAlert]] = TTLCache(alerts_cache_ttl_seconds)
         self.request_deduper: RequestDeduplicator[AnalysisResponse | PreparedAnalysisInputs] = (
+            RequestDeduplicator()
+        )
+        self.alerts_request_deduper: RequestDeduplicator[list[AnalysisAlert]] = (
             RequestDeduplicator()
         )
         self.strategy_threshold_overrides: ContextVar[dict[str, StrategyThresholdConfig] | None] = (
@@ -264,33 +268,76 @@ class AnalysisService:
         db: Session | None = None,
     ) -> list[AnalysisAlert]:
         universe = list(symbols or self.market_data_service.allowed_symbols.keys())
-        if db is not None:
-            force_refresh = force_refresh
-        else:
-            cache_key = self._alerts_cache_key(strategy=strategy, symbols=universe, limit=limit)
+        cache_key = self._alerts_cache_key(strategy=strategy, symbols=universe, limit=limit)
+        if db is None:
             if force_refresh:
                 self.alerts_cache.delete(cache_key)
             else:
                 cached = self.alerts_cache.get(cache_key)
                 if cached is not None:
                     return cached
-        alerts: list[AnalysisAlert] = []
 
-        for symbol in universe:
-            analysis = self.analyze_symbol(
-                symbol,
-                force_refresh=force_refresh,
-                strategy=strategy,
-                db=db,
-            )
+            def build_alerts() -> list[AnalysisAlert]:
+                cached_inner = self.alerts_cache.get(cache_key)
+                if cached_inner is not None:
+                    return cached_inner
+                alerts = self._build_alerts_snapshot(
+                    strategy=strategy,
+                    symbols=universe,
+                    force_refresh=force_refresh,
+                    db=None,
+                    limit=limit,
+                )
+                return self.alerts_cache.set(cache_key, alerts)
+
+            return self.alerts_request_deduper.run(cache_key, build_alerts)
+
+        return self._build_alerts_snapshot(
+            strategy=strategy,
+            symbols=universe,
+            force_refresh=force_refresh,
+            db=db,
+            limit=limit,
+        )
+
+    def prime_alerts(
+        self,
+        *,
+        strategy: Strategy = "hedgefund",
+        symbols: Sequence[str] | None = None,
+        limit: int = 6,
+        force_refresh: bool = False,
+    ) -> None:
+        self.scan_alerts(
+            strategy=strategy,
+            symbols=symbols,
+            force_refresh=force_refresh,
+            limit=limit,
+            db=None,
+        )
+
+    def _build_alerts_snapshot(
+        self,
+        *,
+        strategy: Strategy,
+        symbols: Sequence[str],
+        force_refresh: bool,
+        db: Session | None,
+        limit: int,
+    ) -> list[AnalysisAlert]:
+        alerts: list[AnalysisAlert] = []
+        for analysis in self._collect_alert_analyses(
+            strategy=strategy,
+            symbols=symbols,
+            force_refresh=force_refresh,
+            db=db,
+        ):
             if analysis.no_data or analysis.recommendation is None or analysis.signals is None:
                 continue
             alerts.extend(self._alerts_from_analysis(analysis))
 
         alerts.sort(key=lambda item: (-item.priority, item.symbol, item.title))
-        if db is None and len(alerts) <= limit:
-            return self.alerts_cache.set(cache_key, alerts)
-        if db is not None and len(alerts) <= limit:
+        if len(alerts) <= limit:
             return alerts
 
         selected_keys: set[tuple[str, str, str]] = set()
@@ -319,9 +366,40 @@ class AnalysisService:
             selected_keys.add(key)
 
         selected.sort(key=lambda item: (-item.priority, item.symbol, item.title))
-        if db is not None:
-            return selected[:limit]
-        return self.alerts_cache.set(cache_key, selected[:limit])
+        return selected[:limit]
+
+    def _collect_alert_analyses(
+        self,
+        *,
+        strategy: Strategy,
+        symbols: Sequence[str],
+        force_refresh: bool,
+        db: Session | None,
+    ) -> list[AnalysisResponse]:
+        if len(symbols) <= 1:
+            return [
+                self.analyze_symbol(
+                    symbol,
+                    force_refresh=force_refresh,
+                    strategy=strategy,
+                    db=None,
+                )
+                for symbol in symbols
+            ]
+
+        max_workers = min(6, len(symbols))
+        with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="alerts-scan") as pool:
+            futures = [
+                pool.submit(
+                    self.analyze_symbol,
+                    symbol,
+                    force_refresh=force_refresh,
+                    strategy=strategy,
+                    db=None,
+                )
+                for symbol in symbols
+            ]
+            return [future.result() for future in futures]
 
     def _load_analysis_response(
         self,

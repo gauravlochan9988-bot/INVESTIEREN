@@ -113,6 +113,7 @@ def create_app() -> FastAPI:
             dashboard_service = get_finnhub_dashboard_service_instance()
             analysis_service = get_analysis_service_instance()
             strategies = ("simple", "ai", "hedgefund")
+            alert_universe = tuple(analysis_service.market_data_service.allowed_symbols.keys())
 
             while True:
                 try:
@@ -126,6 +127,13 @@ def create_app() -> FastAPI:
                                 force_refresh=False,
                                 strategy=strategy,
                             )
+                    for strategy in strategies:
+                        analysis_service.prime_alerts(
+                            strategy=strategy,
+                            symbols=alert_universe,
+                            limit=6,
+                            force_refresh=False,
+                        )
                 except Exception as exc:  # pragma: no cover - background warmup safety
                     print("preload_warmup_failed", {"type": type(exc).__name__, "message": str(exc)})
                 sleep(max(30, settings.preload_refresh_seconds))
