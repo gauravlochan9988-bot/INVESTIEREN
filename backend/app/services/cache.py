@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Generic, Optional, TypeVar
+from threading import Event, Lock
+from typing import Callable, Dict, Generic, Optional, TypeVar
 
 
 T = TypeVar("T")
@@ -14,34 +15,81 @@ class CacheEntry(Generic[T]):
     expires_at: datetime
 
 
+@dataclass
+class InFlightCall(Generic[T]):
+    event: Event
+    value: Optional[T] = None
+    error: Optional[BaseException] = None
+
+
 class TTLCache(Generic[T]):
     def __init__(self, ttl_seconds: int):
         self.ttl_seconds = ttl_seconds
         self._store: Dict[str, CacheEntry[T]] = {}
+        self._lock = Lock()
 
     def get(self, key: str) -> Optional[T]:
-        entry = self._store.get(key)
-        now = datetime.now(timezone.utc)
-        if entry is None:
-            return None
-        if entry.expires_at <= now:
-            self._store.pop(key, None)
-            return None
-        return entry.value
+        with self._lock:
+            entry = self._store.get(key)
+            now = datetime.now(timezone.utc)
+            if entry is None:
+                return None
+            if entry.expires_at <= now:
+                self._store.pop(key, None)
+                return None
+            return entry.value
 
     def set(self, key: str, value: T) -> T:
         expires_at = datetime.now(timezone.utc) + timedelta(seconds=self.ttl_seconds)
-        self._store[key] = CacheEntry(value=value, expires_at=expires_at)
+        with self._lock:
+            self._store[key] = CacheEntry(value=value, expires_at=expires_at)
         return value
 
     def get_stale(self, key: str) -> Optional[T]:
-        entry = self._store.get(key)
-        if entry is None:
-            return None
-        return entry.value
+        with self._lock:
+            entry = self._store.get(key)
+            if entry is None:
+                return None
+            return entry.value
 
     def delete(self, key: str) -> None:
-        self._store.pop(key, None)
+        with self._lock:
+            self._store.pop(key, None)
 
     def clear(self) -> None:
-        self._store.clear()
+        with self._lock:
+            self._store.clear()
+
+
+class RequestDeduplicator(Generic[T]):
+    def __init__(self) -> None:
+        self._lock = Lock()
+        self._calls: Dict[str, InFlightCall[T]] = {}
+
+    def run(self, key: str, func: Callable[[], T]) -> T:
+        with self._lock:
+            call = self._calls.get(key)
+            if call is None:
+                call = InFlightCall(event=Event())
+                self._calls[key] = call
+                leader = True
+            else:
+                leader = False
+
+        if not leader:
+            call.event.wait()
+            if call.error is not None:
+                raise call.error
+            return call.value  # type: ignore[return-value]
+
+        try:
+            result = func()
+            call.value = result
+            return result
+        except BaseException as exc:
+            call.error = exc
+            raise
+        finally:
+            call.event.set()
+            with self._lock:
+                self._calls.pop(key, None)

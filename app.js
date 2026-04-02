@@ -10,10 +10,12 @@ const STORAGE_KEYS = {
   selectedSymbol: "investieren:selectedSymbol",
   selectedStrategy: "investieren:selectedStrategy",
   favoriteSymbols: "investieren:favoriteSymbols",
+  chartCompareSymbol: "investieren:chartCompareSymbol",
   cachedWatchlist: "investieren:cachedWatchlist",
   cachedOverview: "investieren:cachedOverview",
   cachedAnalysis: "investieren:cachedAnalysis",
   cachedAlerts: "investieren:cachedAlerts",
+  cachedLearningStats: "investieren:cachedLearningStats",
 };
 
 const STRATEGY_LABELS = {
@@ -39,11 +41,13 @@ const DEFAULT_SIDEBAR_ITEMS = [
 const state = {
   selectedSymbol: window.sessionStorage.getItem(STORAGE_KEYS.selectedSymbol) || "AAPL",
   selectedStrategy: window.sessionStorage.getItem(STORAGE_KEYS.selectedStrategy) || "hedgefund",
+  compareSymbol: window.sessionStorage.getItem(STORAGE_KEYS.chartCompareSymbol) || "",
   watchlist: [],
   tvReady: typeof window.TradingView !== "undefined",
   tvScriptPromise: null,
   tvWidgetSymbol: null,
   searchResults: [],
+  searchResultsQuery: "",
   searchRequestId: 0,
   searchDebounceId: null,
   activeRequest: 0,
@@ -56,12 +60,14 @@ const state = {
   chartRetryAttempt: 0,
   chartRequestId: 0,
   chartInView: false,
+  mobileChartPrimed: false,
   chartInteractionEnabled: false,
   pendingChart: null,
   chartObserver: null,
   strategySnapshots: {},
   suppressStrategyClick: false,
   latestOverview: null,
+  learningStats: null,
 };
 
 const elements = {
@@ -70,10 +76,6 @@ const elements = {
   authPassword: document.getElementById("authPassword"),
   authError: document.getElementById("authError"),
   authCancelButton: document.getElementById("authCancelButton"),
-  authGoogleButton: document.getElementById("authGoogleButton"),
-  authAppleButton: document.getElementById("authAppleButton"),
-  authCreateAccountButton: document.getElementById("authCreateAccountButton"),
-  authLoginButton: document.getElementById("authLoginButton"),
   appShell: document.getElementById("appShell"),
   backendStatus: document.getElementById("backendStatus"),
   errorBanner: document.getElementById("errorBanner"),
@@ -107,16 +109,25 @@ const elements = {
   metricOpen: document.getElementById("metricOpen"),
   metricPrevClose: document.getElementById("metricPrevClose"),
   recommendationCard: document.getElementById("recommendationCard"),
+  recommendationIcon: document.getElementById("recommendationIcon"),
   recommendationValue: document.getElementById("recommendationValue"),
+  signalQualityBadge: document.getElementById("signalQualityBadge"),
+  conflictBadge: document.getElementById("conflictBadge"),
   confidenceValue: document.getElementById("confidenceValue"),
   confidenceBarFill: document.getElementById("confidenceBarFill"),
   confidenceHint: document.getElementById("confidenceHint"),
   analysisSummary: document.getElementById("analysisSummary"),
+  mobileConfidenceValue: document.getElementById("mobileConfidenceValue"),
+  mobileConfidenceBarFill: document.getElementById("mobileConfidenceBarFill"),
+  mobileConfidenceHint: document.getElementById("mobileConfidenceHint"),
+  mobileAnalysisSummary: document.getElementById("mobileAnalysisSummary"),
   selectedStrategyBadge: document.getElementById("selectedStrategyBadge"),
   mobileStrategyCards: document.getElementById("mobileStrategyCards"),
   analysisGeneratedAt: document.getElementById("analysisGeneratedAt"),
   biasValue: document.getElementById("biasValue"),
   noTradeReason: document.getElementById("noTradeReason"),
+  mobileBiasValue: document.getElementById("mobileBiasValue"),
+  mobileNoTradeReason: document.getElementById("mobileNoTradeReason"),
   riskValue: document.getElementById("riskValue"),
   timeframeValue: document.getElementById("timeframeValue"),
   coverageValue: document.getElementById("coverageValue"),
@@ -133,6 +144,11 @@ const elements = {
   chartSection: document.getElementById("chartSection"),
   tradingviewChartFrame: document.getElementById("tradingviewChartFrame"),
   chartSymbolBadge: document.getElementById("chartSymbolBadge"),
+  chartCompareForm: document.getElementById("chartCompareForm"),
+  chartCompareInput: document.getElementById("chartCompareInput"),
+  chartCompareSubmit: document.getElementById("chartCompareSubmit"),
+  chartCompareClear: document.getElementById("chartCompareClear"),
+  chartCompareLegend: document.getElementById("chartCompareLegend"),
   tradingviewChart: document.getElementById("tradingviewChart"),
   chartInteractionGuard: document.getElementById("chartInteractionGuard"),
   companyLogo: document.getElementById("companyLogo"),
@@ -140,6 +156,9 @@ const elements = {
   companyExchange: document.getElementById("companyExchange"),
   companyDetails: document.getElementById("companyDetails"),
   companySection: document.getElementById("companySection"),
+  learningSection: document.getElementById("learningSection"),
+  learningMeta: document.getElementById("learningMeta"),
+  learningList: document.getElementById("learningList"),
   mobileQuickActions: document.getElementById("mobileQuickActions"),
   mobileFavoriteButton: document.getElementById("mobileFavoriteButton"),
   mobileAlertButton: document.getElementById("mobileAlertButton"),
@@ -216,6 +235,27 @@ function percent(value) {
   return `${numeric >= 0 ? "+" : ""}${numeric.toFixed(2)}%`;
 }
 
+function ratioPercent(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return "--";
+  }
+  return `${Math.round(numeric * 100)}%`;
+}
+
+function signedCurrency(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return "--";
+  }
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+    signDisplay: "always",
+  }).format(numeric);
+}
+
 function sentenceCase(value) {
   if (!value) {
     return "--";
@@ -225,6 +265,30 @@ function sentenceCase(value) {
 
 function titleCase(value) {
   return sentenceCase(value).replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function toIsoDate(value) {
+  return String(value || "").slice(0, 10);
+}
+
+function formatChartDateLabel(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "--";
+  }
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(date);
 }
 
 function isMobileViewport() {
@@ -239,7 +303,7 @@ function setConfidenceBar(confidence, quality = "") {
   if (!elements.confidenceBarFill) {
     return;
   }
-  const numeric = Math.max(0, Math.min(100, Number(confidence || 0)));
+  const numeric = normalizeConfidencePercent(confidence);
   const qualityTone =
     quality === "FULL"
       ? "confidence-fill-full"
@@ -252,33 +316,39 @@ function setConfidenceBar(confidence, quality = "") {
 
 function biasLabel(analysis) {
   if (!analysis || analysis.no_data) {
-    return "neutral setup";
+    return "balanced signal";
   }
   const score = Number(analysis.score || 0);
   const strategy = analysis.strategy || state.selectedStrategy;
   const strongThreshold = strategy === "simple" ? 3 : 55;
   const weakThreshold = strategy === "simple" ? 1 : 0;
   if (score >= strongThreshold) {
-    return "strong bullish bias";
+    return "strong bullish signal";
   }
   if (score > weakThreshold) {
-    return "weak bullish bias";
+    return "light bullish signal";
   }
   if (score <= -strongThreshold) {
-    return "strong bearish bias";
+    return "strong bearish signal";
   }
   if (score < -weakThreshold) {
-    return "weak bearish bias";
+    return "light bearish signal";
   }
-  return "neutral setup";
+  return "balanced signal";
+}
+
+function normalizeConfidencePercent(confidence) {
+  const raw = Number(confidence || 0);
+  if (!Number.isFinite(raw)) {
+    return 0;
+  }
+  const normalized = raw <= 1 ? raw * 100 : raw;
+  return Math.max(0, Math.min(100, normalized));
 }
 
 function recommendationLabel(analysis) {
   if (!analysis || analysis.no_data) {
     return "NO DATA";
-  }
-  if (analysis.no_trade) {
-    return "NO TRADE";
   }
   return analysis.recommendation || "HOLD";
 }
@@ -302,6 +372,42 @@ function recommendationPalette(label) {
   };
 }
 
+function recommendationIcon(label) {
+  if (label === "BUY") {
+    return "▲";
+  }
+  if (label === "SELL") {
+    return "▼";
+  }
+  if (label === "NO DATA") {
+    return "⊘";
+  }
+  return "●";
+}
+
+function trimDecisionText(text, maxLength = 120) {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  if (!clean) {
+    return "No summary available.";
+  }
+  if (clean.length <= maxLength) {
+    return clean;
+  }
+  const clipped = clean.slice(0, maxLength);
+  const breakpoint = clipped.lastIndexOf(" ");
+  const safe = breakpoint > 72 ? clipped.slice(0, breakpoint) : clipped;
+  return `${safe.trim()}...`;
+}
+
+function hasMixedSignals(analysis) {
+  if (!analysis || analysis.no_data) {
+    return false;
+  }
+  const warnings = Array.isArray(analysis.warnings) ? analysis.warnings.join(" ") : "";
+  const combined = `${analysis.reason || ""} ${analysis.summary || ""} ${analysis.no_trade_reason || ""} ${warnings}`;
+  return /mixed|conflict|unclear|not clean/i.test(combined);
+}
+
 function toneClassForRisk(risk) {
   if (risk === "LOW") {
     return "tone-buy";
@@ -313,7 +419,7 @@ function toneClassForRisk(risk) {
 }
 
 function confidenceToneClass(confidence) {
-  const numeric = Number(confidence || 0);
+  const numeric = normalizeConfidencePercent(confidence);
   if (numeric >= 75) {
     return "tone-buy";
   }
@@ -330,7 +436,13 @@ function confidenceHint(analysis) {
   if (!analysis || analysis.no_data || analysis.confidence === null || analysis.confidence === undefined) {
     return "Waiting for signal strength";
   }
-  const confidence = Number(analysis.confidence || 0);
+  if (analysis.signal_quality === "PARTIAL") {
+    return hasMixedSignals(analysis) ? "Partial / mixed confirmation" : "Partial confirmation";
+  }
+  const confidence = normalizeConfidencePercent(analysis.confidence);
+  if (analysis.no_trade) {
+    return "Low confidence / no trade zone";
+  }
   if (confidence >= 75) {
     return "Strong signal alignment";
   }
@@ -405,6 +517,69 @@ function sizeBucket(percentValue) {
   return `Large · ${numeric.toFixed(1)}%`;
 }
 
+function learningMetricTone(value, options = {}) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return "text-slate-200";
+  }
+  if (options.invert) {
+    if (numeric <= 0) {
+      return "text-slate-200";
+    }
+    return "text-rose-300";
+  }
+  if (numeric > 0) {
+    return "text-emerald-300";
+  }
+  if (numeric < 0) {
+    return "text-rose-300";
+  }
+  return "text-slate-200";
+}
+
+function learningStatus(profile) {
+  if (!profile) {
+    return {
+      label: "Waiting for stats",
+      tone: "text-slate-400",
+      badge: "border-white/10 bg-white/5 text-slate-300",
+    };
+  }
+  if (profile.eligible) {
+    return {
+      label: "Learning active",
+      tone: "text-emerald-300",
+      badge: "border-emerald-400/20 bg-emerald-500/10 text-emerald-200",
+    };
+  }
+  if (profile.trade_count > 0) {
+    return {
+      label: `${profile.trade_count}/${profile.min_trades_required} trades`,
+      tone: "text-amber-300",
+      badge: "border-amber-400/20 bg-amber-500/10 text-amber-200",
+    };
+  }
+  return {
+    label: "No trade history yet",
+    tone: "text-slate-400",
+    badge: "border-white/10 bg-white/5 text-slate-300",
+  };
+}
+
+function emptyLearningResponse() {
+  return {
+    version: "performance-learning-v1",
+    strategies: [],
+  };
+}
+
+function sortLearningStrategies(strategies) {
+  const order = Object.keys(STRATEGY_LABELS);
+  return [...(Array.isArray(strategies) ? strategies : [])].sort(
+    (left, right) => order.indexOf(left.strategy) - order.indexOf(right.strategy),
+  );
+}
+
 function setBackendStatus(message, tone = "loading") {
   const palette = {
     loading: "status-loading",
@@ -430,10 +605,12 @@ function hideSearchSuggestions() {
   elements.searchSuggestions.classList.add("hidden");
   elements.searchSuggestions.innerHTML = "";
   state.searchResults = [];
+  state.searchResultsQuery = "";
 }
 
 function renderSearchSuggestions(results, query) {
   state.searchResults = results;
+  state.searchResultsQuery = query.trim().toLowerCase();
 
   if (!query.trim()) {
     hideSearchSuggestions();
@@ -522,7 +699,7 @@ async function resolveSearchSelection(query) {
     return trimmed.toUpperCase();
   }
 
-  if (state.searchResults.length) {
+  if (state.searchResults.length && state.searchResultsQuery === trimmed.toLowerCase()) {
     return state.searchResults[0].symbol;
   }
 
@@ -535,17 +712,47 @@ async function resolveSearchSelection(query) {
 function renderAnalysisLoading(symbol) {
   state.latestAnalysis = null;
   elements.recommendationCard.className = "rounded-[28px] border border-white/10 bg-slate-950/70 p-5";
-  elements.recommendationValue.className = "text-5xl font-black tracking-[-0.05em] text-white";
+  elements.recommendationValue.className = "text-5xl font-black tracking-[-0.06em] text-white xl:text-6xl";
+  elements.recommendationIcon.className = "signal-icon tone-muted";
+  elements.recommendationIcon.textContent = "◌";
   elements.recommendationValue.textContent = "LOADING";
+  elements.signalQualityBadge.hidden = true;
+  elements.conflictBadge.hidden = true;
   elements.confidenceValue.className = "mt-2 text-2xl font-semibold text-white";
   elements.confidenceValue.textContent = "--";
   setConfidenceBar(0, "NO_DATA");
   elements.confidenceHint.textContent = "Reading market context";
-  elements.analysisSummary.textContent = `Building ${STRATEGY_LABELS[state.selectedStrategy]} analysis for ${symbol}...`;
+  elements.analysisSummary.textContent = trimDecisionText(
+    `Building ${STRATEGY_LABELS[state.selectedStrategy]} analysis for ${symbol}...`,
+    110,
+  );
   elements.selectedStrategyBadge.textContent = STRATEGY_LABELS[state.selectedStrategy];
   elements.analysisGeneratedAt.textContent = "Running analysis";
   elements.biasValue.textContent = "neutral setup";
   elements.noTradeReason.textContent = "Analysis is loading.";
+  if (elements.mobileConfidenceValue) {
+    elements.mobileConfidenceValue.className = "mt-2 text-2xl font-semibold text-white";
+    elements.mobileConfidenceValue.textContent = "--";
+  }
+  if (elements.mobileConfidenceBarFill) {
+    elements.mobileConfidenceBarFill.className = "h-full rounded-full transition-[width] duration-300 ease-out confidence-fill-no-data";
+    elements.mobileConfidenceBarFill.style.width = "0%";
+  }
+  if (elements.mobileConfidenceHint) {
+    elements.mobileConfidenceHint.textContent = "Reading market context";
+  }
+  if (elements.mobileAnalysisSummary) {
+    elements.mobileAnalysisSummary.textContent = trimDecisionText(
+      `Building ${STRATEGY_LABELS[state.selectedStrategy]} analysis for ${symbol}...`,
+      110,
+    );
+  }
+  if (elements.mobileBiasValue) {
+    elements.mobileBiasValue.textContent = "Balanced signal";
+  }
+  if (elements.mobileNoTradeReason) {
+    elements.mobileNoTradeReason.textContent = "Analysis is loading.";
+  }
   elements.riskValue.className = "mt-3 text-2xl font-semibold text-white";
   elements.riskValue.textContent = "--";
   elements.timeframeValue.textContent = "--";
@@ -577,6 +784,13 @@ function renderAnalysisLoading(symbol) {
     renderSkeleton(elements.exitReason, "h-4 w-28");
     renderSkeleton(elements.positionSizeReason, "h-4 w-24");
     renderSkeleton(elements.stopLossReason, "h-4 w-32");
+    renderSkeleton(elements.mobileConfidenceValue, "h-7 w-20");
+    renderSkeleton(elements.mobileConfidenceHint, "h-4 w-28");
+    elements.mobileAnalysisSummary.innerHTML = `
+      <span class="mobile-skeleton h-4 w-full"></span>
+      <span class="mobile-skeleton mt-2 h-4 w-10/12"></span>
+    `;
+    renderSkeleton(elements.mobileNoTradeReason, "h-4 w-full");
     elements.warningsList.innerHTML = `
       <span class="mobile-skeleton h-8 w-24 rounded-full"></span>
       <span class="mobile-skeleton h-8 w-28 rounded-full"></span>
@@ -687,6 +901,170 @@ function queueAlertsRetry(forceRefresh = false, delayMs = 2500) {
   }, delayMs);
 }
 
+function renderLearningStatsLoading() {
+  if (!elements.learningList || !elements.learningMeta) {
+    return;
+  }
+  elements.learningMeta.textContent = "Loading strategy stats";
+  elements.learningMeta.className =
+    "rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400";
+  elements.learningList.innerHTML = Array.from({ length: 3 })
+    .map(
+      () => `
+        <article class="animate-pulse rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+          <div class="h-4 w-28 rounded bg-white/10"></div>
+          <div class="mt-3 h-3 w-20 rounded bg-white/10"></div>
+          <div class="mt-4 grid grid-cols-2 gap-3">
+            <div class="h-14 rounded-2xl bg-white/10"></div>
+            <div class="h-14 rounded-2xl bg-white/10"></div>
+            <div class="h-14 rounded-2xl bg-white/10"></div>
+            <div class="h-14 rounded-2xl bg-white/10"></div>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderLearningStatsError(message) {
+  if (!elements.learningList || !elements.learningMeta) {
+    return;
+  }
+  elements.learningMeta.textContent = "Learning stats unavailable";
+  elements.learningMeta.className =
+    "rounded-full border border-amber-400/20 bg-amber-500/10 px-4 py-2 text-xs font-medium text-amber-200";
+  elements.learningList.innerHTML = `
+    <article class="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
+      <p class="text-sm font-semibold text-white">Learning layer unavailable</p>
+      <p class="mt-2 text-sm leading-6 text-slate-300">${message || "Performance memory could not load right now."}</p>
+    </article>
+  `;
+}
+
+function renderLearningStats(response = emptyLearningResponse()) {
+  if (!elements.learningList || !elements.learningMeta) {
+    return;
+  }
+  state.learningStats = response;
+  writeCachedJson(STORAGE_KEYS.cachedLearningStats, response);
+  const strategies = sortLearningStrategies(response.strategies);
+  const selectedProfile =
+    strategies.find((item) => item.strategy === state.selectedStrategy) || null;
+  const selectedStatus = learningStatus(selectedProfile);
+  elements.learningMeta.textContent = selectedProfile
+    ? `${STRATEGY_LABELS[state.selectedStrategy]} · ${selectedStatus.label}`
+    : "No strategy stats";
+  elements.learningMeta.className = `rounded-full border px-4 py-2 text-xs font-medium ${
+    selectedProfile?.eligible
+      ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-200"
+      : selectedProfile
+        ? "border-amber-400/20 bg-amber-500/10 text-amber-200"
+        : "border-white/10 bg-slate-950/60 text-slate-400"
+  }`;
+
+  if (!strategies.length) {
+    elements.learningList.innerHTML = `
+      <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+        <p class="text-sm font-semibold text-white">No closed trades yet</p>
+        <p class="mt-2 text-sm leading-6 text-slate-400">
+          Once trades are closed, win rate, average P/L and drawdown will appear here.
+        </p>
+      </article>
+    `;
+    return;
+  }
+
+  elements.learningList.innerHTML = strategies
+    .map((profile) => {
+      const active = profile.strategy === state.selectedStrategy;
+      const status = learningStatus(profile);
+      const avgPnlTone = learningMetricTone(profile.average_profit_loss);
+      const drawdownTone = learningMetricTone(profile.drawdown, { invert: true });
+      const winRateTone =
+        profile.win_rate >= 0.55
+          ? "text-emerald-300"
+          : profile.win_rate > 0 && profile.win_rate <= 0.45
+            ? "text-rose-300"
+            : "text-slate-200";
+      return `
+        <article class="rounded-2xl border p-4 ${
+          active
+            ? "border-cyan-300/30 bg-cyan-300/10 shadow-lg shadow-cyan-500/10"
+            : "border-white/10 bg-slate-950/60"
+        }">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <p class="text-sm font-semibold text-white">${STRATEGY_LABELS[profile.strategy] || titleCase(profile.strategy)}</p>
+                ${
+                  active
+                    ? '<span class="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-200">Selected</span>'
+                    : ""
+                }
+              </div>
+              <p class="mt-2 text-xs ${status.tone}">${status.label}</p>
+            </div>
+            <span class="rounded-full border px-3 py-2 text-[11px] font-semibold ${status.badge}">
+              ${profile.trade_count} trades
+            </span>
+          </div>
+
+          <div class="mt-4 grid grid-cols-2 gap-3">
+            <div class="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">Win rate</p>
+              <p class="mt-2 text-lg font-semibold ${winRateTone}">${ratioPercent(profile.win_rate)}</p>
+            </div>
+            <div class="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">Avg P/L</p>
+              <p class="mt-2 text-lg font-semibold ${avgPnlTone}">${signedCurrency(profile.average_profit_loss)}</p>
+            </div>
+            <div class="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">Drawdown</p>
+              <p class="mt-2 text-lg font-semibold ${drawdownTone}">${currency(profile.drawdown || 0)}</p>
+            </div>
+            <div class="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">Version</p>
+              <p class="mt-2 text-sm font-semibold text-slate-200">${profile.learning_version || response.version || "--"}</p>
+            </div>
+          </div>
+
+          <p class="mt-4 text-sm leading-6 text-slate-400">${profile.note || "No learning note available."}</p>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function mergeLearningInsight(analysis) {
+  if (!analysis?.learning) {
+    return;
+  }
+  const current = state.learningStats || emptyLearningResponse();
+  const strategies = sortLearningStrategies(current.strategies);
+  const nextProfile = {
+    strategy: analysis.strategy || state.selectedStrategy,
+    learning_version: analysis.learning.version,
+    trade_count: analysis.learning.trade_count,
+    eligible: analysis.learning.active,
+    min_trades_required: analysis.learning.min_trades_required,
+    win_rate: analysis.learning.win_rate,
+    average_profit_loss: analysis.learning.average_profit_loss,
+    average_profit: analysis.learning.average_profit,
+    average_loss: analysis.learning.average_loss,
+    drawdown: analysis.learning.drawdown,
+    confidence_bias: analysis.learning.confidence_bias,
+    directional_bias: analysis.learning.directional_bias,
+    weak_signal_multiplier: analysis.learning.weak_signal_multiplier,
+    note: analysis.learning.note,
+  };
+  const nextStrategies = strategies.filter((item) => item.strategy !== nextProfile.strategy);
+  nextStrategies.push(nextProfile);
+  renderLearningStats({
+    version: analysis.learning.version,
+    strategies: sortLearningStrategies(nextStrategies),
+  });
+}
+
 function renderAnalysis(analysis) {
   state.latestAnalysis = analysis;
   if (analysis?.symbol) {
@@ -700,21 +1078,46 @@ function renderAnalysis(analysis) {
   if (analysis && !analysis.no_data) {
     writeCachedJson(STORAGE_KEYS.cachedAnalysis, analysis);
   }
+  mergeLearningInsight(analysis);
 
   if (!analysis || analysis.no_data) {
     const reason = analysis?.no_data_reason || "No live market data available.";
     const noDataQuality = dataQualityInfo(analysis);
     elements.recommendationCard.className = "rounded-[28px] border border-rose-400/25 bg-rose-500/10 p-5";
-    elements.recommendationValue.className = "text-5xl font-black tracking-[-0.05em] text-rose-200";
+    elements.recommendationIcon.className = "signal-icon tone-sell";
+    elements.recommendationIcon.textContent = recommendationIcon("NO DATA");
+    elements.recommendationValue.className = "text-5xl font-black tracking-[-0.06em] text-rose-200 xl:text-6xl";
     elements.recommendationValue.textContent = "NO DATA";
+    elements.signalQualityBadge.hidden = true;
+    elements.conflictBadge.hidden = true;
     elements.confidenceValue.className = "mt-2 text-2xl font-semibold text-slate-200";
     elements.confidenceValue.textContent = "--";
     setConfidenceBar(0, "NO_DATA");
     elements.confidenceHint.textContent = "No confidence without data";
-    elements.analysisSummary.textContent = reason;
+    elements.analysisSummary.textContent = trimDecisionText(reason, 110);
     elements.analysisGeneratedAt.textContent = "No analysis";
     elements.biasValue.textContent = "neutral setup";
     elements.noTradeReason.textContent = reason;
+    if (elements.mobileConfidenceValue) {
+      elements.mobileConfidenceValue.className = "mt-2 text-2xl font-semibold text-slate-200";
+      elements.mobileConfidenceValue.textContent = "--";
+    }
+    if (elements.mobileConfidenceBarFill) {
+      elements.mobileConfidenceBarFill.className = "h-full rounded-full transition-[width] duration-300 ease-out confidence-fill-no-data";
+      elements.mobileConfidenceBarFill.style.width = "0%";
+    }
+    if (elements.mobileConfidenceHint) {
+      elements.mobileConfidenceHint.textContent = "No confidence without data";
+    }
+    if (elements.mobileAnalysisSummary) {
+      elements.mobileAnalysisSummary.textContent = trimDecisionText(reason, 110);
+    }
+    if (elements.mobileBiasValue) {
+      elements.mobileBiasValue.textContent = "Balanced signal";
+    }
+    if (elements.mobileNoTradeReason) {
+      elements.mobileNoTradeReason.textContent = reason;
+    }
     elements.riskValue.className = "mt-3 text-2xl font-semibold text-slate-200";
     elements.riskValue.textContent = "--";
     elements.timeframeValue.textContent = "--";
@@ -739,21 +1142,57 @@ function renderAnalysis(analysis) {
   const label = recommendationLabel(analysis);
   const palette = recommendationPalette(label);
   const warnings = (analysis.warnings || []).slice(0, 3);
+  const confidencePercent = normalizeConfidencePercent(analysis.confidence);
+  const noTradeHint = analysis.no_trade_reason || "Low confidence / no trade zone";
+  const mixedSignals = hasMixedSignals(analysis);
 
-  elements.recommendationCard.className = palette.card;
-  elements.recommendationValue.className = `text-5xl font-black tracking-[-0.05em] ${palette.text}`;
+  elements.recommendationCard.className = `${palette.card}${analysis.signal_quality === "PARTIAL" ? " signal-partial-card" : ""}`;
+  elements.recommendationIcon.className = `signal-icon ${palette.text}`;
+  elements.recommendationIcon.textContent = recommendationIcon(label);
+  elements.recommendationValue.className = `text-5xl font-black tracking-[-0.06em] ${palette.text} xl:text-6xl`;
   elements.recommendationValue.textContent = label;
+  elements.signalQualityBadge.hidden = analysis.signal_quality !== "PARTIAL";
+  elements.conflictBadge.hidden = !mixedSignals;
   elements.confidenceValue.className = `mt-2 text-2xl font-semibold ${confidenceToneClass(analysis.confidence)}`;
-  elements.confidenceValue.textContent = `${Math.round(Number(analysis.confidence || 0))}%`;
+  elements.confidenceValue.textContent = `${Math.round(confidencePercent)}%`;
   setConfidenceBar(analysis.confidence, analysis.data_quality);
   elements.confidenceHint.textContent = confidenceHint(analysis);
-  elements.analysisSummary.textContent = analysis.reason || analysis.summary || "No summary available.";
+  elements.analysisSummary.textContent = trimDecisionText(
+    analysis.reason || analysis.summary || "No summary available.",
+    120,
+  );
   elements.analysisGeneratedAt.textContent = analysis.generated_at
     ? `Updated ${new Date(analysis.generated_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
     : "Analysis ready";
   elements.biasValue.textContent = biasLabel(analysis);
-  elements.noTradeReason.textContent =
-    analysis.reason || analysis.no_trade_reason || analysis.summary || "Backend analysis loaded.";
+  elements.noTradeReason.textContent = analysis.no_trade
+    ? trimDecisionText(noTradeHint, 96)
+    : mixedSignals
+      ? "Mixed signals. Wait for clearer alignment."
+      : "Setup is tradable with current confirmation.";
+  if (elements.mobileConfidenceValue) {
+    elements.mobileConfidenceValue.className = `mt-2 text-2xl font-semibold ${confidenceToneClass(analysis.confidence)}`;
+    elements.mobileConfidenceValue.textContent = `${Math.round(confidencePercent)}%`;
+  }
+  if (elements.mobileConfidenceBarFill) {
+    elements.mobileConfidenceBarFill.className = elements.confidenceBarFill.className;
+    elements.mobileConfidenceBarFill.style.width = elements.confidenceBarFill.style.width;
+  }
+  if (elements.mobileConfidenceHint) {
+    elements.mobileConfidenceHint.textContent = confidenceHint(analysis);
+  }
+  if (elements.mobileAnalysisSummary) {
+    elements.mobileAnalysisSummary.textContent = trimDecisionText(
+      analysis.reason || analysis.summary || "No summary available.",
+      120,
+    );
+  }
+  if (elements.mobileBiasValue) {
+    elements.mobileBiasValue.textContent = biasLabel(analysis);
+  }
+  if (elements.mobileNoTradeReason) {
+    elements.mobileNoTradeReason.textContent = elements.noTradeReason.textContent;
+  }
   elements.riskValue.className = `mt-3 text-2xl font-semibold ${toneClassForRisk(analysis.risk_level)}`;
   elements.riskValue.textContent = analysis.risk_level || "--";
   elements.timeframeValue.textContent = titleCase(analysis.timeframe);
@@ -826,9 +1265,11 @@ function renderMobileStrategyCards() {
       const analysis = snapshots[key];
       const current = key === state.selectedStrategy;
       const recommendation = recommendationLabel(analysis || { no_data: true });
-      const confidence = analysis?.no_data ? "--" : `${Math.round(Number(analysis?.confidence || 0))}%`;
+      const confidence = analysis?.no_data
+        ? "--"
+        : `${Math.round(normalizeConfidencePercent(analysis?.confidence || 0))}%`;
       const reason =
-        analysis?.reason ||
+        (analysis?.no_trade ? analysis.no_trade_reason : analysis?.reason) ||
         (analysis?.no_data ? analysis.no_data_reason : `Loading ${label} analysis...`);
       const tone = strategyToneClasses(recommendation);
       const active = current ? "ring-1 ring-teal-400/35 shadow-lg shadow-teal-500/10" : "";
@@ -1185,6 +1626,7 @@ function hydrateDashboardFromCache() {
   const cachedOverview = readCachedJson(STORAGE_KEYS.cachedOverview);
   const cachedAnalysis = readCachedJson(STORAGE_KEYS.cachedAnalysis);
   const cachedAlerts = readCachedJson(STORAGE_KEYS.cachedAlerts);
+  const cachedLearningStats = readCachedJson(STORAGE_KEYS.cachedLearningStats);
   state.favoriteSymbols = readFavoriteSymbols();
 
   if (Array.isArray(cachedWatchlist) && cachedWatchlist.length) {
@@ -1208,6 +1650,41 @@ function hydrateDashboardFromCache() {
 
   if (Array.isArray(cachedAlerts) && cachedAlerts.length) {
     renderAlerts(cachedAlerts);
+  }
+
+  if (cachedLearningStats) {
+    renderLearningStats(cachedLearningStats);
+  }
+}
+
+async function loadLearningStats(forceRefresh = false) {
+  const cachedLearningStats = readCachedJson(STORAGE_KEYS.cachedLearningStats);
+  if (forceRefresh || !cachedLearningStats) {
+    renderLearningStatsLoading();
+  } else {
+    renderLearningStats(cachedLearningStats);
+    elements.learningMeta.textContent = "Refreshing strategy stats";
+    elements.learningMeta.className =
+      "rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400";
+  }
+
+  try {
+    const response = await api("/api/analysis/performance", {
+      timeoutMs: 18000,
+      retryCount: 1,
+    });
+    renderLearningStats(response);
+    return response;
+  } catch (error) {
+    if (cachedLearningStats) {
+      renderLearningStats(cachedLearningStats);
+      elements.learningMeta.textContent = "Showing cached stats";
+      elements.learningMeta.className =
+        "rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400";
+      return cachedLearningStats;
+    }
+    renderLearningStatsError(error.message || "Performance memory could not load right now.");
+    throw error;
   }
 }
 
@@ -1493,31 +1970,196 @@ function renderCompanyDetails(overview) {
     .join("");
 }
 
+function normalizeTickerSymbol(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function updateChartCompareUi() {
+  const primary = normalizeTickerSymbol(state.selectedSymbol);
+  const compare = normalizeTickerSymbol(state.compareSymbol);
+  elements.chartSymbolBadge.textContent = compare ? `${primary} VS ${compare}` : primary;
+  if (elements.chartCompareInput && document.activeElement !== elements.chartCompareInput) {
+    elements.chartCompareInput.value = compare;
+  }
+  elements.chartCompareClear?.classList.toggle("hidden", !compare);
+  if (!elements.chartCompareLegend) {
+    return;
+  }
+  if (!compare) {
+    elements.chartCompareLegend.classList.add("hidden");
+    elements.chartCompareLegend.innerHTML = "";
+    return;
+  }
+  elements.chartCompareLegend.innerHTML = `
+    <span class="chart-compare-note">Normalized to 100%</span>
+    <span class="chart-compare-pill">
+      <span class="chart-compare-swatch" style="background:#22c55e"></span>
+      ${escapeHtml(primary)}
+    </span>
+    <span class="chart-compare-pill">
+      <span class="chart-compare-swatch" style="background:#ef4444"></span>
+      ${escapeHtml(compare)}
+    </span>
+  `;
+  elements.chartCompareLegend.classList.remove("hidden");
+}
+
+function setCompareSymbol(symbol = "") {
+  const normalized = normalizeTickerSymbol(symbol);
+  state.compareSymbol = normalized && normalized !== normalizeTickerSymbol(state.selectedSymbol) ? normalized : "";
+  if (state.compareSymbol) {
+    window.sessionStorage.setItem(STORAGE_KEYS.chartCompareSymbol, state.compareSymbol);
+  } else {
+    window.sessionStorage.removeItem(STORAGE_KEYS.chartCompareSymbol);
+  }
+  updateChartCompareUi();
+}
+
+async function fetchHistorySeries(symbol, rangeName = "6mo") {
+  const history = await api(`/api/stocks/${encodeURIComponent(symbol)}/history?range=${encodeURIComponent(rangeName)}`, {
+    timeoutMs: 18000,
+    retryCount: 1,
+  });
+  return Array.isArray(history) ? history : [];
+}
+
+function buildNormalizedComparisonSeries(primaryHistory, compareHistory) {
+  const primaryMap = new Map(
+    primaryHistory
+      .filter((point) => Number.isFinite(Number(point?.close)))
+      .map((point) => [toIsoDate(point.date), Number(point.close)]),
+  );
+  const compareMap = new Map(
+    compareHistory
+      .filter((point) => Number.isFinite(Number(point?.close)))
+      .map((point) => [toIsoDate(point.date), Number(point.close)]),
+  );
+  const sharedDates = [...primaryMap.keys()]
+    .filter((date) => compareMap.has(date))
+    .sort();
+
+  if (sharedDates.length < 2) {
+    return [];
+  }
+
+  const primaryStart = primaryMap.get(sharedDates[0]);
+  const compareStart = compareMap.get(sharedDates[0]);
+  if (!Number.isFinite(primaryStart) || !Number.isFinite(compareStart) || primaryStart <= 0 || compareStart <= 0) {
+    return [];
+  }
+
+  return sharedDates.map((date) => ({
+    date,
+    primary: (primaryMap.get(date) / primaryStart) * 100,
+    compare: (compareMap.get(date) / compareStart) * 100,
+  }));
+}
+
+function buildSvgLinePath(points, getY, chartWidth, chartHeight, padding) {
+  return points
+    .map((point, index) => {
+      const x = padding.left + (index / Math.max(points.length - 1, 1)) * chartWidth;
+      const y = getY(point);
+      return `${index === 0 ? "M" : "L"}${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+}
+
+function renderComparisonChartMarkup(primarySymbol, compareSymbol, points) {
+  const width = 1200;
+  const height = 540;
+  const padding = { top: 24, right: 80, bottom: 42, left: 56 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  const values = points.flatMap((point) => [point.primary, point.compare, 100]);
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+  const range = maxValue - minValue || 1;
+  const paddedMin = minValue - range * 0.12;
+  const paddedMax = maxValue + range * 0.12;
+  const getY = (value) =>
+    padding.top + ((paddedMax - value) / Math.max(paddedMax - paddedMin, 1)) * chartHeight;
+
+  const gridValues = Array.from({ length: 4 }, (_, index) => paddedMin + ((paddedMax - paddedMin) / 3) * index);
+  const baselineY = getY(100);
+  const primaryPath = buildSvgLinePath(points, (point) => getY(point.primary), chartWidth, chartHeight, padding);
+  const comparePath = buildSvgLinePath(points, (point) => getY(point.compare), chartWidth, chartHeight, padding);
+  const firstPoint = points[0];
+  const middlePoint = points[Math.floor(points.length / 2)];
+  const lastPoint = points[points.length - 1];
+  const primaryLast = lastPoint.primary;
+  const compareLast = lastPoint.compare;
+
+  const endX = padding.left + chartWidth;
+  const primaryEndY = getY(primaryLast);
+  const compareEndY = getY(compareLast);
+
+  return `
+    <div class="comparison-chart-shell">
+      <div class="comparison-chart-meta">
+        <p class="comparison-chart-title">${escapeHtml(primarySymbol)} vs ${escapeHtml(compareSymbol)}</p>
+        <p class="comparison-chart-range">6M normalized performance comparison</p>
+      </div>
+      <svg class="comparison-chart-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="${escapeHtml(primarySymbol)} and ${escapeHtml(compareSymbol)} comparison chart">
+        ${gridValues
+          .map((value) => {
+            const y = getY(value);
+            return `
+              <line class="comparison-chart-grid" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}"></line>
+              <text class="comparison-chart-axis" x="${padding.left - 10}" y="${y + 4}" text-anchor="end">${value.toFixed(1)}%</text>
+            `;
+          })
+          .join("")}
+        <line class="comparison-chart-baseline" x1="${padding.left}" y1="${baselineY}" x2="${width - padding.right}" y2="${baselineY}"></line>
+        <path class="comparison-chart-line-primary" d="${primaryPath}"></path>
+        <path class="comparison-chart-line-secondary" d="${comparePath}"></path>
+        <text class="comparison-chart-axis" x="${padding.left}" y="${height - 10}" text-anchor="start">${formatChartDateLabel(firstPoint.date)}</text>
+        <text class="comparison-chart-axis" x="${padding.left + chartWidth / 2}" y="${height - 10}" text-anchor="middle">${formatChartDateLabel(middlePoint.date)}</text>
+        <text class="comparison-chart-axis" x="${padding.left + chartWidth}" y="${height - 10}" text-anchor="end">${formatChartDateLabel(lastPoint.date)}</text>
+        <text class="comparison-chart-end-label" x="${endX + 8}" y="${primaryEndY + 4}" text-anchor="start">${escapeHtml(primarySymbol)} ${primaryLast.toFixed(1)}%</text>
+        <text class="comparison-chart-end-label" x="${endX + 8}" y="${compareEndY + 4}" text-anchor="start">${escapeHtml(compareSymbol)} ${compareLast.toFixed(1)}%</text>
+      </svg>
+    </div>
+  `;
+}
+
 function queueTradingViewRender(symbol, exchange = "") {
   const requestId = ++state.chartRequestId;
   window.clearTimeout(state.chartRenderId);
   state.pendingChart = { symbol, exchange, requestId };
-  if (isMobileViewport() && !state.chartInView) {
-    showTradingViewLoader("Chart loads when you scroll.");
+  if (!canRenderTradingViewNow()) {
+    showTradingViewLoader(getDeferredChartMessage());
     return;
   }
-  const hasRenderedChart = Boolean(elements.tradingviewChart.querySelector("iframe"));
-  if (!hasRenderedChart || state.tvWidgetSymbol !== toTradingViewSymbol(symbol, exchange)) {
+  const compareKey = state.compareSymbol
+    ? `compare:${normalizeTickerSymbol(symbol)}:${normalizeTickerSymbol(state.compareSymbol)}`
+    : toTradingViewSymbol(symbol, exchange);
+  const hasRenderedChart = Boolean(
+    elements.tradingviewChart.querySelector("iframe") ||
+      elements.tradingviewChart.querySelector(".comparison-chart-shell"),
+  );
+  if (!hasRenderedChart || state.tvWidgetSymbol !== compareKey) {
     showTradingViewLoader();
   }
   state.chartRenderId = window.setTimeout(() => {
+    if (state.compareSymbol) {
+      renderComparisonChart(symbol, state.compareSymbol, requestId);
+      return;
+    }
     renderTradingView(symbol, exchange, requestId);
   }, 120);
 }
 
 function renderOverview(overview) {
   state.latestOverview = overview;
+  if (normalizeTickerSymbol(state.compareSymbol) === normalizeTickerSymbol(overview.symbol)) {
+    setCompareSymbol("");
+  }
   if (isFavoriteSymbol(overview.symbol) || state.watchlist.some((item) => item.symbol === overview.symbol)) {
     upsertWatchlistItem(buildSidebarItemFromOverview(overview));
   }
   elements.selectedSymbolName.textContent = overview.symbol;
   elements.selectedCompanyName.textContent = overview.name;
-  elements.chartSymbolBadge.textContent = overview.symbol;
   elements.metricPrice.textContent = currency(overview.price);
   elements.metricHigh.textContent = currency(overview.high);
   elements.metricLow.textContent = currency(overview.low);
@@ -1545,6 +2187,7 @@ function renderOverview(overview) {
 
   renderCompanyDetails(overview);
   writeCachedJson(STORAGE_KEYS.cachedOverview, overview);
+  updateChartCompareUi();
   queueTradingViewRender(overview.symbol, overview.exchange);
   syncSelectedFavoriteButton();
   requestAnimationFrame(syncCompanySectionAlignment);
@@ -1553,7 +2196,6 @@ function renderOverview(overview) {
 function renderOverviewFallback(symbol) {
   elements.selectedSymbolName.textContent = symbol;
   elements.selectedCompanyName.textContent = "Live overview unavailable";
-  elements.chartSymbolBadge.textContent = symbol;
   elements.changeBadge.textContent = "--";
   elements.changeBadge.className =
     "inline-flex w-fit rounded-full bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300";
@@ -1573,6 +2215,7 @@ function renderOverviewFallback(symbol) {
     market_capitalization: null,
     share_outstanding: null,
   });
+  updateChartCompareUi();
   queueTradingViewRender(symbol);
   syncSelectedFavoriteButton();
   requestAnimationFrame(syncCompanySectionAlignment);
@@ -1700,6 +2343,14 @@ function syncCompanySectionAlignment() {
   elements.companySection.style.setProperty("--company-align-offset", `${offset}px`);
 }
 
+function renderQueuedChart(symbol, exchange, requestId) {
+  if (state.compareSymbol) {
+    renderComparisonChart(symbol, state.compareSymbol, requestId);
+    return;
+  }
+  renderTradingView(symbol, exchange, requestId);
+}
+
 function initChartObserver() {
   if (!elements.chartSection || !("IntersectionObserver" in window)) {
     state.chartInView = !isMobileViewport();
@@ -1712,32 +2363,114 @@ function initChartObserver() {
     (entries) => {
       const visible = entries.some((entry) => entry.isIntersecting);
       state.chartInView = visible || !isMobileViewport();
-      if (state.chartInView && state.pendingChart) {
+      if (state.pendingChart && canRenderTradingViewNow()) {
         const { symbol, exchange, requestId } = state.pendingChart;
         window.clearTimeout(state.chartRenderId);
         state.chartRenderId = window.setTimeout(() => {
-          renderTradingView(symbol, exchange, requestId);
+          renderQueuedChart(symbol, exchange, requestId);
         }, 80);
+      } else if (state.pendingChart && isMobileViewport()) {
+        showTradingViewLoader(getDeferredChartMessage());
       }
     },
-    { rootMargin: "180px 0px" },
+    { rootMargin: "48px 0px" },
   );
   state.chartObserver.observe(elements.chartSection);
 }
 
+function canRenderTradingViewNow() {
+  return !isMobileViewport() || (state.chartInView && state.mobileChartPrimed);
+}
+
+function getDeferredChartMessage() {
+  if (!isMobileViewport()) {
+    return "Loading TradingView chart...";
+  }
+  if (!state.mobileChartPrimed) {
+    return "Scroll to load chart.";
+  }
+  return "Chart loads when this section comes into view.";
+}
+
+function primeMobileChartLazyLoad() {
+  if (!isMobileViewport()) {
+    state.mobileChartPrimed = true;
+    return;
+  }
+  if (state.mobileChartPrimed || window.scrollY < 24) {
+    return;
+  }
+  state.mobileChartPrimed = true;
+  if (state.pendingChart && state.chartInView) {
+    const { symbol, exchange, requestId } = state.pendingChart;
+    window.clearTimeout(state.chartRenderId);
+    state.chartRenderId = window.setTimeout(() => {
+      renderQueuedChart(symbol, exchange, requestId);
+    }, 80);
+  }
+}
+
 function handleViewportFeatures() {
   state.chartInView = !isMobileViewport();
+  state.mobileChartPrimed = !isMobileViewport() || window.scrollY >= 24;
   setChartInteractionEnabled(false);
   if (isMobileViewport()) {
     initChartObserver();
+    if (state.pendingChart) {
+      showTradingViewLoader(getDeferredChartMessage());
+    }
   } else if (state.pendingChart) {
     const { symbol, exchange, requestId } = state.pendingChart;
     window.clearTimeout(state.chartRenderId);
-    state.chartRenderId = window.setTimeout(() => renderTradingView(symbol, exchange, requestId), 80);
+    state.chartRenderId = window.setTimeout(() => renderQueuedChart(symbol, exchange, requestId), 80);
   }
   syncMobileFavoriteButton();
   renderMobileStrategyCards();
   requestAnimationFrame(syncCompanySectionAlignment);
+}
+
+async function renderComparisonChart(symbol, compareSymbol, requestId = state.chartRequestId) {
+  const primary = normalizeTickerSymbol(symbol);
+  const secondary = normalizeTickerSymbol(compareSymbol);
+  const compareKey = `compare:${primary}:${secondary}`;
+  const hasRenderedChart = Boolean(elements.tradingviewChart.querySelector(".comparison-chart-shell"));
+
+  if (requestId !== state.chartRequestId) {
+    return;
+  }
+
+  if (state.tvWidgetSymbol === compareKey && hasRenderedChart) {
+    return;
+  }
+
+  showTradingViewLoader(`Comparing ${primary} with ${secondary}...`);
+
+  try {
+    const [primaryHistory, compareHistory] = await Promise.all([
+      fetchHistorySeries(primary, "6mo"),
+      fetchHistorySeries(secondary, "6mo"),
+    ]);
+
+    if (requestId !== state.chartRequestId) {
+      return;
+    }
+
+    const points = buildNormalizedComparisonSeries(primaryHistory, compareHistory);
+    state.tvWidgetSymbol = compareKey;
+    elements.tradingviewChart.innerHTML = points.length
+      ? renderComparisonChartMarkup(primary, secondary, points)
+      : `<div class="comparison-chart-empty">Comparison data is unavailable right now. Try another symbol or come back in a moment.</div>`;
+    if (elements.chartInteractionGuard) {
+      elements.chartInteractionGuard.hidden = true;
+    }
+    elements.tradingviewChartFrame?.classList.remove("chart-locked", "chart-interactive");
+    state.chartInteractionEnabled = false;
+  } catch (error) {
+    if (requestId !== state.chartRequestId) {
+      return;
+    }
+    showTradingViewLoader("Comparison chart failed to load.");
+  }
 }
 
 async function renderTradingView(symbol, exchange = "", requestId = state.chartRequestId) {
@@ -1769,7 +2502,7 @@ async function renderTradingView(symbol, exchange = "", requestId = state.chartR
     if (state.chartRetryAttempt <= 2) {
       window.clearTimeout(state.chartRenderId);
       state.chartRenderId = window.setTimeout(() => {
-        renderTradingView(symbol, exchange);
+        renderQueuedChart(symbol, exchange, requestId);
       }, 1200 * state.chartRetryAttempt);
     }
     return;
@@ -1781,6 +2514,9 @@ async function renderTradingView(symbol, exchange = "", requestId = state.chartR
 
   state.chartRetryAttempt = 0;
   state.tvWidgetSymbol = tvSymbol;
+  if (elements.chartInteractionGuard) {
+    elements.chartInteractionGuard.hidden = false;
+  }
   elements.tradingviewChart.innerHTML = "";
   new window.TradingView.widget({
     autosize: true,
@@ -1823,6 +2559,9 @@ async function loadSymbol(symbol, forceRefresh = false) {
   const requestId = ++state.activeRequest;
   const normalized = symbol.trim().toUpperCase();
   persistSelectedSymbol(normalized);
+  if (normalizeTickerSymbol(state.compareSymbol) === normalized) {
+    setCompareSymbol("");
+  }
   state.strategySnapshots[normalized] = {};
   clearError();
   renderWatchlist(state.watchlist);
@@ -1956,6 +2695,7 @@ async function loadStrategySnapshots(symbol, forceRefresh = false) {
 
 async function bootDashboard(forceRefresh = false) {
   clearError();
+  updateChartCompareUi();
   if (!forceRefresh) {
     hydrateDashboardFromCache();
   }
@@ -1970,6 +2710,12 @@ async function bootDashboard(forceRefresh = false) {
       loadWatchlist(forceRefresh),
       loadSymbol(state.selectedSymbol, forceRefresh),
     ]);
+
+    scheduleLowPriorityTask(() => {
+      loadLearningStats(forceRefresh).catch((error) => {
+        console.error("[frontend] learning stats load failed", error);
+      });
+    }, 120);
 
     scheduleLowPriorityTask(() => {
       loadAlerts(forceRefresh).catch((error) => {
@@ -2018,17 +2764,6 @@ function bindAuth() {
     elements.authError.hidden = true;
   });
 
-  const showPrivateAccessHint = () => {
-    elements.authError.textContent = "Public login comes next. For now, use private access code 9988.";
-    elements.authError.hidden = false;
-    elements.authPassword.focus();
-  };
-
-  elements.authGoogleButton?.addEventListener("click", showPrivateAccessHint);
-  elements.authAppleButton?.addEventListener("click", showPrivateAccessHint);
-  elements.authCreateAccountButton?.addEventListener("click", showPrivateAccessHint);
-  elements.authLoginButton?.addEventListener("click", showPrivateAccessHint);
-
   elements.authForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (elements.authPassword.value.trim() !== AUTH_PASSWORD) {
@@ -2054,6 +2789,9 @@ function bindApp() {
     }
     persistSelectedStrategy(nextStrategy);
     renderStrategyButtons();
+    if (state.learningStats) {
+      renderLearningStats(state.learningStats);
+    }
     if (isAuthenticated()) {
       loadAlerts(true).catch((error) => {
         console.error("[frontend] alerts refresh failed", error);
@@ -2253,6 +2991,46 @@ function bindApp() {
     }
   });
 
+  elements.chartCompareForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const query = elements.chartCompareInput?.value.trim() || "";
+    if (!query) {
+      setCompareSymbol("");
+      if (state.latestOverview) {
+        queueTradingViewRender(state.latestOverview.symbol, state.latestOverview.exchange);
+      } else {
+        queueTradingViewRender(state.selectedSymbol);
+      }
+      return;
+    }
+    try {
+      const symbol = await resolveSearchSelection(query);
+      if (!symbol) {
+        showError(`No stock found for "${query}".`);
+        return;
+      }
+      if (normalizeTickerSymbol(symbol) === normalizeTickerSymbol(state.selectedSymbol)) {
+        showError("Choose a different symbol for comparison.");
+        return;
+      }
+      clearError();
+      setCompareSymbol(symbol);
+      const baseSymbol = state.latestOverview?.symbol || state.selectedSymbol;
+      const baseExchange = state.latestOverview?.exchange || "";
+      queueTradingViewRender(baseSymbol, baseExchange);
+    } catch (error) {
+      showError(error.message || "Compare search failed.");
+    }
+  });
+
+  elements.chartCompareClear?.addEventListener("click", () => {
+    clearError();
+    setCompareSymbol("");
+    const baseSymbol = state.latestOverview?.symbol || state.selectedSymbol;
+    const baseExchange = state.latestOverview?.exchange || "";
+    queueTradingViewRender(baseSymbol, baseExchange);
+  });
+
   document.addEventListener("click", (event) => {
     if (
       event.target !== elements.searchInput &&
@@ -2265,6 +3043,10 @@ function bindApp() {
   window.addEventListener("resize", () => {
     handleViewportFeatures();
   });
+
+  window.addEventListener("scroll", () => {
+    primeMobileChartLazyLoad();
+  }, { passive: true });
 }
 
 bindAuth();

@@ -609,7 +609,7 @@ def test_learning_layer_dampens_weak_signals_after_enough_losing_trades(
     assert learned.learning is not None
     assert learned.learning.active is True
     assert learned.learning.trade_count == 60
-    assert learned.score == baseline.score
+    assert learned.score < baseline.score
     assert learned.learning.directional_bias == 0.0
     assert learned.learning.confidence_bias == -10.0
     assert learned.learning.buy_threshold_offset == 0.5
@@ -645,9 +645,9 @@ def test_learning_layer_lightly_prefers_strategies_with_strong_realized_results(
 
     assert learned.learning is not None
     assert learned.learning.active is True
-    assert learned.learning.directional_bias == 0.0
+    assert learned.learning.directional_bias > 0.0
     assert learned.learning.confidence_bias == 10.0
     assert learned.learning.buy_threshold_offset == -0.5
     assert learned.learning.sell_threshold_offset == 0.5
-    assert learned.score == baseline.score
+    assert learned.score >= baseline.score
     assert learned.confidence >= baseline.confidence

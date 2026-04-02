@@ -22,6 +22,7 @@ class DashboardWatchlistItem(BaseModel):
 class DashboardSymbolOverview(BaseModel):
     symbol: str
     name: str
+    data_quality: str = "FULL"
     exchange: Optional[str] = None
     finnhub_industry: Optional[str] = None
     ipo: Optional[str] = None

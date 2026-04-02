@@ -171,6 +171,199 @@ body {
   z-index: 70;
 }
 
+.chart-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.chart-compare-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
+.chart-compare-input {
+  min-height: 44px;
+  width: min(100%, 220px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  background: rgba(2, 6, 23, 0.72);
+  padding: 0.75rem 0.95rem;
+  color: #f3f4f6;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.chart-compare-input::placeholder {
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.chart-compare-input:focus {
+  border-color: rgba(45, 212, 191, 0.5);
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12);
+  background: rgba(2, 6, 23, 0.84);
+}
+
+.chart-compare-button,
+.chart-compare-clear {
+  min-height: 44px;
+  border-radius: 1rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  transition: transform 160ms ease, opacity 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.chart-compare-button {
+  border: 0;
+  color: #04111d;
+  background: linear-gradient(135deg, #38bdf8, #14b8a6);
+  box-shadow: 0 10px 22px rgba(20, 184, 166, 0.18);
+}
+
+.chart-compare-clear {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.chart-compare-button:hover,
+.chart-compare-clear:hover {
+  transform: translateY(-1px);
+}
+
+.chart-compare-legend {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.chart-compare-note {
+  margin-right: 0.35rem;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.chart-compare-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.48);
+  padding: 0.45rem 0.8rem;
+  color: #e2e8f0;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.chart-compare-swatch {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05);
+}
+
+.comparison-chart-shell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: stretch;
+  gap: 0.8rem;
+  padding: 1rem;
+}
+
+.comparison-chart-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.comparison-chart-title {
+  color: #cbd5e1;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.comparison-chart-range {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.comparison-chart-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.comparison-chart-grid {
+  stroke: rgba(148, 163, 184, 0.14);
+  stroke-width: 1;
+}
+
+.comparison-chart-baseline {
+  stroke: rgba(226, 232, 240, 0.25);
+  stroke-width: 1.25;
+  stroke-dasharray: 6 6;
+}
+
+.comparison-chart-axis {
+  fill: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.comparison-chart-line-primary,
+.comparison-chart-line-secondary {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+
+.comparison-chart-line-primary {
+  stroke: #22c55e;
+  filter: drop-shadow(0 0 12px rgba(34, 197, 94, 0.12));
+}
+
+.comparison-chart-line-secondary {
+  stroke: #ef4444;
+  filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.12));
+}
+
+.comparison-chart-end-label {
+  fill: #e2e8f0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.comparison-chart-empty {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  padding: 0 1.5rem;
+}
+
 .dashboard-panel {
   border-color: rgba(31, 41, 55, 0.88);
   background:
@@ -193,6 +386,78 @@ body {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.03),
     0 12px 30px rgba(2, 6, 23, 0.16);
+}
+
+.signal-hero-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.signal-hero-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.signal-primary-block {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.signal-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 2rem;
+  line-height: 1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.signal-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.signal-confidence-shell {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 1rem;
+}
+
+.signal-reason-block {
+  min-width: 0;
+}
+
+.decision-summary,
+.decision-context-copy {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.signal-partial-card {
+  border-color: rgba(245, 158, 11, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 8px 18px rgba(245, 158, 11, 0.08);
+}
+
+.signal-partial-card #recommendationValue,
+.signal-partial-card #recommendationIcon {
+  opacity: 0.88;
 }
 
 .chart-panel {
@@ -1008,6 +1273,37 @@ body {
   }
 }
 
+@media (max-width: 768px) {
+  .chart-toolbar {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .chart-compare-form {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .chart-compare-input {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .chart-compare-button,
+  .chart-compare-clear {
+    flex: 1 1 0;
+  }
+
+  .chart-compare-legend {
+    gap: 0.55rem;
+  }
+
+  .chart-compare-note {
+    width: 100%;
+    margin-right: 0;
+  }
+}
+
 @media (min-width: 1280px) {
   #appShell > div {
     max-width: none !important;
@@ -1341,10 +1637,7 @@ body {
     padding-block: 0.5rem;
   }
 
-  #topbarUtilityActions,
-  #mobileFavoriteButton,
-  #mobileAlertButton,
-  #mobilePortfolioButton {
+  #topbarUtilityActions {
     display: none !important;
   }
 
@@ -1379,6 +1672,18 @@ body {
     display: block;
   }
 
+  body {
+    overflow-x: hidden;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
   #authOverlay {
     align-items: stretch;
     justify-content: center;
@@ -1402,43 +1707,87 @@ body {
   }
 
   #appShell > div {
-    padding: 10px;
-    padding-bottom: 10px;
+    padding: 12px;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 104px);
   }
 
+  #dashboardWorkspace,
   #appShell main {
     display: flex;
     flex-direction: column;
     grid-template-columns: 1fr !important;
-    gap: 12px;
+    gap: 16px;
+    min-width: 0;
   }
 
+  #watchlistSection,
+  #alertsSection,
   #decisionRail {
-    display: contents;
+    display: none !important;
   }
 
-  #watchlistSection {
-    order: 5;
-  }
-
-  #companySection {
-    order: 5;
+  #selectedSymbolSection,
+  #tradeDecisionSection,
+  #chartSection {
+    width: 100%;
+    min-width: 0;
   }
 
   #selectedSymbolSection {
     order: 1;
+    padding: 12px !important;
   }
 
   #tradeDecisionSection {
     order: 2;
+    padding: 12px !important;
   }
 
   #chartSection {
     order: 3;
   }
 
-  #alertsSection {
-    order: 4;
+  #selectedSymbolHero {
+    margin-bottom: 0.8rem !important;
+  }
+
+  #selectedFavoriteButton,
+  #analysisGeneratedAt {
+    display: none !important;
+  }
+
+  #selectedSymbolSection > .grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.65rem !important;
+  }
+
+  #metricHighCard,
+  #metricLowCard,
+  #metricOpenCard,
+  #metricPrevCloseCard {
+    display: none !important;
+  }
+
+  #metricPriceCard {
+    border-color: rgba(20, 184, 166, 0.24);
+    background:
+      linear-gradient(180deg, rgba(20, 184, 166, 0.1), rgba(11, 15, 26, 0.92));
+    box-shadow:
+      0 12px 26px rgba(20, 184, 166, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  #metricPriceCard p.text-xs {
+    letter-spacing: 0.18em;
+  }
+
+  #metricPrice {
+    font-size: 2.15rem !important;
+    line-height: 1;
+  }
+
+  #tradeDecisionSection > .mt-4.grid {
+    display: none !important;
   }
 
   #appShell main .grid {
@@ -1451,11 +1800,90 @@ body {
   .signal-hero,
   .chart-panel {
     border-radius: 20px !important;
-    padding: 12px !important;
+    padding: 14px !important;
   }
 
   .dashboard-card {
-    padding: 12px !important;
+    padding: 14px !important;
+  }
+
+  #selectedSymbolName {
+    font-size: 1.6rem !important;
+    line-height: 1.1;
+  }
+
+  #changeBadge {
+    padding: 0.55rem 0.9rem !important;
+    font-size: 0.9rem !important;
+  }
+
+  #tradeDecisionSection > .mb-5 {
+    margin-bottom: 0.8rem !important;
+  }
+
+  #tradeDecisionSection .signal-hero {
+    padding: 1rem !important;
+  }
+
+  #tradeDecisionSection .signal-hero-layout {
+    gap: 0.75rem;
+  }
+
+  #tradeDecisionSection .signal-primary-block {
+    align-items: center;
+    gap: 0.85rem;
+  }
+
+  #tradeDecisionSection .signal-icon {
+    width: 3.25rem;
+    height: 3.25rem;
+    border-radius: 1rem;
+    font-size: 1.5rem;
+  }
+
+  #tradeDecisionSection #recommendationValue {
+    font-size: 3.45rem !important;
+    line-height: 0.9;
+  }
+
+  #tradeDecisionSection #confidenceValue {
+    font-size: 2rem !important;
+  }
+
+  #tradeDecisionSection .signal-confidence-shell {
+    padding: 0.85rem;
+  }
+
+  #tradeDecisionSection .signal-reason-block {
+    display: block;
+    padding: 0.85rem;
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  #tradeDecisionSection .decision-context-box {
+    padding: 0.85rem;
+  }
+
+  #analysisSummary {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+  }
+
+  #mobileDecisionDetails {
+    display: none !important;
+  }
+
+  #selectedCompanyName,
+  #analysisSummary,
+  #mobileAnalysisSummary,
+  #noTradeReason,
+  #mobileNoTradeReason {
+    font-size: 0.95rem !important;
+    line-height: 1.6;
   }
 
   #authOverlay section {
@@ -1561,6 +1989,8 @@ body {
 
   #strategyToggle {
     width: 100%;
+    gap: 0.45rem;
+    padding: 0.35rem !important;
   }
 
   #strategyToggle,
@@ -1575,7 +2005,8 @@ body {
   .strategy-button {
     flex: 1 1 calc(33.333% - 0.5rem);
     min-width: 0;
-    padding: 0.6rem 0.55rem;
+    min-height: 46px;
+    padding: 0.75rem 0.65rem;
     font-size: 0.72rem;
   }
 
@@ -1583,7 +2014,8 @@ body {
   #refreshButton,
   #logoutButton {
     width: 100%;
-    padding: 0.72rem 0.85rem;
+    min-height: 46px;
+    padding: 0.78rem 0.95rem;
     font-size: 0.82rem;
   }
 
@@ -1598,10 +2030,64 @@ body {
 
   #searchSuggestions {
     max-height: 52vh;
+    padding: 0.35rem !important;
+    gap: 0.4rem;
+  }
+
+  .search-suggestion {
+    min-height: 48px;
+    padding: 0.85rem 0.95rem !important;
+    border-radius: 1rem;
   }
 
   #selectedSymbolSection .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  #tradeDecisionSection > .mb-5 {
+    margin-bottom: 0.9rem !important;
+  }
+
+  #recommendationCard {
+    padding: 14px !important;
+  }
+
+  #recommendationCard .signal-confidence-shell,
+  #recommendationCard .signal-reason-block,
+  #recommendationCard .decision-context-box {
+    display: none !important;
+  }
+
+  #recommendationCard .signal-hero-layout {
+    gap: 0.9rem;
+  }
+
+  #recommendationCard .signal-hero-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.9rem;
+  }
+
+  #recommendationCard .signal-primary-block {
+    align-items: center;
+    gap: 0.85rem;
+  }
+
+  #recommendationIcon {
+    width: 3.25rem;
+    height: 3.25rem;
+    font-size: 1.65rem;
+  }
+
+  #recommendationValue {
+    font-size: 2.6rem !important;
+    line-height: 0.98;
+  }
+
+  #mobileDecisionDetails {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
   }
 
   #tradeDecisionSection .signal-hero {
@@ -1629,12 +2115,22 @@ body {
     min-width: 0;
   }
 
+  #mobileQuickActions {
+    pointer-events: none;
+  }
+
+  #mobileQuickActions > div {
+    pointer-events: auto;
+  }
+
   #mobileStrategyCards {
     display: grid;
-    gap: 10px;
+    gap: 12px;
+    margin-top: 0.85rem;
   }
 
   .mobile-strategy-card {
+    min-height: 48px;
     transition:
       transform 140ms ease,
       box-shadow 140ms ease,
@@ -1655,12 +2151,33 @@ body {
 
   #watchlistBody button,
   #favoritesBody button {
-    padding: 0.85rem;
+    min-height: 52px;
+    padding: 0.95rem;
+    margin-bottom: 0.2rem;
   }
 
-  #companyDetails {
-    display: grid;
-    gap: 0.75rem;
+  #watchlistBody,
+  #favoritesBody {
+    gap: 0.7rem !important;
+  }
+
+  .favorite-button,
+  #selectedFavoriteButton {
+    min-height: 46px;
+    padding: 0.78rem 1rem !important;
+  }
+
+  .dashboard-topbar .grid {
+    gap: 0.6rem;
+  }
+
+  #searchForm {
+    gap: 0.7rem;
+  }
+
+  #watchlistHint {
+    margin-top: 0.45rem;
+    padding: 0.85rem 0.95rem;
   }
 
   #recommendationValue {
@@ -1685,7 +2202,9 @@ body {
   }
 
   #analysisSummary,
+  #mobileAnalysisSummary,
   #noTradeReason,
+  #mobileNoTradeReason,
   #coverageReason,
   #entryReason,
   #exitReason,
@@ -1698,21 +2217,27 @@ body {
     height: 250px !important;
   }
 
+  #chartSection {
+    content-visibility: auto;
+    contain-intrinsic-size: 320px;
+  }
+
 .mobile-quick-action {
   display: grid;
   place-items: center;
-  gap: 4px;
-  min-height: 54px;
-    border-radius: 16px;
-    border: 1px solid rgba(148, 163, 184, 0.1);
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(15, 23, 42, 0.62));
+  gap: 6px;
+  min-height: 64px;
+  padding: 0.65rem 0.45rem;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.76));
   color: rgb(226 232 240);
-  font-size: 0.74rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 8px 18px rgba(2, 6, 23, 0.14);
+    0 10px 22px rgba(2, 6, 23, 0.16);
   transition:
     transform 140ms ease,
     box-shadow 140ms ease,
@@ -1723,10 +2248,10 @@ body {
 .mobile-quick-action span:first-child {
   display: grid;
   place-items: center;
-  width: 1.85rem;
-  height: 1.85rem;
+  width: 2rem;
+  height: 2rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 

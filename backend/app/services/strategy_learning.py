@@ -217,8 +217,11 @@ class StrategyLearningService:
             average_profit=average_profit,
         )
         confidence_bias = self._confidence_bias_for_tier(performance_tier)
-        directional_bias = 0.0
-        weak_signal_multiplier = 1.0
+        directional_bias = self._directional_bias_for_tier(
+            performance_tier=performance_tier,
+            average_profit_loss=average_profit_loss,
+        )
+        weak_signal_multiplier = self._weak_signal_multiplier_for_tier(performance_tier)
         buy_offset, sell_offset = self._threshold_offsets_for_tier(performance_tier)
         effective_thresholds = self._effective_thresholds(
             base_thresholds,
@@ -342,6 +345,23 @@ class StrategyLearningService:
         if performance_tier == "weak":
             return -CONFIDENCE_STEP
         return 0.0
+
+    def _directional_bias_for_tier(
+        self,
+        *,
+        performance_tier: str,
+        average_profit_loss: float,
+    ) -> float:
+        if performance_tier != "good":
+            return 0.0
+        return round(min(max(average_profit_loss / 14, 0.35), 0.9), 2)
+
+    def _weak_signal_multiplier_for_tier(self, performance_tier: str) -> float:
+        if performance_tier == "weak":
+            return 0.5
+        if performance_tier == "neutral":
+            return 0.9
+        return 1.0
 
     def _threshold_offsets_for_tier(self, performance_tier: str) -> tuple[float, float]:
         if performance_tier == "good":

@@ -7,7 +7,7 @@ from typing import Dict, Iterable, List, Optional, Protocol
 from app.core.config import get_settings
 from app.core.exceptions import ExternalServiceError, NotFoundError, ValidationError
 from app.schemas.stocks import HistoryPoint, StockQuote
-from app.services.cache import TTLCache
+from app.services.cache import RequestDeduplicator, TTLCache
 
 
 SUPPORTED_RANGES: Dict[str, str] = {
@@ -159,11 +159,14 @@ class MarketDataService:
         settings = get_settings()
         self.provider = provider
         self.allowed_symbols = allowed_symbols or settings.watchlist
+        self.request_deduper: RequestDeduplicator[list[StockQuote] | list[HistoryPoint] | StockQuote] = (
+            RequestDeduplicator()
+        )
         self.quote_cache: TTLCache[List[StockQuote]] = TTLCache(
             ttl_seconds or settings.market_cache_ttl_seconds
         )
         self.history_cache: TTLCache[List[HistoryPoint]] = TTLCache(
-            ttl_seconds or settings.market_cache_ttl_seconds
+            ttl_seconds or settings.indicators_cache_ttl_seconds
         )
 
     def ensure_supported_symbol(self, symbol: str) -> str:
@@ -185,23 +188,30 @@ class MarketDataService:
         if cached is not None:
             return cached
 
-        symbols = list(self.allowed_symbols.keys())
-        try:
-            snapshots = self.provider.fetch_quotes(symbols, self.allowed_symbols)
-            quotes = [
-                StockQuote(
-                    symbol=snapshot.symbol,
-                    name=snapshot.name,
-                    price=snapshot.price,
-                    change_percent=snapshot.change_percent,
-                    volume=snapshot.volume,
-                    updated_at=snapshot.updated_at,
-                )
-                for snapshot in snapshots
-            ]
-        except (ExternalServiceError, NotFoundError) as error:
-            raise ExternalServiceError(NO_LIVE_MARKET_DATA_MESSAGE) from error
-        return self.quote_cache.set(cache_key, quotes)
+        def load_quotes() -> List[StockQuote]:
+            cached_inner = self.quote_cache.get(cache_key)
+            if cached_inner is not None:
+                return cached_inner
+
+            symbols = list(self.allowed_symbols.keys())
+            try:
+                snapshots = self.provider.fetch_quotes(symbols, self.allowed_symbols)
+                quotes = [
+                    StockQuote(
+                        symbol=snapshot.symbol,
+                        name=snapshot.name,
+                        price=snapshot.price,
+                        change_percent=snapshot.change_percent,
+                        volume=snapshot.volume,
+                        updated_at=snapshot.updated_at,
+                    )
+                    for snapshot in snapshots
+                ]
+            except (ExternalServiceError, NotFoundError) as error:
+                raise ExternalServiceError(NO_LIVE_MARKET_DATA_MESSAGE) from error
+            return self.quote_cache.set(cache_key, quotes)
+
+        return self.request_deduper.run(f"quotes:{cache_key}", load_quotes)
 
     def get_history(
         self, symbol: str, range_name: str, force_refresh: bool = False
@@ -219,11 +229,18 @@ class MarketDataService:
         cached = self.history_cache.get(cache_key)
         if cached is not None:
             return cached
-        try:
-            history = self.provider.fetch_history(normalized, period)
-        except ExternalServiceError as error:
-            raise ExternalServiceError(NO_LIVE_MARKET_DATA_MESSAGE) from error
-        return self.history_cache.set(cache_key, history)
+
+        def load_history() -> List[HistoryPoint]:
+            cached_inner = self.history_cache.get(cache_key)
+            if cached_inner is not None:
+                return cached_inner
+            try:
+                history = self.provider.fetch_history(normalized, period)
+            except ExternalServiceError as error:
+                raise ExternalServiceError(NO_LIVE_MARKET_DATA_MESSAGE) from error
+            return self.history_cache.set(cache_key, history)
+
+        return self.request_deduper.run(f"history:{cache_key}", load_history)
 
     def get_latest_quote(self, symbol: str, force_refresh: bool = False) -> StockQuote:
         normalized = self.ensure_supported_symbol(symbol)
@@ -240,19 +257,26 @@ class MarketDataService:
         if cached is not None and cached:
             return cached[0]
 
-        try:
-            snapshots = self.provider.fetch_quotes([normalized], {normalized: normalized})
-            if not snapshots:
-                raise ExternalServiceError(f"Quote for {normalized} could not be loaded.")
-            quote = StockQuote(
-                symbol=snapshots[0].symbol,
-                name=snapshots[0].name,
-                price=snapshots[0].price,
-                change_percent=snapshots[0].change_percent,
-                volume=snapshots[0].volume,
-                updated_at=snapshots[0].updated_at,
-            )
-        except ExternalServiceError as error:
-            raise ExternalServiceError(NO_LIVE_MARKET_DATA_MESSAGE) from error
-        self.quote_cache.set(cache_key, [quote])
-        return quote
+        def load_quote() -> StockQuote:
+            cached_inner = self.quote_cache.get(cache_key)
+            if cached_inner is not None and cached_inner:
+                return cached_inner[0]
+
+            try:
+                snapshots = self.provider.fetch_quotes([normalized], {normalized: normalized})
+                if not snapshots:
+                    raise ExternalServiceError(f"Quote for {normalized} could not be loaded.")
+                quote = StockQuote(
+                    symbol=snapshots[0].symbol,
+                    name=snapshots[0].name,
+                    price=snapshots[0].price,
+                    change_percent=snapshots[0].change_percent,
+                    volume=snapshots[0].volume,
+                    updated_at=snapshots[0].updated_at,
+                )
+            except ExternalServiceError as error:
+                raise ExternalServiceError(NO_LIVE_MARKET_DATA_MESSAGE) from error
+            self.quote_cache.set(cache_key, [quote])
+            return quote
+
+        return self.request_deduper.run(f"quote:{cache_key}", load_quote)

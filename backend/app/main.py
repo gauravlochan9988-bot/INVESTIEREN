@@ -1,4 +1,7 @@
+import os
 from pathlib import Path
+from threading import Thread
+from time import sleep
 from typing import Optional, Union
 from urllib.parse import urlparse
 
@@ -92,6 +95,48 @@ def create_app() -> FastAPI:
                 mode="fallback",
                 reason=f"{type(exc).__name__}: {exc}",
             )
+
+    @app.on_event("startup")
+    def start_background_preload() -> None:
+        if settings.app_env.lower() == "test" or os.getenv("PYTEST_CURRENT_TEST"):
+            return
+        if getattr(app.state, "preload_thread", None):
+            return
+
+        def warm_top_symbols() -> None:
+            from .api.deps import (
+                DASHBOARD_WATCHLIST,
+                get_analysis_service_instance,
+                get_finnhub_dashboard_service_instance,
+            )
+
+            dashboard_service = get_finnhub_dashboard_service_instance()
+            analysis_service = get_analysis_service_instance()
+            strategies = ("simple", "ai", "hedgefund")
+
+            while True:
+                try:
+                    dashboard_service.get_watchlist(force_refresh=False)
+                    for symbol in DASHBOARD_WATCHLIST:
+                        dashboard_service.get_symbol_overview(symbol, force_refresh=False)
+                        analysis_service.prime_symbol(symbol, force_refresh=False)
+                        for strategy in strategies:
+                            analysis_service.analyze_symbol(
+                                symbol,
+                                force_refresh=False,
+                                strategy=strategy,
+                            )
+                except Exception as exc:  # pragma: no cover - background warmup safety
+                    print("preload_warmup_failed", {"type": type(exc).__name__, "message": str(exc)})
+                sleep(max(30, settings.preload_refresh_seconds))
+
+        thread = Thread(
+            target=warm_top_symbols,
+            name="investieren-preload",
+            daemon=True,
+        )
+        app.state.preload_thread = thread
+        thread.start()
 
     @app.get("/")
     def root():

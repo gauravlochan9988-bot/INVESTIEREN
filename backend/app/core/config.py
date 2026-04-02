@@ -40,10 +40,12 @@ class Settings(BaseSettings):
         )
     )
     market_cache_ttl_seconds: int = 45
-    analysis_cache_ttl_seconds: int = 90
+    indicators_cache_ttl_seconds: int = 60
+    analysis_cache_ttl_seconds: int = 10
     alerts_cache_ttl_seconds: int = 60
     macro_cache_ttl_seconds: int = 900
     news_cache_ttl_seconds: int = 600
+    preload_refresh_seconds: int = 180
     news_headline_limit: int = 8
     macro_market_symbol: str = "SPY"
     macro_usd_symbol: str = "UUP"

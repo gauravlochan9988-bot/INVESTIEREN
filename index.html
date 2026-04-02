@@ -53,44 +53,22 @@
           <div class="auth-desktop-right">
             <div class="auth-bottom-card login-card auth-desktop-card">
               <div class="space-y-3 auth-copy-text">
-                <h2 class="auth-panel-title">Secure access</h2>
+                <h2 class="auth-panel-title">Private access</h2>
                 <p class="auth-panel-copy">
-                  Choose Google, Apple, or enter your private access code for the desktop dashboard.
+                  Enter your private code to open the dashboard.
                 </p>
-              </div>
-
-              <div class="auth-social-stack">
-                <button id="authGoogleButton" type="button" class="auth-social-button">
-                  <span class="auth-social-mark">G</span>
-                  <span>Continue with Google</span>
-                </button>
-                <button id="authAppleButton" type="button" class="auth-social-button">
-                  <span class="auth-social-mark"></span>
-                  <span>Continue with Apple</span>
-                </button>
-              </div>
-
-              <div class="auth-divider"><span>OR</span></div>
-
-              <div class="auth-action-stack">
-                <button id="authCreateAccountButton" type="button" class="auth-primary-action">
-                  Create Account
-                </button>
-                <button id="authLoginButton" type="button" class="auth-secondary-action">
-                  Login
-                </button>
               </div>
 
               <form id="authForm" class="w-full max-w-md space-y-4 auth-form-panel auth-private-panel" novalidate>
                 <div class="space-y-2">
                   <label for="authPassword" class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-                    Private Access
+                    Private Code
                   </label>
                   <input
                     id="authPassword"
                     name="password"
                     type="password"
-                    placeholder="Password"
+                    placeholder="Enter private code"
                     autocomplete="current-password"
                     class="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base text-white outline-none transition focus:border-emerald-400/60 focus:bg-white/10 login-input"
                     required
@@ -101,7 +79,7 @@
                   type="submit"
                   class="auth-private-button rounded-2xl bg-gradient-to-r from-cyan-300 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px] login-button"
                 >
-                  Private Access
+                  Unlock Dashboard
                 </button>
                 <p id="authError" class="text-sm text-rose-400" hidden>Wrong password</p>
               </form>
@@ -174,20 +152,6 @@
             >
               Connecting backend...
             </div>
-            <div id="topbarUtilityActions" class="grid grid-cols-3 gap-2">
-              <button id="mobileFavoriteButton" type="button" class="mobile-quick-action">
-                <span class="text-lg">☆</span>
-                <span>Favorite</span>
-              </button>
-              <button id="mobileAlertButton" type="button" class="mobile-quick-action">
-                <span class="text-lg">🔔</span>
-                <span>Alerts</span>
-              </button>
-              <button id="mobilePortfolioButton" type="button" class="mobile-quick-action">
-                <span class="text-lg">📊</span>
-                <span>Portfolio</span>
-              </button>
-            </div>
             <div class="grid grid-cols-2 gap-3">
             <button
               id="refreshButton"
@@ -259,7 +223,7 @@
             </section>
 
             <div id="selectedSymbolSection" class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
-              <div class="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div id="selectedSymbolHero" class="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
                   <p class="text-xs font-medium text-slate-500">Selected Symbol</p>
                   <h2 id="selectedSymbolName" class="mt-2 break-words text-2xl font-semibold tracking-tight xl:text-3xl">AAPL</h2>
@@ -281,23 +245,23 @@
               </div>
 
               <div class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5 2xl:gap-5">
-                <article class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                <article id="metricPriceCard" class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Price</p>
                   <p id="metricPrice" class="mt-3 text-3xl font-semibold">$--</p>
                 </article>
-                <article class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                <article id="metricHighCard" class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Day High</p>
                   <p id="metricHigh" class="mt-3 text-2xl font-semibold">$--</p>
                 </article>
-                <article class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                <article id="metricLowCard" class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Day Low</p>
                   <p id="metricLow" class="mt-3 text-2xl font-semibold">$--</p>
                 </article>
-                <article class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                <article id="metricOpenCard" class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Open</p>
                   <p id="metricOpen" class="mt-3 text-2xl font-semibold">$--</p>
                 </article>
-                <article class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                <article id="metricPrevCloseCard" class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Prev Close</p>
                   <p id="metricPrevClose" class="mt-3 text-2xl font-semibold">$--</p>
                 </article>
@@ -331,39 +295,96 @@
                 class="signal-hero min-w-0 rounded-[24px] border border-white/10 bg-slate-950/70 p-4 sm:rounded-[28px] sm:p-5"
               >
                 <p class="text-xs font-medium text-slate-500">Recommendation</p>
-                <div class="mt-4">
-                  <p id="recommendationValue" class="break-words text-4xl font-black tracking-[-0.05em] text-white xl:text-5xl">
-                    Loading
-                  </p>
-
-                  <div class="mt-4 grid gap-3">
-                    <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                      <p class="text-[11px] font-medium text-slate-500">Confidence</p>
-                      <p id="confidenceValue" class="mt-2 text-2xl font-semibold text-white">--</p>
-                      <div class="mt-3 h-2.5 overflow-hidden rounded-full bg-white/10">
-                        <div id="confidenceBarFill" class="h-full w-0 rounded-full bg-cyan-300 transition-[width] duration-300 ease-out"></div>
+                <div class="mt-4 signal-hero-layout">
+                  <div class="signal-hero-top">
+                    <div class="signal-primary-block">
+                      <span id="recommendationIcon" class="signal-icon tone-muted" aria-hidden="true">•</span>
+                      <div class="min-w-0">
+                        <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">Main decision</p>
+                        <p id="recommendationValue" class="break-words text-5xl font-black tracking-[-0.06em] text-white xl:text-6xl">
+                          Loading
+                        </p>
                       </div>
                     </div>
-                    <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                      <p class="text-[11px] font-medium text-slate-500">Signal view</p>
-                      <p id="confidenceHint" class="mt-2 text-sm font-medium text-slate-300">Reading market context</p>
+                    <div class="signal-badges">
+                      <span
+                        id="signalQualityBadge"
+                        class="rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-200"
+                        hidden
+                      >
+                        Partial Signal
+                      </span>
+                      <span
+                        id="conflictBadge"
+                        class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-200"
+                        hidden
+                      >
+                        Mixed signals
+                      </span>
                     </div>
                   </div>
 
-                  <p class="mt-5 text-xs font-medium text-slate-500">Why this decision</p>
-                  <p id="analysisSummary" class="mt-3 break-words text-sm leading-7 text-slate-300">
-                    Loading analysis for the selected symbol.
-                  </p>
+                  <div class="signal-confidence-shell">
+                    <div class="flex items-end justify-between gap-3">
+                      <div>
+                        <p class="text-[11px] font-medium text-slate-500">Confidence</p>
+                        <p id="confidenceValue" class="mt-2 text-3xl font-semibold text-white">--</p>
+                      </div>
+                      <p id="confidenceHint" class="text-sm font-medium text-slate-300">Reading market context</p>
+                    </div>
+                    <div class="mt-3 h-2.5 overflow-hidden rounded-full bg-white/10">
+                      <div id="confidenceBarFill" class="h-full w-0 rounded-full bg-cyan-300 transition-[width] duration-300 ease-out"></div>
+                    </div>
+                  </div>
 
-                  <div class="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p class="text-[11px] font-medium text-slate-500">Bias</p>
-                    <p id="biasValue" class="mt-3 break-words text-lg font-semibold text-white">Neutral setup</p>
-                    <p id="noTradeReason" class="mt-2 break-words text-sm leading-6 text-slate-400">Waiting for analysis.</p>
+                  <div class="signal-reason-block">
+                    <p class="text-[11px] font-medium text-slate-500">Why this decision</p>
+                    <p id="analysisSummary" class="decision-summary mt-3 break-words text-sm leading-6 text-slate-300">
+                      Loading analysis for the selected symbol.
+                    </p>
+                  </div>
+
+                  <div class="decision-context-box rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                      <p class="text-[11px] font-medium text-slate-500">Trade context</p>
+                      <p id="biasValue" class="break-words text-sm font-semibold text-white">Balanced signal</p>
+                    </div>
+                    <p id="noTradeReason" class="decision-context-copy mt-3 break-words text-sm leading-6 text-slate-400">Waiting for analysis.</p>
                   </div>
                 </div>
               </article>
 
               <div id="mobileStrategyCards" class="mobile-only min-w-0 space-y-3"></div>
+
+              <div id="mobileDecisionDetails" class="mobile-only min-w-0 space-y-3">
+                <article class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                  <div class="flex items-end justify-between gap-3">
+                    <div>
+                      <p class="text-[11px] font-medium text-slate-500">Confidence</p>
+                      <p id="mobileConfidenceValue" class="mt-2 text-2xl font-semibold text-white">--</p>
+                    </div>
+                    <p id="mobileConfidenceHint" class="text-sm font-medium text-slate-300">Reading market context</p>
+                  </div>
+                  <div class="mt-3 h-2.5 overflow-hidden rounded-full bg-white/10">
+                    <div id="mobileConfidenceBarFill" class="h-full w-0 rounded-full bg-cyan-300 transition-[width] duration-300 ease-out"></div>
+                  </div>
+                </article>
+
+                <article class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                  <p class="text-[11px] font-medium text-slate-500">Why this decision</p>
+                  <p id="mobileAnalysisSummary" class="mt-3 break-words text-sm leading-6 text-slate-300">
+                    Loading analysis for the selected symbol.
+                  </p>
+                </article>
+
+                <article class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                  <div class="flex flex-wrap items-center justify-between gap-3">
+                    <p class="text-[11px] font-medium text-slate-500">Trade context</p>
+                    <p id="mobileBiasValue" class="break-words text-sm font-semibold text-white">Balanced signal</p>
+                  </div>
+                  <p id="mobileNoTradeReason" class="mt-3 break-words text-sm leading-6 text-slate-400">Waiting for analysis.</p>
+                </article>
+              </div>
 
               <div class="mt-4 grid gap-3 sm:grid-cols-2">
                 <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
@@ -414,8 +435,22 @@
                   <p class="text-xs font-medium text-slate-500">Chart</p>
                   <h3 class="mt-2 text-xl font-semibold">TradingView</h3>
                 </div>
-                <span id="chartSymbolBadge" class="rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-semibold tracking-[0.25em] text-slate-400">AAPL</span>
+                <div class="chart-toolbar">
+                  <span id="chartSymbolBadge" class="rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-semibold tracking-[0.25em] text-slate-400">AAPL</span>
+                  <form id="chartCompareForm" class="chart-compare-form" autocomplete="off">
+                    <input
+                      id="chartCompareInput"
+                      type="search"
+                      placeholder="Compare with..."
+                      class="chart-compare-input"
+                      aria-label="Compare current chart with another symbol"
+                    />
+                    <button id="chartCompareSubmit" type="submit" class="chart-compare-button">Compare</button>
+                    <button id="chartCompareClear" type="button" class="chart-compare-clear hidden">Clear</button>
+                  </form>
+                </div>
               </div>
+              <div id="chartCompareLegend" class="chart-compare-legend hidden" aria-live="polite"></div>
               <div id="tradingviewChartFrame" class="chart-frame chart-locked">
                 <div id="tradingviewChart" class="h-[320px] overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/70 sm:h-[420px] lg:h-[500px] 2xl:h-[560px]"></div>
                 <button id="chartInteractionGuard" type="button" class="chart-interaction-guard" aria-label="Activate chart interaction">
@@ -443,6 +478,41 @@
               </div>
               <dl id="companyDetails" class="mt-6 space-y-4"></dl>
             </section>
+
+            <section
+              id="learningSection"
+              class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5"
+            >
+              <div class="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p class="text-xs font-medium text-slate-500">Learning Stats</p>
+                  <h3 class="mt-2 text-xl font-semibold">Performance memory</h3>
+                </div>
+                <span
+                  id="learningMeta"
+                  class="rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400"
+                >
+                  Loading strategy stats
+                </span>
+              </div>
+
+              <div id="learningList" class="mt-5 space-y-3">
+                <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                  <p class="text-sm font-semibold text-white">Loading learning layer</p>
+                  <p class="mt-2 text-sm leading-6 text-slate-400">
+                    Reading closed-trade performance for each strategy.
+                  </p>
+                </article>
+              </div>
+
+              <div class="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
+                <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-500">Rule set</p>
+                <p class="mt-3 text-sm leading-6 text-slate-400">
+                  Learning only turns on after 50 realized trades. Better strategies get a small
+                  bias, weak edges get dampened, and all adjustments stay deterministic.
+                </p>
+              </div>
+            </section>
             </aside>
           </aside>
         </main>
@@ -450,6 +520,26 @@
     </div>
 
     <div id="portfolioSheetBackdrop" class="mobile-only hidden fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm"></div>
+    <nav
+      id="mobileQuickActions"
+      class="mobile-only hidden fixed inset-x-0 bottom-0 z-30 px-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.8rem)] pt-3"
+      aria-label="Quick actions"
+    >
+      <div class="grid grid-cols-3 gap-2 rounded-[22px] border border-white/10 bg-slate-950/92 p-2 shadow-2xl shadow-black/40 backdrop-blur-xl">
+        <button id="mobileFavoriteButton" type="button" class="mobile-quick-action" aria-label="Toggle favorite">
+          <span class="text-lg">☆</span>
+          <span>Favorite</span>
+        </button>
+        <button id="mobileAlertButton" type="button" class="mobile-quick-action" aria-label="Open alerts">
+          <span class="text-lg">🔔</span>
+          <span>Alert</span>
+        </button>
+        <button id="mobilePortfolioButton" type="button" class="mobile-quick-action" aria-label="Open portfolio">
+          <span class="text-lg">📊</span>
+          <span>Portfolio</span>
+        </button>
+      </div>
+    </nav>
     <section id="portfolioSheet" class="mobile-only hidden fixed inset-x-0 bottom-0 z-50 max-h-[78vh] overflow-y-auto rounded-t-[28px] border border-white/10 bg-slate-950/95 p-4 shadow-2xl shadow-black/50">
       <div class="flex items-center justify-between gap-3">
         <div>

@@ -6,13 +6,14 @@ from typing import Iterable, Union
 
 import httpx
 
+from app.core.config import get_settings
 from app.core.exceptions import ExternalServiceError, ValidationError
 from app.schemas.dashboard import (
     DashboardNewsItem,
     DashboardSymbolOverview,
     DashboardWatchlistItem,
 )
-from app.services.cache import TTLCache
+from app.services.cache import RequestDeduplicator, TTLCache
 from app.services.news import NewsSentimentService
 
 
@@ -22,18 +23,31 @@ class FinnhubDashboardService:
     def __init__(
         self,
         api_key: str,
-        watchlist: Iterable[str],
+        watchlist: Iterable[str] | dict[str, str],
         news_sentiment_service: NewsSentimentService | None = None,
-        ttl_seconds: int = 30,
+        ttl_seconds: int | None = None,
         timeout_seconds: float = 10.0,
     ) -> None:
+        settings = get_settings()
         self.api_key = api_key.strip()
-        self.watchlist = [symbol.strip().upper() for symbol in watchlist if symbol.strip()]
+        if isinstance(watchlist, dict):
+            self.watchlist_names = {
+                symbol.strip().upper(): name for symbol, name in watchlist.items() if symbol.strip()
+            }
+        else:
+            self.watchlist_names = {
+                symbol.strip().upper(): symbol.strip().upper() for symbol in watchlist if symbol.strip()
+            }
+        self.watchlist = list(self.watchlist_names.keys())
         self.news_sentiment_service = news_sentiment_service
         self.timeout_seconds = timeout_seconds
-        self.watchlist_cache: TTLCache[list[DashboardWatchlistItem]] = TTLCache(ttl_seconds)
-        self.symbol_cache: TTLCache[DashboardSymbolOverview] = TTLCache(ttl_seconds)
-        self.news_cache: TTLCache[list[DashboardNewsItem]] = TTLCache(ttl_seconds)
+        market_ttl = ttl_seconds or settings.market_cache_ttl_seconds
+        self.watchlist_cache: TTLCache[list[DashboardWatchlistItem]] = TTLCache(market_ttl)
+        self.symbol_cache: TTLCache[DashboardSymbolOverview] = TTLCache(market_ttl)
+        self.news_cache: TTLCache[list[DashboardNewsItem]] = TTLCache(settings.news_cache_ttl_seconds)
+        self.request_deduper: RequestDeduplicator[
+            list[DashboardWatchlistItem] | DashboardSymbolOverview | list[DashboardNewsItem]
+        ] = RequestDeduplicator()
 
     def _ensure_api_key(self) -> None:
         if not self.api_key:
@@ -76,6 +90,27 @@ class FinnhubDashboardService:
         if not isinstance(payload, dict) or not payload.get("ticker"):
             raise ExternalServiceError(f"No Finnhub profile available for {symbol}.")
         return payload
+
+    def _partial_symbol_overview(self, symbol: str, quote: dict, profile: dict | None = None) -> DashboardSymbolOverview:
+        profile = profile or {}
+        return DashboardSymbolOverview(
+            symbol=symbol,
+            name=profile.get("name") or self.watchlist_names.get(symbol) or symbol,
+            data_quality="PARTIAL",
+            exchange=profile.get("exchange"),
+            finnhub_industry=profile.get("finnhubIndustry"),
+            ipo=profile.get("ipo"),
+            logo=profile.get("logo"),
+            weburl=profile.get("weburl"),
+            market_capitalization=profile.get("marketCapitalization"),
+            share_outstanding=profile.get("shareOutstanding"),
+            price=float(quote.get("c") or 0),
+            change_percent=float(quote.get("dp") or 0),
+            high=float(quote.get("h") or 0),
+            low=float(quote.get("l") or 0),
+            open=float(quote.get("o") or 0),
+            previous_close=float(quote.get("pc") or 0),
+        )
 
     def _safe_float(
         self,
@@ -189,12 +224,11 @@ class FinnhubDashboardService:
 
     def _build_watchlist_item(self, symbol: str) -> DashboardWatchlistItem:
         quote = self._fetch_quote(symbol)
-        profile = self._fetch_profile(symbol)
         return DashboardWatchlistItem(
             symbol=symbol,
-            name=profile.get("name") or symbol,
-            exchange=profile.get("exchange"),
-            logo=profile.get("logo"),
+            name=self.watchlist_names.get(symbol) or symbol,
+            exchange=None,
+            logo=None,
             price=float(quote.get("c") or 0),
             change_percent=float(quote.get("dp") or 0),
             high=float(quote.get("h") or 0),
@@ -211,17 +245,27 @@ class FinnhubDashboardService:
         if cached is not None:
             return cached
 
-        items: list[DashboardWatchlistItem] = []
-        for symbol in self.watchlist:
-            try:
-                items.append(self._build_watchlist_item(symbol))
-            except ExternalServiceError:
-                continue
+        def load_watchlist() -> list[DashboardWatchlistItem]:
+            cached_inner = self.watchlist_cache.get(cache_key)
+            if cached_inner is not None:
+                return cached_inner
 
-        if not items:
-            raise ExternalServiceError("No Finnhub market data available right now.")
+            items: list[DashboardWatchlistItem] = []
+            for symbol in self.watchlist:
+                try:
+                    items.append(self._build_watchlist_item(symbol))
+                except ExternalServiceError:
+                    continue
 
-        return self.watchlist_cache.set(cache_key, items)
+            if not items:
+                stale = self.watchlist_cache.get_stale(cache_key)
+                if stale:
+                    return stale
+                raise ExternalServiceError("No Finnhub market data available right now.")
+
+            return self.watchlist_cache.set(cache_key, items)
+
+        return self.request_deduper.run(f"dashboard:{cache_key}", load_watchlist)
 
     def get_symbol_overview(
         self, symbol: str, force_refresh: bool = False
@@ -234,33 +278,49 @@ class FinnhubDashboardService:
         if cached is not None:
             return cached
 
-        try:
-            quote = self._fetch_quote(normalized)
-            profile = self._fetch_profile(normalized)
+        def load_symbol() -> DashboardSymbolOverview:
+            cached_inner = self.symbol_cache.get(cache_key)
+            if cached_inner is not None:
+                return cached_inner
 
-            overview = DashboardSymbolOverview(
-                symbol=normalized,
-                name=profile.get("name") or normalized,
-                exchange=profile.get("exchange"),
-                finnhub_industry=profile.get("finnhubIndustry"),
-                ipo=profile.get("ipo"),
-                logo=profile.get("logo"),
-                weburl=profile.get("weburl"),
-                market_capitalization=profile.get("marketCapitalization"),
-                share_outstanding=profile.get("shareOutstanding"),
-                price=float(quote.get("c") or 0),
-                change_percent=float(quote.get("dp") or 0),
-                high=float(quote.get("h") or 0),
-                low=float(quote.get("l") or 0),
-                open=float(quote.get("o") or 0),
-                previous_close=float(quote.get("pc") or 0),
-            )
-        except ExternalServiceError:
             try:
-                overview = self._fallback_symbol_overview(normalized)
-            except Exception as exc:
-                raise ExternalServiceError(f"No live market data available for {normalized}.") from exc
-        return self.symbol_cache.set(cache_key, overview)
+                quote = self._fetch_quote(normalized)
+            except ExternalServiceError:
+                stale = self.symbol_cache.get_stale(cache_key)
+                if stale is not None:
+                    return stale
+                try:
+                    overview = self._fallback_symbol_overview(normalized)
+                except Exception as exc:
+                    raise ExternalServiceError(f"No live market data available for {normalized}.") from exc
+                return self.symbol_cache.set(cache_key, overview)
+
+            try:
+                profile = self._fetch_profile(normalized)
+                overview = DashboardSymbolOverview(
+                    symbol=normalized,
+                    name=profile.get("name") or normalized,
+                    data_quality="FULL",
+                    exchange=profile.get("exchange"),
+                    finnhub_industry=profile.get("finnhubIndustry"),
+                    ipo=profile.get("ipo"),
+                    logo=profile.get("logo"),
+                    weburl=profile.get("weburl"),
+                    market_capitalization=profile.get("marketCapitalization"),
+                    share_outstanding=profile.get("shareOutstanding"),
+                    price=float(quote.get("c") or 0),
+                    change_percent=float(quote.get("dp") or 0),
+                    high=float(quote.get("h") or 0),
+                    low=float(quote.get("l") or 0),
+                    open=float(quote.get("o") or 0),
+                    previous_close=float(quote.get("pc") or 0),
+                )
+            except ExternalServiceError:
+                overview = self._partial_symbol_overview(normalized, quote)
+
+            return self.symbol_cache.set(cache_key, overview)
+
+        return self.request_deduper.run(f"dashboard:{cache_key}", load_symbol)
 
     def get_company_news(
         self, symbol: str, force_refresh: bool = False
@@ -275,40 +335,50 @@ class FinnhubDashboardService:
 
         today = date.today()
         start = today - timedelta(days=7)
-        try:
-            payload = self._request(
-                "/company-news",
-                symbol=normalized,
-                **{"from": start.isoformat(), "to": today.isoformat()},
-            )
-        except ExternalServiceError:
-            return self.news_cache.set(cache_key, self._fallback_company_news(normalized))
+        def load_news() -> list[DashboardNewsItem]:
+            cached_inner = self.news_cache.get(cache_key)
+            if cached_inner is not None:
+                return cached_inner
 
-        if not isinstance(payload, list):
-            return self.news_cache.set(cache_key, self._fallback_company_news(normalized))
-
-        items: list[DashboardNewsItem] = []
-        for article in payload[:6]:
-            url = article.get("url")
-            headline = article.get("headline")
-            if not url or not headline:
-                continue
-
-            published_at = datetime.fromtimestamp(
-                int(article.get("datetime") or 0),
-                tz=timezone.utc,
-            )
-            items.append(
-                DashboardNewsItem(
-                    headline=headline,
-                    source=article.get("source"),
-                    summary=article.get("summary"),
-                    url=url,
-                    image=article.get("image"),
-                    published_at=published_at,
+            try:
+                payload = self._request(
+                    "/company-news",
+                    symbol=normalized,
+                    **{"from": start.isoformat(), "to": today.isoformat()},
                 )
-            )
+            except ExternalServiceError:
+                stale = self.news_cache.get_stale(cache_key)
+                if stale:
+                    return stale
+                return self.news_cache.set(cache_key, self._fallback_company_news(normalized))
 
-        if items:
-            return self.news_cache.set(cache_key, items)
-        return self.news_cache.set(cache_key, self._fallback_company_news(normalized))
+            if not isinstance(payload, list):
+                return self.news_cache.set(cache_key, self._fallback_company_news(normalized))
+
+            items: list[DashboardNewsItem] = []
+            for article in payload[:6]:
+                url = article.get("url")
+                headline = article.get("headline")
+                if not url or not headline:
+                    continue
+
+                published_at = datetime.fromtimestamp(
+                    int(article.get("datetime") or 0),
+                    tz=timezone.utc,
+                )
+                items.append(
+                    DashboardNewsItem(
+                        headline=headline,
+                        source=article.get("source"),
+                        summary=article.get("summary"),
+                        url=url,
+                        image=article.get("image"),
+                        published_at=published_at,
+                    )
+                )
+
+            if items:
+                return self.news_cache.set(cache_key, items)
+            return self.news_cache.set(cache_key, self._fallback_company_news(normalized))
+
+        return self.request_deduper.run(f"dashboard:{cache_key}", load_news)

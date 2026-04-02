@@ -14,12 +14,16 @@ class PortfolioRepository:
     def get_position(self, db: Session, position_id: int) -> PortfolioPosition | None:
         return db.get(PortfolioPosition, position_id)
 
-    def save(self, db: Session, position: PortfolioPosition) -> PortfolioPosition:
+    def save(
+        self, db: Session, position: PortfolioPosition, *, commit: bool = True
+    ) -> PortfolioPosition:
         db.add(position)
-        db.commit()
-        db.refresh(position)
+        if commit:
+            db.commit()
+            db.refresh(position)
         return position
 
-    def delete(self, db: Session, position: PortfolioPosition) -> None:
+    def delete(self, db: Session, position: PortfolioPosition, *, commit: bool = True) -> None:
         db.delete(position)
-        db.commit()
+        if commit:
+            db.commit()
