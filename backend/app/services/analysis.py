@@ -221,6 +221,7 @@ class AnalysisService:
             )
 
         cache_key = self._analysis_cache_key(normalized_symbol, strategy)
+        stale_snapshot = self.analysis_cache.get_stale(cache_key) if force_refresh else None
         if force_refresh:
             self.analysis_cache.delete(cache_key)
         else:
@@ -232,12 +233,20 @@ class AnalysisService:
             cached_inner = self.analysis_cache.get(cache_key)
             if cached_inner is not None:
                 return cached_inner
-            response = self._load_analysis_response(
-                normalized_symbol,
-                force_refresh=force_refresh,
-                strategy=strategy,
-                db=None,
-            )
+            try:
+                response = self._load_analysis_response(
+                    normalized_symbol,
+                    force_refresh=force_refresh,
+                    strategy=strategy,
+                    db=None,
+                )
+            except ExternalServiceError:
+                stale = self.analysis_cache.get_stale(cache_key)
+                if stale is not None:
+                    return stale
+                if stale_snapshot is not None:
+                    return stale_snapshot
+                raise
             return self.analysis_cache.set(cache_key, response)
 
         return self.request_deduper.run(cache_key, load_analysis)

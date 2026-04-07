@@ -524,6 +524,50 @@ def test_scan_alerts_reuses_cached_alerts_without_recomputing_analysis():
     assert provider.history_calls == history_calls_after_first
 
 
+def test_analysis_returns_stale_cached_decision_when_provider_fails_after_warmup():
+    provider = FakeMarketDataProvider()
+    market_data_service = MarketDataService(
+        provider=provider,
+        allowed_symbols={"AAPL": "Apple"},
+        ttl_seconds=3600,
+    )
+    analysis_service = AnalysisService(
+        market_data_service=market_data_service,
+        macro_context_service=MacroContextService(
+            provider=provider,
+            ttl_seconds=3600,
+            market_symbol="SPY",
+            usd_symbol="DXY",
+            interest_rate_effect="neutral",
+        ),
+        news_sentiment_service=NewsSentimentService(
+            provider=FakeNewsProvider(),
+            ttl_seconds=3600,
+            headline_limit=8,
+        ),
+        summary_service=FakeSummaryService(),
+        analysis_cache_ttl_seconds=10,
+        alerts_cache_ttl_seconds=3600,
+    )
+
+    warm = analysis_service.analyze_symbol("AAPL", strategy="hedgefund")
+
+    class FailingProvider:
+        def fetch_quotes(self, symbols, names):
+            raise ExternalServiceError("Provider error while loading quotes.")
+
+        def fetch_history(self, symbol, period):
+            raise ExternalServiceError("Live market data provider is currently unavailable.")
+
+    market_data_service.provider = FailingProvider()
+    stale = analysis_service.analyze_symbol("AAPL", strategy="hedgefund", force_refresh=True)
+
+    assert stale.symbol == warm.symbol == "AAPL"
+    assert stale.recommendation == warm.recommendation
+    assert stale.score == warm.score
+    assert stale.confidence == warm.confidence
+
+
 def test_scan_alerts_with_db_reuses_cached_symbol_analysis_when_preprimed(db_session):
     provider = FakeMarketDataProvider()
     market_data_service = MarketDataService(

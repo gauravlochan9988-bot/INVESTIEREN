@@ -182,6 +182,7 @@ class MarketDataService:
 
     def get_watchlist_quotes(self, force_refresh: bool = False) -> List[StockQuote]:
         cache_key = "watchlist"
+        stale_snapshot = self.quote_cache.get_stale(cache_key) if force_refresh else None
         if force_refresh:
             self.quote_cache.delete(cache_key)
         cached = self.quote_cache.get(cache_key)
@@ -208,6 +209,11 @@ class MarketDataService:
                     for snapshot in snapshots
                 ]
             except (ExternalServiceError, NotFoundError) as error:
+                stale = self.quote_cache.get_stale(cache_key)
+                if stale is not None:
+                    return stale
+                if stale_snapshot is not None:
+                    return stale_snapshot
                 raise ExternalServiceError(NO_LIVE_MARKET_DATA_MESSAGE) from error
             return self.quote_cache.set(cache_key, quotes)
 
@@ -224,6 +230,7 @@ class MarketDataService:
             )
 
         cache_key = f"{normalized}:{period}"
+        stale_snapshot = self.history_cache.get_stale(cache_key) if force_refresh else None
         if force_refresh:
             self.history_cache.delete(cache_key)
         cached = self.history_cache.get(cache_key)
@@ -237,6 +244,11 @@ class MarketDataService:
             try:
                 history = self.provider.fetch_history(normalized, period)
             except ExternalServiceError as error:
+                stale = self.history_cache.get_stale(cache_key)
+                if stale is not None:
+                    return stale
+                if stale_snapshot is not None:
+                    return stale_snapshot
                 raise ExternalServiceError(NO_LIVE_MARKET_DATA_MESSAGE) from error
             return self.history_cache.set(cache_key, history)
 
@@ -251,6 +263,7 @@ class MarketDataService:
                     return quote
 
         cache_key = f"quote:{normalized}"
+        stale_snapshot = self.quote_cache.get_stale(cache_key) if force_refresh else None
         if force_refresh:
             self.quote_cache.delete(cache_key)
         cached = self.quote_cache.get(cache_key)
@@ -275,6 +288,11 @@ class MarketDataService:
                     updated_at=snapshots[0].updated_at,
                 )
             except ExternalServiceError as error:
+                stale = self.quote_cache.get_stale(cache_key)
+                if stale is not None and stale:
+                    return stale[0]
+                if stale_snapshot is not None and stale_snapshot:
+                    return stale_snapshot[0]
                 raise ExternalServiceError(NO_LIVE_MARKET_DATA_MESSAGE) from error
             self.quote_cache.set(cache_key, [quote])
             return quote

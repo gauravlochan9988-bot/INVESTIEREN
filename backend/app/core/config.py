@@ -39,7 +39,7 @@ class Settings(BaseSettings):
             else f"sqlite+pysqlite:///{(PROJECT_ROOT / 'investieren.db').as_posix()}"
         )
     )
-    market_cache_ttl_seconds: int = 45
+    market_cache_ttl_seconds: int = 30
     indicators_cache_ttl_seconds: int = 60
     analysis_cache_ttl_seconds: int = 10
     alerts_cache_ttl_seconds: int = 60

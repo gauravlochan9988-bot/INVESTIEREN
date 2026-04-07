@@ -83,6 +83,39 @@ def test_market_data_service_raises_live_data_error_when_provider_fails():
         service.get_latest_quote("NFLX")
 
 
+def test_market_data_service_returns_stale_cache_when_provider_fails_after_warmup(
+    market_data_service,
+    fake_market_data_provider,
+):
+    class QuotesThenFailProvider:
+        def __init__(self, base_provider):
+            self.base_provider = base_provider
+            self.fail = False
+
+        def fetch_quotes(self, symbols, names):
+            if self.fail:
+                raise ExternalServiceError("provider down")
+            return self.base_provider.fetch_quotes(symbols, names)
+
+        def fetch_history(self, symbol, period):
+            if self.fail:
+                raise ExternalServiceError("provider down")
+            return self.base_provider.fetch_history(symbol, period)
+
+    provider = QuotesThenFailProvider(fake_market_data_provider)
+    market_data_service.provider = provider
+
+    warm_quotes = market_data_service.get_watchlist_quotes(force_refresh=True)
+    warm_history = market_data_service.get_history("AAPL", "1mo", force_refresh=True)
+    warm_quote = market_data_service.get_latest_quote("NFLX", force_refresh=True)
+
+    provider.fail = True
+
+    assert market_data_service.get_watchlist_quotes(force_refresh=True) == warm_quotes
+    assert market_data_service.get_history("AAPL", "1mo", force_refresh=True) == warm_history
+    assert market_data_service.get_latest_quote("NFLX", force_refresh=True) == warm_quote
+
+
 class PartiallyFailingMarketDataProvider:
     def fetch_quotes(self, symbols, names):
         from datetime import datetime, timezone
