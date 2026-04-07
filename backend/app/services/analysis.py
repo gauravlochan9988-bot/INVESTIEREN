@@ -1213,6 +1213,18 @@ class AnalysisService:
             signal_map=signal_map,
         )
         strong_conflicts = self._strong_conflicts(conflicts)
+        primary_alignment = self._primary_signal_alignment_count(
+            recommendation=recommendation,
+            signal_map=signal_map,
+        )
+        marginal_trade = self._is_marginal_trade_setup(
+            strategy=strategy,
+            recommendation=recommendation,
+            score=score,
+            signal_map=signal_map,
+            volatility_30d=context["volatility_30d"],
+            conflicts=conflicts,
+        )
         strong_downtrend = (
             context["latest_price"] < context["sma200"]
             and signal_map["trend"].probability_impact <= -0.25
@@ -1229,6 +1241,8 @@ class AnalysisService:
             block_reason = "the score is below the minimum buy threshold"
         elif recommendation == "SELL" and score > MIN_ACTIONABLE_SELL_SCORE:
             block_reason = "the score is above the minimum sell threshold"
+        elif primary_alignment < 2:
+            block_reason = "trend, moving averages and momentum do not align clearly enough"
         elif aligned_count < 2:
             block_reason = "fewer than two factors confirm the signal"
         elif recommendation == "SELL" and not self._core_directional_confirmation(
@@ -1236,6 +1250,12 @@ class AnalysisService:
             signal_map=signal_map,
         ):
             block_reason = "the sell setup lacks clear bearish confirmation"
+        elif marginal_trade:
+            block_reason = (
+                "signals are conflicting and the edge is only marginal"
+                if conflicts
+                else "the setup only has a marginal edge and is better treated as a hold"
+            )
         elif strong_conflicts or (conflicts and opposing_count >= 2):
             block_reason = "signals are conflicting, so the setup is not clean enough"
         elif recommendation == "BUY" and strong_downtrend:
@@ -1356,6 +1376,7 @@ class AnalysisService:
                     else 0,
                 },
                 confidence=confidence,
+                context=context,
             )
         if strategy == "ai":
             return self._weighted_strategy_reason(
@@ -1363,6 +1384,7 @@ class AnalysisService:
                 signal_scores=self._ai_signal_scores(context["factor_scores"]),
                 confidence=confidence,
                 label="AI",
+                context=context,
             )
         return self._hedgefund_strategy_reason(
             recommendation=recommendation,
@@ -1372,6 +1394,7 @@ class AnalysisService:
             momentum_up=context["momentum_5d"] > 0,
             momentum_down=context["momentum_5d"] < 0,
             signal_scores=context["factor_scores"],
+            context=context,
         )
 
     def _simple_strategy(self, context: dict) -> dict[str, object]:
@@ -1430,6 +1453,7 @@ class AnalysisService:
             recommendation=recommendation,
             signal_scores=signal_scores,
             confidence=confidence,
+            context=context,
         )
         self._log_score_distribution(
             strategy="simple",
@@ -1497,6 +1521,7 @@ class AnalysisService:
             signal_scores=signal_scores,
             confidence=confidence,
             label="AI",
+            context=context,
         )
         self._log_score_distribution(
             strategy="ai",
@@ -1588,6 +1613,7 @@ class AnalysisService:
             momentum_up=momentum_up,
             momentum_down=momentum_down,
             signal_scores=signal_scores,
+            context=context,
         )
         self._log_score_distribution(
             strategy="hedgefund",
@@ -1896,6 +1922,55 @@ class AnalysisService:
             conflicts=conflicts,
         )
 
+    def _primary_signal_alignment_count(
+        self,
+        *,
+        recommendation: Recommendation,
+        signal_map: dict[str, SignalResult],
+    ) -> int:
+        if recommendation == "HOLD":
+            return 0
+
+        keys = ("trend", "sma_crossover", "momentum")
+        if recommendation == "BUY":
+            return sum(1 for key in keys if signal_map[key].probability_impact >= 0.18)
+        return sum(1 for key in keys if signal_map[key].probability_impact <= -0.18)
+
+    def _is_marginal_trade_setup(
+        self,
+        *,
+        strategy: Strategy,
+        recommendation: Recommendation,
+        score: int,
+        signal_map: dict[str, SignalResult],
+        volatility_30d: float,
+        conflicts: Sequence[str],
+    ) -> bool:
+        if recommendation == "HOLD":
+            return False
+
+        threshold = (
+            self._effective_buy_threshold(strategy)
+            if recommendation == "BUY"
+            else abs(self._effective_sell_threshold(strategy))
+        )
+        score_at_edge = abs(score) <= threshold
+        primary_alignment = self._primary_signal_alignment_count(
+            recommendation=recommendation,
+            signal_map=signal_map,
+        )
+        rsi_counter = (
+            recommendation == "BUY" and signal_map["rsi"].probability_impact <= -0.18
+        ) or (
+            recommendation == "SELL" and signal_map["rsi"].probability_impact >= 0.18
+        )
+        return score_at_edge and (
+            primary_alignment < 3
+            or volatility_30d >= 0.22
+            or bool(conflicts)
+            or rsi_counter
+        )
+
     def _strategy_warnings(
         self,
         *,
@@ -2005,17 +2080,21 @@ class AnalysisService:
         recommendation: Recommendation,
         signal_scores: dict[str, int],
         confidence: float,
+        context: dict[str, Any],
     ) -> str:
         positive = [name for name, value in signal_scores.items() if value > 0]
         negative = [name for name, value in signal_scores.items() if value < 0]
+        positive_drivers, negative_drivers = self._reason_drivers(context=context)
         if recommendation == "BUY":
-            drivers = ", ".join(positive[:2]) or "positive signals"
+            drivers = ", ".join(positive_drivers[:3]) or ", ".join(positive[:2]) or "positive signals"
             return f"BUY because {drivers} are aligned. Confidence {confidence:.0f}/100."
         if recommendation == "SELL":
-            drivers = ", ".join(negative[:2]) or "negative signals"
+            drivers = ", ".join(negative_drivers[:3]) or ", ".join(negative[:2]) or "negative signals"
             return f"SELL because {drivers} are aligned. Confidence {confidence:.0f}/100."
         if positive and negative:
-            return f"HOLD because signals are mixed between {positive[0]} and {negative[0]}. Confidence {confidence:.0f}/100."
+            positive_label = positive_drivers[0] if positive_drivers else positive[0]
+            negative_label = negative_drivers[0] if negative_drivers else negative[0]
+            return f"HOLD because signals are mixed between {positive_label} and {negative_label}. Confidence {confidence:.0f}/100."
         return f"HOLD because the simple score is not strong enough for a trade. Confidence {confidence:.0f}/100."
 
     def _weighted_strategy_reason(
@@ -2025,11 +2104,13 @@ class AnalysisService:
         signal_scores: dict[str, int],
         confidence: float,
         label: str,
+        context: dict[str, Any],
     ) -> str:
         positive = [name for name, value in signal_scores.items() if value > 0]
         negative = [name for name, value in signal_scores.items() if value < 0]
-        top_positive = " + ".join(positive[:2]) or "positive factors"
-        top_negative = " + ".join(negative[:2]) or "negative factors"
+        positive_drivers, negative_drivers = self._reason_drivers(context=context)
+        top_positive = " + ".join(positive_drivers[:3]) or " + ".join(positive[:2]) or "positive factors"
+        top_negative = " + ".join(negative_drivers[:3]) or " + ".join(negative[:2]) or "negative factors"
 
         if label == "AI":
             if recommendation == "BUY":
@@ -2070,22 +2151,64 @@ class AnalysisService:
         momentum_up: bool,
         momentum_down: bool,
         signal_scores: dict[str, int],
+        context: dict[str, Any],
     ) -> str:
         positive = [name for name, value in signal_scores.items() if value > 0]
         negative = [name for name, value in signal_scores.items() if value < 0]
+        positive_drivers, negative_drivers = self._reason_drivers(context=context)
         buy_threshold = self._effective_buy_threshold("hedgefund")
         sell_threshold = self._effective_sell_threshold("hedgefund")
         if recommendation == "BUY":
-            return f"BUY because {', '.join(positive[:2]) or 'positive factors'} align and trend plus momentum confirm. Confidence {confidence:.0f}/100."
+            drivers = ", ".join(positive_drivers[:3]) or ", ".join(positive[:2]) or "positive factors"
+            return f"BUY because {drivers} align and trend plus momentum confirm. Confidence {confidence:.0f}/100."
         if recommendation == "SELL":
-            return f"SELL because {', '.join(negative[:2]) or 'negative factors'} align and trend plus momentum confirm. Confidence {confidence:.0f}/100."
+            drivers = ", ".join(negative_drivers[:3]) or ", ".join(negative[:2]) or "negative factors"
+            return f"SELL because {drivers} align and trend plus momentum confirm. Confidence {confidence:.0f}/100."
         if trend_up and not momentum_up and score >= max(2, buy_threshold - 1):
             return f"HOLD because the long-term trend is up but momentum does not confirm the buy. Confidence {confidence:.0f}/100."
         if (not trend_up) and not momentum_down and score <= min(-2, sell_threshold + 1):
             return f"HOLD because the long-term trend is down but momentum does not confirm the sell. Confidence {confidence:.0f}/100."
         if positive and negative:
-            return f"HOLD because hedgefund factors are mixed between {positive[0]} and {negative[0]}. Confidence {confidence:.0f}/100."
+            positive_label = positive_drivers[0] if positive_drivers else positive[0]
+            negative_label = negative_drivers[0] if negative_drivers else negative[0]
+            return f"HOLD because hedgefund factors are mixed between {positive_label} and {negative_label}. Confidence {confidence:.0f}/100."
         return f"HOLD because the hedgefund score is not strong enough for a trade. Confidence {confidence:.0f}/100."
+
+    def _reason_drivers(self, *, context: dict[str, Any]) -> tuple[list[str], list[str]]:
+        signal_map: dict[str, SignalResult] = context["signal_map"]
+        positive: list[str] = []
+        negative: list[str] = []
+
+        def add_if(bucket: list[str], label: str) -> None:
+            if label not in bucket:
+                bucket.append(label)
+
+        if signal_map["trend"].probability_impact >= 0.18:
+            add_if(positive, "trend")
+        elif signal_map["trend"].probability_impact <= -0.18:
+            add_if(negative, "trend")
+
+        if signal_map["sma_crossover"].probability_impact >= 0.18:
+            add_if(positive, "moving averages")
+        elif signal_map["sma_crossover"].probability_impact <= -0.18:
+            add_if(negative, "moving averages")
+
+        if signal_map["momentum"].probability_impact >= 0.18:
+            add_if(positive, "momentum")
+        elif signal_map["momentum"].probability_impact <= -0.18:
+            add_if(negative, "momentum")
+
+        if signal_map["rsi"].probability_impact >= 0.15:
+            add_if(positive, "RSI")
+        elif signal_map["rsi"].probability_impact <= -0.15:
+            add_if(negative, "RSI")
+
+        if signal_map["volatility"].probability_impact >= 0.10:
+            add_if(positive, "controlled volatility")
+        elif signal_map["volatility"].probability_impact <= -0.15:
+            add_if(negative, "elevated volatility")
+
+        return positive, negative
 
     def _no_data_response(
         self,
