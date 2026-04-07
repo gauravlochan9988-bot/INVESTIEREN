@@ -201,6 +201,10 @@ def create_app() -> FastAPI:
             "database": get_database_status(),
         }
 
+    @app.get("/health")
+    def root_healthcheck() -> dict:
+        return healthcheck()
+
     @app.exception_handler(NotFoundError)
     async def not_found_handler(_: Request, exc: NotFoundError) -> JSONResponse:
         return _error_response(404, exc.message, detail=exc.message)
