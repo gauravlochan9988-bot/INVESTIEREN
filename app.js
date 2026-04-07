@@ -2,7 +2,7 @@ if (window.location.protocol === "file:") {
   window.location.replace("http://127.0.0.1:8000/");
 }
 
-const DEPLOYED_API_ORIGIN = "https://investieren-api.onrender.com";
+const DEPLOYED_API_ORIGIN = "https://investieren-production.up.railway.app";
 const LOCAL_API_HOSTS = new Set(["127.0.0.1", "localhost"]);
 const AUTH_PASSWORD = "9988";
 const STORAGE_KEYS = {
