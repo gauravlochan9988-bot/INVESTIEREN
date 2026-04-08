@@ -25,6 +25,7 @@ class TradeHistoryService:
         if analysis.no_data or analysis.recommendation is None:
             return
 
+        recommendation = analysis.recommendation.upper()
         symbol = self.market_data_service.ensure_supported_symbol(analysis.symbol)
         latest_quote = self.market_data_service.get_latest_quote(symbol, force_refresh=False)
         current_price = float(latest_quote.price)
@@ -38,7 +39,7 @@ class TradeHistoryService:
             strategy=analysis.strategy,
         )
 
-        if analysis.recommendation == "HOLD":
+        if recommendation == "SELL":
             if open_trade is not None:
                 self.trade_performance_repository.close_trade(
                     db,
@@ -49,7 +50,10 @@ class TradeHistoryService:
                 )
             return
 
-        if open_trade is not None and (open_trade.recommendation or "").upper() == analysis.recommendation:
+        if recommendation != "BUY":
+            return
+
+        if open_trade is not None and (open_trade.recommendation or "").upper() == recommendation:
             return
 
         if open_trade is not None:
@@ -69,7 +73,7 @@ class TradeHistoryService:
             quantity=1.0,
             entry_price=current_price,
             exit_price=None,
-            recommendation=analysis.recommendation,
+            recommendation=recommendation,
             score=analysis.score,
             confidence=float(analysis.confidence or 0.0),
             data_quality=analysis.data_quality,

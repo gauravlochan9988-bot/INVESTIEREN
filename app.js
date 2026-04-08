@@ -236,10 +236,20 @@ function compactNumber(value) {
 }
 
 function formatMarketCap(value) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+  const numeric = Number(value);
+  if (!numeric || Number.isNaN(numeric)) {
     return "--";
   }
-  return `${compactNumber(value)} B`;
+  if (numeric >= 1e12) {
+    return `${(numeric / 1e12).toFixed(2)}T`;
+  }
+  if (numeric >= 1e9) {
+    return `${(numeric / 1e9).toFixed(2)}B`;
+  }
+  if (numeric >= 1e6) {
+    return `${(numeric / 1e6).toFixed(2)}M`;
+  }
+  return numeric.toString();
 }
 
 function percent(value) {
