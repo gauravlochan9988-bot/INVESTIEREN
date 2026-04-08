@@ -19,6 +19,59 @@ Strategy = Literal["simple", "ai", "hedgefund"]
 AlertTone = Literal["bullish", "bearish", "neutral"]
 AlertKind = Literal["recommendation", "signal", "price", "rsi", "entry", "exit"]
 
+STRATEGY_PROMPTS: dict[str, str] = {
+    "simple": (
+        "Analysiere Trend, RSI, Momentum, News und Volatilität.\n\n"
+        "STRATEGIE:\n"
+        "Handle stabil und konservativ:\n"
+        "- BUY, wenn die positiven Signale klar überwiegen\n"
+        "- SELL, wenn die negativen Signale klar überwiegen\n"
+        "- HOLD, wenn Signale gemischt oder unsicher sind\n\n"
+        "Gib deine Antwort exakt in diesem Format zurück:\n\n"
+        "Action: BUY / SELL / HOLD\n"
+        "Confidence: Zahl von 0 bis 100\n"
+        "Reason: kurzer klarer Satz\n\n"
+        "Regeln:\n"
+        "- Keine zusätzlichen Texte\n"
+        "- Keine Erklärungen außerhalb des Formats\n"
+        "- Nur eine klare Entscheidung"
+    ),
+    "ai": (
+        "Analysiere Trend, RSI, Momentum, News und Volatilität.\n\n"
+        "STRATEGIE:\n"
+        "Entscheide früh und sensibel:\n"
+        "- Stark positiv → BUY\n"
+        "- Leicht positiv → BUY mit geringerer Sicherheit\n"
+        "- Neutral oder unsicher → HOLD\n"
+        "- Leicht negativ → SELL mit geringerer Sicherheit\n"
+        "- Stark negativ → SELL\n\n"
+        "Gib deine Antwort exakt in diesem Format zurück:\n\n"
+        "Action: BUY / SELL / HOLD\n"
+        "Confidence: Zahl von 0 bis 100\n"
+        "Reason: kurzer klarer Satz\n\n"
+        "Regeln:\n"
+        "- Keine zusätzlichen Texte\n"
+        "- Keine Erklärungen außerhalb des Formats\n"
+        "- Nur eine klare Entscheidung"
+    ),
+    "hedgefund": (
+        "Analysiere Trend, Momentum, Volatilität und die allgemeine Marktrichtung.\n\n"
+        "STRATEGIE:\n"
+        "Handle nur bei klaren Signalen:\n"
+        "- BUY nur bei stark positivem Trend, positivem Momentum und stabilem Markt\n"
+        "- SELL nur bei stark negativem Trend und negativem Momentum\n"
+        "- Bei Unsicherheit oder gemischten Signalen → HOLD\n\n"
+        "Gib deine Antwort exakt in diesem Format zurück:\n\n"
+        "Action: BUY / SELL / HOLD\n"
+        "Confidence: Zahl von 0 bis 100\n"
+        "Reason: kurzer klarer Satz\n\n"
+        "Regeln:\n"
+        "- Keine zusätzlichen Texte\n"
+        "- Keine Erklärungen außerhalb des Formats\n"
+        "- Nur eine klare Entscheidung"
+    ),
+}
+
 
 class AnalyzeRequest(BaseModel):
     symbol: str
@@ -189,3 +242,16 @@ class AnalysisResponse(BaseModel):
     @property
     def reason(self) -> str:
         return self.summary
+
+    @computed_field
+    @property
+    def strategy_prompt(self) -> str:
+        return STRATEGY_PROMPTS.get(self.strategy, STRATEGY_PROMPTS["simple"])
+
+    @computed_field
+    @property
+    def formatted_output(self) -> str:
+        action = self.recommendation or "HOLD"
+        confidence = int(round(float(self.confidence or 0)))
+        reason = (self.summary or "No clear setup available.").strip()
+        return f"Action: {action}\nConfidence: {confidence}\nReason: {reason}"
