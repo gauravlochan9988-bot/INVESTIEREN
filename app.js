@@ -84,6 +84,10 @@ const state = {
 
 const elements = {
   authOverlay: document.getElementById("authOverlay"),
+  paywallOverlay: document.getElementById("paywallOverlay"),
+  paywallUpgradeButton: document.getElementById("paywallUpgradeButton"),
+  paywallLogoutButton: document.getElementById("paywallLogoutButton"),
+  paywallMessage: document.getElementById("paywallMessage"),
   authManagedPanel: document.getElementById("authManagedPanel"),
   authForm: document.getElementById("authForm"),
   authGoogleButton: document.getElementById("authGoogleButton"),
@@ -315,6 +319,28 @@ function renderSubscriptionButton() {
   elements.subscribeButton.textContent = "Subscribe €9.99";
   elements.subscribeButton.className =
     "action-secondary rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/15 xl:min-w-[132px]";
+}
+
+function hasActiveSubscription() {
+  return Boolean(state.auth.subscription?.active);
+}
+
+function showPaywall(message = "Subscribe to access live signals, alerts and watchlists.") {
+  elements.authOverlay.classList.add("hidden");
+  elements.authOverlay.hidden = true;
+  elements.appShell.classList.add("hidden");
+  elements.appShell.hidden = true;
+  elements.mobileQuickActions?.classList.add("hidden");
+  elements.paywallOverlay?.classList.remove("hidden");
+  elements.paywallOverlay.hidden = false;
+  if (elements.paywallMessage) {
+    elements.paywallMessage.textContent = message;
+  }
+}
+
+function hidePaywall() {
+  elements.paywallOverlay?.classList.add("hidden");
+  elements.paywallOverlay.hidden = true;
 }
 
 async function loadSubscriptionStatus() {
@@ -2423,12 +2449,14 @@ function renderStrategyButtons() {
 function showAppShell() {
   elements.authOverlay.classList.add("hidden");
   elements.authOverlay.hidden = true;
+  hidePaywall();
   elements.appShell.classList.remove("hidden");
   elements.appShell.hidden = false;
   elements.mobileQuickActions?.classList.remove("hidden");
 }
 
 function showLoginOverlay() {
+  hidePaywall();
   elements.appShell.classList.add("hidden");
   elements.appShell.hidden = true;
   elements.authOverlay.classList.remove("hidden");
@@ -3464,6 +3492,10 @@ async function loadStrategySnapshots(symbol, forceRefresh = false) {
 }
 
 async function bootDashboard(forceRefresh = false) {
+  if (state.auth.enabled && !hasActiveSubscription()) {
+    showPaywall();
+    return;
+  }
   clearError();
   updateChartCompareUi();
   if (!forceRefresh) {
@@ -3635,6 +3667,23 @@ function bindApp() {
     void startCheckout();
   });
 
+  elements.paywallUpgradeButton?.addEventListener("click", () => {
+    void startCheckout();
+  });
+
+  elements.paywallLogoutButton?.addEventListener("click", async () => {
+    if (state.auth.enabled && state.auth.client) {
+      await state.auth.client.logout({
+        logoutParams: {
+          returnTo: `${window.location.origin}${window.location.pathname}`,
+        },
+      });
+      return;
+    }
+    setAuthenticated(false);
+    showLoginOverlay();
+  });
+
   elements.refreshButton.addEventListener("click", async () => {
     await bootDashboard(true);
   });
@@ -3798,8 +3847,13 @@ async function initializeApp() {
   bindApp();
 
   if (isAuthenticated()) {
-    showAppShell();
-    void bootDashboard();
+    await loadSubscriptionStatus();
+    if (hasActiveSubscription()) {
+      showAppShell();
+      void bootDashboard();
+      return;
+    }
+    showPaywall();
     return;
   }
 

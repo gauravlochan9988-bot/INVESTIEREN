@@ -10,6 +10,9 @@ def test_root_serves_static_dashboard(client):
     assert "Create Account" in response.text
     assert "Login" in response.text
     assert 'id="authManagedPanel"' in response.text
+    assert 'id="paywallOverlay"' in response.text
+    assert "Upgrade to unlock the dashboard" in response.text
+    assert "Upgrade €9.99 / month" in response.text
     assert 'placeholder="Search"' in response.text
     assert "Quotes" in response.text
     assert "TradingView" in response.text
@@ -53,6 +56,8 @@ def test_static_assets_are_available(client):
     assert "sessionStorage" in response.text
     assert "initializeManagedAuth" in response.text
     assert "createAuth0Client" in response.text
+    assert "showPaywall" in response.text
+    assert "hasActiveSubscription" in response.text
     assert "showLoginOverlay" in response.text
     assert "showAppShell" in response.text
     assert "buildApiUrl" in response.text

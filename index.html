@@ -122,6 +122,36 @@
       </section>
     </div>
 
+    <div
+      id="paywallOverlay"
+      class="fixed inset-0 z-20 hidden min-h-screen items-center justify-center overflow-hidden bg-slate-950/92"
+      hidden
+    >
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(45,212,191,0.12),_transparent_35%),linear-gradient(180deg,rgba(2,6,23,0.94)_0%,rgba(2,6,23,0.98)_100%)]"></div>
+      <section class="relative z-10 mx-4 w-full max-w-xl rounded-[28px] border border-white/10 bg-slate-900/90 p-8 text-center shadow-2xl shadow-black/40 backdrop-blur">
+        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">Pro Access</p>
+        <h2 class="mt-4 text-3xl font-black tracking-[-0.04em] text-white">Upgrade to unlock the dashboard</h2>
+        <p class="mt-4 text-sm leading-6 text-slate-300">Subscribe to access live signals, alerts and watchlists.</p>
+        <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <button
+            id="paywallUpgradeButton"
+            type="button"
+            class="rounded-2xl bg-gradient-to-r from-cyan-300 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px]"
+          >
+            Upgrade €9.99 / month
+          </button>
+          <button
+            id="paywallLogoutButton"
+            type="button"
+            class="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+          >
+            Logout
+          </button>
+        </div>
+        <p id="paywallMessage" class="mt-4 text-xs text-slate-400">Apple Pay and Google Pay available in Stripe Checkout.</p>
+      </section>
+    </div>
+
     <div id="appShell" class="hidden min-h-screen">
       <div class="mx-auto flex min-h-screen w-full max-w-[1720px] flex-col px-3 py-3 sm:px-5 sm:py-4 lg:px-6 xl:px-8 2xl:px-10">
         <header
