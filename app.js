@@ -489,13 +489,22 @@ function confidenceHint(analysis) {
 function dataQualityInfo(analysis) {
   if (!analysis) {
     return {
-      label: "--",
-      tone: "text-slate-200",
+      label: "No Data",
+      tone: "tone-muted",
       reason: "No data.",
     };
   }
 
-  const value = analysis.data_quality || (analysis.no_data ? "NO_DATA" : "--");
+  const normalizedQuality = String(analysis.data_quality || "").toUpperCase();
+  const hasSignals = Boolean(analysis.signals);
+  const value =
+    normalizedQuality === "FULL" || normalizedQuality === "PARTIAL" || normalizedQuality === "NO_DATA"
+      ? normalizedQuality
+      : analysis.no_data
+        ? "NO_DATA"
+        : hasSignals
+          ? "PARTIAL"
+          : "NO_DATA";
   const presentation =
     value === "FULL"
       ? {
@@ -504,18 +513,13 @@ function dataQualityInfo(analysis) {
         }
       : value === "PARTIAL"
         ? {
-            label: "Limited Data",
+            label: "Partial Data",
             tone: "tone-hold",
           }
-        : value === "NO_DATA"
-          ? {
-              label: "No Data",
-              tone: "tone-muted",
-            }
-          : {
-              label: "--",
-              tone: "tone-muted",
-            };
+        : {
+            label: "No Data",
+            tone: "tone-muted",
+          };
 
   return {
     label: presentation.label,
@@ -788,7 +792,7 @@ function renderAnalysisLoading(symbol) {
   elements.riskValue.textContent = "--";
   elements.timeframeValue.textContent = "--";
   elements.coverageValue.className = "mt-3 text-2xl font-semibold text-white";
-  elements.coverageValue.textContent = "--";
+  elements.coverageValue.textContent = "No Data";
   elements.coverageReason.textContent = "Waiting.";
   elements.entryValue.textContent = "--";
   elements.entryReason.textContent = "Waiting.";
