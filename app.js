@@ -78,6 +78,7 @@ const state = {
     accessToken: "",
     tokenFetchedAt: 0,
     currentUser: null,
+    subscription: null,
   },
 };
 
@@ -105,6 +106,7 @@ const elements = {
   strategyToggle: document.getElementById("strategyToggle"),
   strategyToggleThumb: document.getElementById("strategyToggleThumb"),
   strategyButtons: Array.from(document.querySelectorAll(".strategy-button")),
+  subscribeButton: document.getElementById("subscribeButton"),
   logoutButton: document.getElementById("logoutButton"),
   refreshButton: document.getElementById("refreshButton"),
   brandHomeButton: document.getElementById("brandHomeButton"),
@@ -295,10 +297,101 @@ async function syncAuthenticatedUser(forceRefresh = false) {
   return user;
 }
 
+function renderSubscriptionButton() {
+  if (!elements.subscribeButton) {
+    return;
+  }
+
+  const subscription = state.auth.subscription;
+  if (subscription?.active) {
+    elements.subscribeButton.textContent = "Pro Active";
+    elements.subscribeButton.disabled = true;
+    elements.subscribeButton.className =
+      "action-secondary rounded-2xl border border-emerald-400/25 bg-emerald-400/12 px-4 py-3 text-sm font-semibold text-emerald-200 opacity-90 xl:min-w-[132px]";
+    return;
+  }
+
+  elements.subscribeButton.disabled = !state.auth.enabled || !isAuthenticated();
+  elements.subscribeButton.textContent = "Subscribe €9.99";
+  elements.subscribeButton.className =
+    "action-secondary rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/15 xl:min-w-[132px]";
+}
+
+async function loadSubscriptionStatus() {
+  if (!state.auth.enabled || !isAuthenticated()) {
+    state.auth.subscription = null;
+    renderSubscriptionButton();
+    return null;
+  }
+
+  try {
+    const subscription = await api("/api/billing/subscription", {
+      timeoutMs: 12000,
+      retryCount: 1,
+    });
+    state.auth.subscription = subscription;
+  } catch (error) {
+    console.error("[frontend] subscription status load failed", error);
+    state.auth.subscription = null;
+  }
+  renderSubscriptionButton();
+  return state.auth.subscription;
+}
+
+async function startCheckout() {
+  try {
+    clearError();
+    renderSubscriptionButton();
+    const session = await api("/api/billing/checkout", {
+      method: "POST",
+      timeoutMs: 18000,
+      retryCount: 0,
+      body: JSON.stringify({}),
+    });
+    if (!session?.url) {
+      throw new Error("Checkout is unavailable.");
+    }
+    window.location.href = session.url;
+  } catch (error) {
+    showError(error.message || "Checkout failed.");
+  }
+}
+
+async function handleBillingRedirectState() {
+  const params = new URLSearchParams(window.location.search);
+  const checkoutState = params.get("checkout");
+  const sessionId = params.get("session_id");
+  if (!checkoutState) {
+    return;
+  }
+
+  try {
+    if (checkoutState === "success" && sessionId && isAuthenticated()) {
+      await api(`/api/billing/checkout-session/${encodeURIComponent(sessionId)}`, {
+        timeoutMs: 15000,
+        retryCount: 0,
+      });
+      await loadSubscriptionStatus();
+      setBackendStatus("Subscription active", "ok");
+    } else if (checkoutState === "cancel") {
+      setBackendStatus("Checkout canceled", "warning");
+    }
+  } catch (error) {
+    showError(error.message || "Subscription sync failed.");
+  } finally {
+    params.delete("checkout");
+    params.delete("session_id");
+    const nextQuery = params.toString();
+    const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`;
+    window.history.replaceState({}, document.title, nextUrl);
+  }
+}
+
 async function initializeManagedAuth() {
   const config = await fetchAuthConfig();
   if (!state.auth.enabled) {
     state.auth.ready = true;
+    renderSubscriptionButton();
     return false;
   }
 
@@ -332,6 +425,7 @@ async function initializeManagedAuth() {
   }
 
   state.auth.ready = true;
+  renderSubscriptionButton();
   return isAuthenticated();
 }
 
@@ -3395,6 +3489,12 @@ async function bootDashboard(forceRefresh = false) {
     }, 120);
 
     scheduleLowPriorityTask(() => {
+      loadSubscriptionStatus().catch((error) => {
+        console.error("[frontend] subscription status load failed", error);
+      });
+    }, 140);
+
+    scheduleLowPriorityTask(() => {
       loadAlerts(forceRefresh).catch((error) => {
         console.error("[frontend] alerts load failed", error);
         const cachedAlerts = readCachedJson(STORAGE_KEYS.cachedAlerts);
@@ -3529,6 +3629,10 @@ function bindApp() {
     }
     setAuthenticated(false);
     showLoginOverlay();
+  });
+
+  elements.subscribeButton?.addEventListener("click", () => {
+    void startCheckout();
   });
 
   elements.refreshButton.addEventListener("click", async () => {
@@ -3680,6 +3784,7 @@ function bindApp() {
 async function initializeApp() {
   try {
     await initializeManagedAuth();
+    await handleBillingRedirectState();
   } catch (error) {
     console.error("[frontend] auth init failed", error);
     state.auth.enabled = false;

@@ -58,6 +58,11 @@ class Settings(BaseSettings):
     auth0_audience: str = ""
     auth0_google_connection: str = "google-oauth2"
     auth0_apple_connection: str = "apple"
+    frontend_origin: str = "https://gauravtrades.de"
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_publishable_key: str = ""
+    stripe_price_id: str = ""
     watchlist: Dict[str, str] = Field(default_factory=lambda: DEFAULT_WATCHLIST.copy())
 
     @field_validator("database_url", mode="before")

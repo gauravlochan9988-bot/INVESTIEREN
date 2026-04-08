@@ -11,6 +11,7 @@ from app.core.database import get_db, get_session_factory
 from app.repositories.alert_repository import AlertRepository
 from app.repositories.analysis_log import AnalysisLogRepository
 from app.repositories.analysis_threshold import AnalysisThresholdRepository
+from app.repositories.app_subscription import AppSubscriptionRepository
 from app.repositories.app_user import AppUserRepository
 from app.repositories.favorite_symbol import FavoriteSymbolRepository
 from app.repositories.portfolio import PortfolioRepository
@@ -18,6 +19,7 @@ from app.repositories.trade_performance import TradePerformanceRepository
 from app.services.alerts import AlertService
 from app.services.analysis_calibration import AnalysisCalibrationService
 from app.services.analysis import AnalysisService
+from app.services.billing import BillingService
 from app.services.finnhub_dashboard import FinnhubDashboardService
 from app.services.macro import MacroContextService
 from app.services.market_data import (
@@ -162,6 +164,11 @@ def get_app_user_repository_instance() -> AppUserRepository:
 
 
 @lru_cache
+def get_app_subscription_repository_instance() -> AppSubscriptionRepository:
+    return AppSubscriptionRepository()
+
+
+@lru_cache
 def get_alert_repository_instance() -> AlertRepository:
     return AlertRepository()
 
@@ -255,6 +262,10 @@ def get_app_user_repository() -> AppUserRepository:
     return get_app_user_repository_instance()
 
 
+def get_app_subscription_repository() -> AppSubscriptionRepository:
+    return get_app_subscription_repository_instance()
+
+
 def get_request_user_context(
     authorization: Optional[str] = Header(default=None),
     db: Session = Depends(get_db),
@@ -288,6 +299,18 @@ def get_request_user_context(
 
 def get_analysis_calibration_service() -> AnalysisCalibrationService:
     return get_analysis_calibration_service_instance()
+
+
+@lru_cache
+def get_billing_service_instance() -> BillingService:
+    return BillingService(
+        settings=get_settings(),
+        subscription_repository=get_app_subscription_repository_instance(),
+    )
+
+
+def get_billing_service() -> BillingService:
+    return get_billing_service_instance()
 
 
 def get_trade_performance_repository() -> TradePerformanceRepository:

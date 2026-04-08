@@ -2,10 +2,16 @@ from sqlalchemy import select
 
 from datetime import date, datetime, timezone
 
-from app.api.deps import RequestUserContext, get_analysis_service, get_request_user_context
+from app.api.deps import (
+    RequestUserContext,
+    get_analysis_service,
+    get_billing_service,
+    get_request_user_context,
+)
 from app.core.exceptions import ExternalServiceError
 from app.models.alert_event import AlertEvent
 from app.models.analysis_log import AnalysisLog
+from app.models.app_user import AppUser
 from app.models.trade_performance_log import TradePerformanceLog
 from app.repositories.analysis_log import AnalysisLogRepository
 from app.repositories.analysis_threshold import AnalysisThresholdRepository
@@ -43,6 +49,32 @@ class StubAnalysisService:
 
     def analyze_symbol(self, symbol, force_refresh=False, strategy="hedgefund", db=None):
         return self.responses.pop(0)
+
+
+class StubBillingService:
+    def create_checkout_session(self, db, *, app_user):
+        return {
+            "url": "https://checkout.stripe.test/session",
+            "session_id": "cs_test_123",
+        }
+
+    def get_subscription_status(self, db, *, app_user_id):
+        return {
+            "active": False,
+            "status": "inactive",
+            "plan_name": "Investieren Pro Monthly",
+            "amount_cents": 999,
+            "currency": "eur",
+            "interval": "month",
+            "cancel_at_period_end": False,
+            "current_period_end": None,
+        }
+
+    def sync_checkout_session(self, db, *, app_user, session_id):
+        return {"status": "ok", "subscription_status": "active"}
+
+    def handle_webhook(self, db, *, payload, signature):
+        return {"status": "ok"}
 
 
 def test_stocks_endpoint_returns_watchlist(client):
@@ -510,6 +542,70 @@ def test_authenticated_user_context_isolates_alerts(client, db_session):
         assert not any(row.user_key == "desk" for row in saved)
     finally:
         client.app.dependency_overrides.pop(get_request_user_context, None)
+
+
+def test_billing_checkout_creates_checkout_session_for_authenticated_user(client, db_session):
+    user = AppUser(auth_subject="auth0|billing-1", provider="auth0", email="user@example.com", name="User")
+    db_session.add(user)
+    db_session.commit()
+
+    client.app.dependency_overrides[get_request_user_context] = lambda: RequestUserContext(
+        user_key="auth0|billing-1",
+        app_user_id=user.id,
+        is_authenticated=True,
+    )
+    client.app.dependency_overrides[get_billing_service] = lambda: StubBillingService()
+    try:
+        response = client.post("/api/billing/checkout")
+        assert response.status_code == 200
+        assert response.json() == {
+            "url": "https://checkout.stripe.test/session",
+            "session_id": "cs_test_123",
+        }
+    finally:
+        client.app.dependency_overrides.pop(get_request_user_context, None)
+        client.app.dependency_overrides.pop(get_billing_service, None)
+
+
+def test_billing_subscription_status_returns_current_user_subscription(client, db_session):
+    user = AppUser(auth_subject="auth0|billing-2", provider="auth0", email="user2@example.com", name="User Two")
+    db_session.add(user)
+    db_session.commit()
+
+    client.app.dependency_overrides[get_request_user_context] = lambda: RequestUserContext(
+        user_key="auth0|billing-2",
+        app_user_id=user.id,
+        is_authenticated=True,
+    )
+    client.app.dependency_overrides[get_billing_service] = lambda: StubBillingService()
+    try:
+        response = client.get("/api/billing/subscription")
+        assert response.status_code == 200
+        assert response.json()["status"] == "inactive"
+        assert response.json()["amount_cents"] == 999
+    finally:
+        client.app.dependency_overrides.pop(get_request_user_context, None)
+        client.app.dependency_overrides.pop(get_billing_service, None)
+
+
+def test_billing_success_sync_updates_status_for_authenticated_user(client, db_session):
+    user = AppUser(auth_subject="auth0|billing-3", provider="auth0", email="user3@example.com", name="User Three")
+    db_session.add(user)
+    db_session.commit()
+
+    client.app.dependency_overrides[get_request_user_context] = lambda: RequestUserContext(
+        user_key="auth0|billing-3",
+        app_user_id=user.id,
+        is_authenticated=True,
+    )
+    client.app.dependency_overrides[get_billing_service] = lambda: StubBillingService()
+    try:
+        response = client.get("/api/billing/checkout-session/cs_test_123")
+        assert response.status_code == 200
+        assert response.json() == {"status": "ok", "subscription_status": "active"}
+    finally:
+        client.app.dependency_overrides.pop(get_request_user_context, None)
+        client.app.dependency_overrides.pop(get_billing_service, None)
 
 
 def test_buy_opens_trade_and_sell_closes_trade(client, db_session):
