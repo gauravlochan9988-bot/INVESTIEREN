@@ -50,11 +50,13 @@
 
             <div class="space-y-3 auth-copy-text auth-copy-centered">
               <p class="auth-panel-eyebrow">Private Trading Access</p>
+              <div class="auth-status-pill">Members only</div>
               <h1 class="auth-panel-title">GQ Trading</h1>
               <p class="auth-panel-copy">Simple access. Real market signals.</p>
             </div>
 
             <form id="authForm" class="w-full max-w-md space-y-3 auth-form-panel auth-private-panel" novalidate>
+              <label for="authPassword" class="auth-input-label">Access code</label>
               <div class="auth-input-shell">
                 <input
                   id="authPassword"
@@ -86,6 +88,7 @@
                   <li>AI-based trade decisions</li>
                   <li>Alerts in one workspace</li>
                 </ul>
+                <p class="auth-benefit-note">Fast, focused and built for one clear trading workspace.</p>
               </div>
             </div>
           </div>
@@ -352,6 +355,11 @@
                   </span>
                 </div>
               </div>
+
+              <div
+                id="strategyDescription"
+                class="mb-5 rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-4 text-sm leading-6 text-slate-300"
+              ></div>
 
               <article
                 id="recommendationCard"

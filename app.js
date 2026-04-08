@@ -33,6 +33,39 @@ const STRATEGY_LABELS = {
   hedgefund: "Hedgefund",
 };
 
+const STRATEGY_DESCRIPTIONS = {
+  simple: {
+    title: "SIMPLE (FINAL)",
+    lines: [
+      "Analysiere Trend, RSI, Momentum, News und Volatilität.",
+      "BUY, wenn die positiven Signale klar überwiegen.",
+      "SELL, wenn die negativen Signale klar überwiegen.",
+      "HOLD, wenn Signale gemischt, schwach oder unsicher sind.",
+      "Stabil und konservativ mit kurzer Begründung.",
+    ],
+  },
+  ai: {
+    title: "AI (FINAL)",
+    lines: [
+      "Analysiere Trend, RSI, Momentum, News und Volatilität.",
+      "Entscheide früh und sensibel auf kleine Veränderungen.",
+      "Stark positiv: BUY. Leicht positiv: BUY mit geringerer Sicherheit.",
+      "Neutral oder unsicher: HOLD.",
+      "Leicht negativ: SELL mit geringerer Sicherheit. Stark negativ: SELL.",
+    ],
+  },
+  hedgefund: {
+    title: "HEDGEFUND (FINAL)",
+    lines: [
+      "Analysiere Trend, Momentum, Volatilität und die allgemeine Marktrichtung.",
+      "BUY nur bei stark positivem Trend, positivem Momentum und stabilem Markt.",
+      "SELL nur bei stark negativem Trend und negativem Momentum.",
+      "Bei Unsicherheit, Konflikten oder gemischten Signalen: HOLD.",
+      "Strikt, risikoorientiert und mit möglichst wenigen unnötigen Trades.",
+    ],
+  },
+};
+
 const MAX_SIDEBAR_SLOTS = 10;
 const OPPORTUNITY_LIMIT = 3;
 const DEFAULT_SIDEBAR_ITEMS = [
@@ -166,6 +199,7 @@ const elements = {
   mobileConfidenceHint: document.getElementById("mobileConfidenceHint"),
   mobileAnalysisSummary: document.getElementById("mobileAnalysisSummary"),
   selectedStrategyBadge: document.getElementById("selectedStrategyBadge"),
+  strategyDescription: document.getElementById("strategyDescription"),
   mobileStrategyCards: document.getElementById("mobileStrategyCards"),
   analysisGeneratedAt: document.getElementById("analysisGeneratedAt"),
   biasValue: document.getElementById("biasValue"),
@@ -849,6 +883,24 @@ function recommendationIcon(label) {
     return "⊘";
   }
   return "●";
+}
+
+function renderStrategyDescription(strategy = state.selectedStrategy) {
+  if (!elements.strategyDescription) {
+    return;
+  }
+  const config = STRATEGY_DESCRIPTIONS[strategy] || STRATEGY_DESCRIPTIONS.simple;
+  elements.strategyDescription.innerHTML = `
+    <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">${config.title}</p>
+    <div class="mt-3 space-y-2">
+      ${config.lines
+        .map(
+          (line) =>
+            `<p class="text-sm leading-6 text-slate-300">${line}</p>`,
+        )
+        .join("")}
+    </div>
+  `;
 }
 
 function trimDecisionText(text, maxLength = 120) {
@@ -1878,6 +1930,7 @@ function renderAnalysis(analysis) {
   }
   const strategy = analysis?.strategy || state.selectedStrategy;
   elements.selectedStrategyBadge.textContent = STRATEGY_LABELS[strategy] || titleCase(strategy);
+  renderStrategyDescription(strategy);
   if (analysis && !analysis.no_data) {
     writeCachedJson(STORAGE_KEYS.cachedAnalysis, analysis);
   }
@@ -2579,6 +2632,7 @@ function renderStrategyButtons() {
   if (elements.selectedStrategyBadge) {
     elements.selectedStrategyBadge.textContent = STRATEGY_LABELS[state.selectedStrategy];
   }
+  renderStrategyDescription(state.selectedStrategy);
 }
 
 function showAppShell() {
