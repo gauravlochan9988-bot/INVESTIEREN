@@ -8,11 +8,11 @@ def test_root_serves_static_dashboard(client):
     assert "Private Code" in response.text
     assert "Unlock Dashboard" in response.text
     assert 'placeholder="Search"' in response.text
-    assert "Live Quotes" in response.text
+    assert "Quotes" in response.text
     assert "TradingView" in response.text
-    assert "Company snapshot" in response.text
+    assert "Snapshot" in response.text
     assert "Learning Stats" in response.text
-    assert "Performance memory" in response.text
+    assert "Learning" in response.text
     assert "Trade decision" in response.text
     assert 'id="recommendationIcon"' in response.text
     assert 'id="signalQualityBadge"' in response.text

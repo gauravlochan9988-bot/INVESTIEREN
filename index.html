@@ -45,8 +45,8 @@
           <div class="auth-desktop-left">
             <div class="auth-desktop-mark" aria-hidden="true">GQ</div>
             <div class="auth-desktop-copy">
-              <h1 class="auth-desktop-title">AI helps you trade smarter</h1>
-              <p class="auth-desktop-subtext">Access your private trading workspace</p>
+              <h1 class="auth-desktop-title">Trade smarter</h1>
+              <p class="auth-desktop-subtext">Private workspace</p>
             </div>
           </div>
 
@@ -55,7 +55,7 @@
               <div class="space-y-3 auth-copy-text">
                 <h2 class="auth-panel-title">Private access</h2>
                 <p class="auth-panel-copy">
-                  Enter your private code to open the dashboard.
+                  Enter code.
                 </p>
               </div>
 
@@ -178,14 +178,14 @@
             <div id="watchlistHeader" class="mb-4 flex items-end justify-between">
               <div>
                 <p class="text-xs font-medium text-slate-500">Watchlist</p>
-                <h2 class="mt-2 text-xl font-semibold">Live Quotes</h2>
+                <h2 class="mt-2 text-xl font-semibold">Quotes</h2>
               </div>
               <span id="watchlistMeta" class="text-xs text-slate-500">Syncing...</span>
             </div>
             <div id="watchlistBody"></div>
             <div id="watchlistHint" class="rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-3 text-xs text-slate-400">
-              <p class="font-semibold uppercase tracking-[0.18em] text-slate-300">Add to Favorites ☆</p>
-              <p class="mt-2 leading-6">Click the star on any stock. Each favorite replaces one default slot in this 10-stock watchlist.</p>
+              <p class="font-semibold uppercase tracking-[0.18em] text-slate-300">☆ Favorites</p>
+              <p class="mt-2 leading-6">Star to pin.</p>
             </div>
 
             <div id="favoritesSection" class="mt-6 hidden border-t border-white/10 pt-5">
@@ -198,8 +198,8 @@
               </div>
               <div id="favoritesBody" class="space-y-3">
                 <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-sm font-semibold text-white">No favorites yet</p>
-                  <p class="mt-2 text-sm leading-6 text-slate-400">Use the star button on a stock to pin it here.</p>
+                  <p class="text-sm font-semibold text-white">No favorites</p>
+                  <p class="mt-2 text-sm leading-6 text-slate-400">Star a stock.</p>
                 </article>
               </div>
             </div>
@@ -211,14 +211,14 @@
                 <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
                   <div>
                     <p class="text-xs font-medium text-slate-500">Alerts</p>
-                    <h2 class="mt-2 text-xl font-semibold">Strong signals</h2>
+                    <h2 class="mt-2 text-xl font-semibold">Signals</h2>
                   </div>
-                  <span id="alertsMeta" class="text-xs text-slate-500">Scanning watchlist...</span>
+                  <span id="alertsMeta" class="text-xs text-slate-500">Scanning...</span>
                 </div>
                 <div id="alertsList" class="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
                   <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                    <p class="text-sm font-semibold text-white">Scanning signals</p>
-                    <p class="mt-2 text-sm leading-6 text-slate-400">The app is checking your strongest BUY, SELL and RSI setups.</p>
+                    <p class="text-sm font-semibold text-white">Scanning</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-400">📈 Checking moves.</p>
                   </article>
                 </div>
               </section>
@@ -230,14 +230,14 @@
                 <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
                   <div>
                     <p class="text-xs font-medium text-slate-500">Opportunity panel</p>
-                    <h2 class="mt-2 text-xl font-semibold">Best chances</h2>
+                    <h2 class="mt-2 text-xl font-semibold">Setups</h2>
                   </div>
-                  <span id="opportunityMeta" class="text-xs text-slate-500">Scanning top setups...</span>
+                  <span id="opportunityMeta" class="text-xs text-slate-500">Ranking...</span>
                 </div>
                 <div id="opportunityList" class="space-y-3">
                   <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                    <p class="text-sm font-semibold text-white">Reading watchlist opportunities</p>
-                    <p class="mt-2 text-sm leading-6 text-slate-400">Ranking BUY, SELL and high-confidence ideas from the current strategy.</p>
+                    <p class="text-sm font-semibold text-white">Ranking</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-400">📈 Best moves first.</p>
                   </article>
                 </div>
               </aside>
@@ -246,7 +246,7 @@
             <div id="selectedSymbolSection" class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
               <div id="selectedSymbolHero" class="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
-                  <p class="text-xs font-medium text-slate-500">Selected Symbol</p>
+                  <p class="text-xs font-medium text-slate-500">Selected</p>
                   <h2 id="selectedSymbolName" class="mt-2 break-words text-2xl font-semibold tracking-tight xl:text-3xl">AAPL</h2>
                   <p id="selectedCompanyName" class="mt-1 break-words text-sm text-slate-400">Apple Inc</p>
                 </div>
@@ -306,7 +306,7 @@
                     id="analysisGeneratedAt"
                     class="rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400"
                   >
-                    Waiting for analysis
+                    Waiting
                   </span>
                 </div>
               </div>
@@ -323,7 +323,7 @@
                       <div class="min-w-0">
                         <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">Main decision</p>
                         <p id="recommendationValue" class="break-words text-5xl font-black tracking-[-0.06em] text-white xl:text-6xl">
-                          Loading
+                          Scan
                         </p>
                       </div>
                     </div>
@@ -351,7 +351,7 @@
                         <p class="text-[11px] font-medium text-slate-500">Confidence</p>
                         <p id="confidenceValue" class="mt-2 text-3xl font-semibold text-white">--</p>
                       </div>
-                      <p id="confidenceHint" class="text-sm font-medium text-slate-300">Reading market context</p>
+                      <p id="confidenceHint" class="text-sm font-medium text-slate-300">⚠️ Scanning</p>
                     </div>
                     <div class="mt-3 h-2.5 overflow-hidden rounded-full bg-white/10">
                       <div id="confidenceBarFill" class="h-full w-0 rounded-full bg-cyan-300 transition-[width] duration-300 ease-out"></div>
@@ -359,18 +359,18 @@
                   </div>
 
                   <div class="signal-reason-block">
-                    <p class="text-[11px] font-medium text-slate-500">Why this decision</p>
+                    <p class="text-[11px] font-medium text-slate-500">Reason</p>
                     <p id="analysisSummary" class="decision-summary mt-3 break-words text-sm leading-6 text-slate-300">
-                      Loading analysis for the selected symbol.
+                      Loading signal.
                     </p>
                   </div>
 
                   <div class="decision-context-box rounded-2xl border border-white/10 bg-white/5 p-4">
                     <div class="flex flex-wrap items-center justify-between gap-3">
-                      <p class="text-[11px] font-medium text-slate-500">Trade context</p>
+                      <p class="text-[11px] font-medium text-slate-500">Context</p>
                       <p id="biasValue" class="break-words text-sm font-semibold text-white">Balanced signal</p>
                     </div>
-                    <p id="noTradeReason" class="decision-context-copy mt-3 break-words text-sm leading-6 text-slate-400">Waiting for analysis.</p>
+                    <p id="noTradeReason" class="decision-context-copy mt-3 break-words text-sm leading-6 text-slate-400">Waiting.</p>
                   </div>
                 </div>
               </article>
@@ -384,7 +384,7 @@
                       <p class="text-[11px] font-medium text-slate-500">Confidence</p>
                       <p id="mobileConfidenceValue" class="mt-2 text-2xl font-semibold text-white">--</p>
                     </div>
-                    <p id="mobileConfidenceHint" class="text-sm font-medium text-slate-300">Reading market context</p>
+                    <p id="mobileConfidenceHint" class="text-sm font-medium text-slate-300">⚠️ Scanning</p>
                   </div>
                   <div class="mt-3 h-2.5 overflow-hidden rounded-full bg-white/10">
                     <div id="mobileConfidenceBarFill" class="h-full w-0 rounded-full bg-cyan-300 transition-[width] duration-300 ease-out"></div>
@@ -392,18 +392,18 @@
                 </article>
 
                 <article class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-[11px] font-medium text-slate-500">Why this decision</p>
+                  <p class="text-[11px] font-medium text-slate-500">Reason</p>
                   <p id="mobileAnalysisSummary" class="mt-3 break-words text-sm leading-6 text-slate-300">
-                    Loading analysis for the selected symbol.
+                    Loading signal.
                   </p>
                 </article>
 
                 <article class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <div class="flex flex-wrap items-center justify-between gap-3">
-                    <p class="text-[11px] font-medium text-slate-500">Trade context</p>
+                    <p class="text-[11px] font-medium text-slate-500">Context</p>
                     <p id="mobileBiasValue" class="break-words text-sm font-semibold text-white">Balanced signal</p>
                   </div>
-                  <p id="mobileNoTradeReason" class="mt-3 break-words text-sm leading-6 text-slate-400">Waiting for analysis.</p>
+                  <p id="mobileNoTradeReason" class="mt-3 break-words text-sm leading-6 text-slate-400">Waiting.</p>
                 </article>
               </div>
 
@@ -419,32 +419,32 @@
                 <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <p class="text-[11px] font-medium text-slate-500">Data quality</p>
                   <p id="coverageValue" class="mt-3 text-2xl font-semibold text-white">--</p>
-                  <p id="coverageReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting for analysis.</p>
+                  <p id="coverageReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting.</p>
                 </article>
                 <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <p class="text-[11px] font-medium text-slate-500">Position size</p>
                   <p id="positionSizeValue" class="mt-3 text-2xl font-semibold text-white">--</p>
-                  <p id="positionSizeReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting for analysis.</p>
+                  <p id="positionSizeReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting.</p>
                 </article>
                 <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <p class="text-[11px] font-medium text-slate-500">Entry</p>
                   <p id="entryValue" class="mt-3 text-2xl font-semibold text-white">--</p>
-                  <p id="entryReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting for analysis.</p>
+                  <p id="entryReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting.</p>
                 </article>
                 <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <p class="text-[11px] font-medium text-slate-500">Exit</p>
                   <p id="exitValue" class="mt-3 text-2xl font-semibold text-white">--</p>
-                  <p id="exitReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting for analysis.</p>
+                  <p id="exitReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting.</p>
                 </article>
                 <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <p class="text-[11px] font-medium text-slate-500">Stop loss</p>
                   <p id="stopLossValue" class="mt-3 text-2xl font-semibold text-white">--</p>
-                  <p id="stopLossReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting for analysis.</p>
+                  <p id="stopLossReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting.</p>
                 </article>
                 <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <p class="text-[11px] font-medium text-slate-500">Warnings</p>
                   <div id="warningsList" class="mt-3 flex min-h-[44px] flex-wrap gap-2">
-                    <span class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-400">Waiting for analysis</span>
+                    <span class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-400">Waiting</span>
                   </div>
                 </article>
               </div>
@@ -475,7 +475,7 @@
               <div id="tradingviewChartFrame" class="chart-frame chart-locked">
                 <div id="tradingviewChart" class="h-[320px] overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/70 sm:h-[420px] lg:h-[500px] 2xl:h-[560px]"></div>
                 <button id="chartInteractionGuard" type="button" class="chart-interaction-guard" aria-label="Activate chart interaction">
-                  <span>Scroll-safe chart · click to interact</span>
+                  <span>Tap chart</span>
                 </button>
               </div>
             </div>
@@ -484,7 +484,7 @@
           <aside id="decisionRail" class="min-w-0 space-y-5">
             <aside id="companySection" class="min-w-0 space-y-5">
             <section class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
-              <p class="text-xs font-medium text-slate-500">Company snapshot</p>
+              <p class="text-xs font-medium text-slate-500">Snapshot</p>
               <div class="mt-5 flex items-center gap-4">
                 <img
                   id="companyLogo"
@@ -507,30 +507,29 @@
               <div class="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <p class="text-xs font-medium text-slate-500">Learning Stats</p>
-                  <h3 class="mt-2 text-xl font-semibold">Performance memory</h3>
+                  <h3 class="mt-2 text-xl font-semibold">Learning</h3>
                 </div>
                 <span
                   id="learningMeta"
                   class="rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400"
                 >
-                  Loading strategy stats
+                  Loading
                 </span>
               </div>
 
               <div id="learningList" class="mt-5 space-y-3">
                 <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-sm font-semibold text-white">Loading learning layer</p>
+                  <p class="text-sm font-semibold text-white">Loading</p>
                   <p class="mt-2 text-sm leading-6 text-slate-400">
-                    Reading closed-trade performance for each strategy.
+                    Reading trades.
                   </p>
                 </article>
               </div>
 
               <div class="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
-                <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-500">Rule set</p>
+                <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-500">Rules</p>
                 <p class="mt-3 text-sm leading-6 text-slate-400">
-                  Learning only turns on after 50 realized trades. Better strategies get a small
-                  bias, weak edges get dampened, and all adjustments stay deterministic.
+                  Starts after 50 closed trades.
                 </p>
               </div>
             </section>
@@ -557,7 +556,7 @@
         </button>
         <button id="mobilePortfolioButton" type="button" class="mobile-quick-action" aria-label="Open portfolio">
           <span class="text-lg">📊</span>
-          <span>Portfolio</span>
+          <span>📊</span>
         </button>
       </div>
     </nav>
@@ -565,7 +564,7 @@
       <div class="flex items-center justify-between gap-3">
         <div>
           <p class="text-xs font-medium text-slate-500">Portfolio</p>
-          <h3 class="mt-2 text-xl font-semibold text-white">Live allocation</h3>
+          <h3 class="mt-2 text-xl font-semibold text-white">Allocation</h3>
         </div>
         <button id="portfolioSheetClose" type="button" class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200">
           Close

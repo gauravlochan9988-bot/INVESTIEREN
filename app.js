@@ -456,25 +456,25 @@ function confidenceToneClass(confidence) {
 
 function confidenceHint(analysis) {
   if (!analysis || analysis.no_data || analysis.confidence === null || analysis.confidence === undefined) {
-    return "Waiting for signal strength";
+    return "⚠️ Waiting";
   }
   if (analysis.signal_quality === "PARTIAL") {
-    return hasMixedSignals(analysis) ? "Partial / mixed confirmation" : "Partial confirmation";
+    return hasMixedSignals(analysis) ? "⚠️ Mixed" : "⚠️ Partial";
   }
   const confidence = normalizeConfidencePercent(analysis.confidence);
   if (analysis.no_trade) {
-    return "Low confidence / no trade zone";
+    return "⚠️ No trade";
   }
   if (confidence >= 75) {
-    return "Strong signal alignment";
+    return "📈 Strong";
   }
   if (confidence >= 55) {
-    return "Good confirmation";
+    return "📈 Good";
   }
   if (confidence >= 40) {
-    return "Mixed but tradable";
+    return "⚠️ Mixed";
   }
-  return "Low conviction";
+  return "📉 Weak";
 }
 
 function dataQualityInfo(analysis) {
@@ -482,7 +482,7 @@ function dataQualityInfo(analysis) {
     return {
       label: "--",
       tone: "text-slate-200",
-      reason: "No data quality available.",
+      reason: "No data.",
     };
   }
 
@@ -514,7 +514,7 @@ function dataQualityInfo(analysis) {
     reason:
       analysis.data_quality_reason ||
       analysis.no_data_reason ||
-      "No data quality note available.",
+      "No note.",
   };
 }
 
@@ -562,14 +562,14 @@ function learningMetricTone(value, options = {}) {
 function learningStatus(profile) {
   if (!profile) {
     return {
-      label: "Waiting for stats",
+      label: "Waiting",
       tone: "text-slate-400",
       badge: "border-white/10 bg-white/5 text-slate-300",
     };
   }
   if (profile.eligible) {
     return {
-      label: "Learning active",
+      label: "On",
       tone: "text-emerald-300",
       badge: "border-emerald-400/20 bg-emerald-500/10 text-emerald-200",
     };
@@ -582,7 +582,7 @@ function learningStatus(profile) {
     };
   }
   return {
-    label: "No trade history yet",
+      label: "No trades",
     tone: "text-slate-400",
     badge: "border-white/10 bg-white/5 text-slate-300",
   };
@@ -642,7 +642,7 @@ function renderSearchSuggestions(results, query) {
   if (!results.length) {
     elements.searchSuggestions.innerHTML = `
       <div class="rounded-2xl px-4 py-4 text-sm text-slate-400">
-        No stocks found for "${query}".
+        No match.
       </div>
     `;
     elements.searchSuggestions.classList.remove("hidden");
@@ -700,7 +700,7 @@ async function searchSymbols(query) {
     }
     elements.searchSuggestions.innerHTML = `
       <div class="rounded-2xl px-4 py-4 text-sm text-rose-300">
-        Search is unavailable right now.
+        ⚠️ Search off.
       </div>
     `;
     elements.searchSuggestions.classList.remove("hidden");
@@ -743,15 +743,15 @@ function renderAnalysisLoading(symbol) {
   elements.confidenceValue.className = "mt-2 text-2xl font-semibold text-white";
   elements.confidenceValue.textContent = "--";
   setConfidenceBar(0, "NO_DATA");
-  elements.confidenceHint.textContent = "Reading market context";
+  elements.confidenceHint.textContent = "⚠️ Scanning";
   elements.analysisSummary.textContent = trimDecisionText(
-    `Building ${STRATEGY_LABELS[state.selectedStrategy]} analysis for ${symbol}...`,
+    `${STRATEGY_LABELS[state.selectedStrategy]} scan: ${symbol}`,
     110,
   );
   elements.selectedStrategyBadge.textContent = STRATEGY_LABELS[state.selectedStrategy];
-  elements.analysisGeneratedAt.textContent = "Running analysis";
-  elements.biasValue.textContent = "neutral setup";
-  elements.noTradeReason.textContent = "Analysis is loading.";
+  elements.analysisGeneratedAt.textContent = "Running";
+  elements.biasValue.textContent = "Balanced";
+  elements.noTradeReason.textContent = "Waiting.";
   if (elements.mobileConfidenceValue) {
     elements.mobileConfidenceValue.className = "mt-2 text-2xl font-semibold text-white";
     elements.mobileConfidenceValue.textContent = "--";
@@ -761,36 +761,36 @@ function renderAnalysisLoading(symbol) {
     elements.mobileConfidenceBarFill.style.width = "0%";
   }
   if (elements.mobileConfidenceHint) {
-    elements.mobileConfidenceHint.textContent = "Reading market context";
+    elements.mobileConfidenceHint.textContent = "⚠️ Scanning";
   }
   if (elements.mobileAnalysisSummary) {
     elements.mobileAnalysisSummary.textContent = trimDecisionText(
-      `Building ${STRATEGY_LABELS[state.selectedStrategy]} analysis for ${symbol}...`,
+      `${STRATEGY_LABELS[state.selectedStrategy]} scan: ${symbol}`,
       110,
     );
   }
   if (elements.mobileBiasValue) {
-    elements.mobileBiasValue.textContent = "Balanced signal";
+    elements.mobileBiasValue.textContent = "Balanced";
   }
   if (elements.mobileNoTradeReason) {
-    elements.mobileNoTradeReason.textContent = "Analysis is loading.";
+    elements.mobileNoTradeReason.textContent = "Waiting.";
   }
   elements.riskValue.className = "mt-3 text-2xl font-semibold text-white";
   elements.riskValue.textContent = "--";
   elements.timeframeValue.textContent = "--";
   elements.coverageValue.className = "mt-3 text-2xl font-semibold text-white";
   elements.coverageValue.textContent = "--";
-  elements.coverageReason.textContent = "Waiting for analysis.";
+  elements.coverageReason.textContent = "Waiting.";
   elements.entryValue.textContent = "--";
-  elements.entryReason.textContent = "Analysis is loading.";
+  elements.entryReason.textContent = "Waiting.";
   elements.exitValue.textContent = "--";
-  elements.exitReason.textContent = "Analysis is loading.";
+  elements.exitReason.textContent = "Waiting.";
   elements.positionSizeValue.textContent = "--";
-  elements.positionSizeReason.textContent = "Analysis is loading.";
+  elements.positionSizeReason.textContent = "Waiting.";
   elements.stopLossValue.textContent = "--";
-  elements.stopLossReason.textContent = "Analysis is loading.";
+  elements.stopLossReason.textContent = "Waiting.";
   elements.warningsList.innerHTML =
-    '<span class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-400">Loading analysis</span>';
+    '<span class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-400">Loading</span>';
 
   if (isMobileViewport()) {
     renderSkeleton(elements.recommendationValue, "h-8 w-36");
@@ -842,7 +842,7 @@ function alertToneClasses(tone) {
 }
 
 function renderAlertsLoading() {
-  elements.alertsMeta.textContent = "Scanning watchlist...";
+  elements.alertsMeta.textContent = "Scanning...";
   elements.alertsList.innerHTML = Array.from({ length: 3 })
     .map(
       () => `
@@ -866,8 +866,8 @@ function renderAlerts(alerts) {
   if (!alerts.length) {
     elements.alertsList.innerHTML = `
       <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-        <p class="text-sm font-semibold text-white">No strong alerts right now</p>
-        <p class="mt-2 text-sm leading-6 text-slate-400">The app is watching your watchlist for BUY, SELL and RSI trigger events.</p>
+        <p class="text-sm font-semibold text-white">No alerts</p>
+        <p class="mt-2 text-sm leading-6 text-slate-400">⚠️ Nothing strong.</p>
       </article>
     `;
     requestAnimationFrame(syncCompanySectionAlignment);
@@ -899,8 +899,8 @@ function renderAlertsWarning(message) {
   elements.alertsMeta.textContent = message;
   elements.alertsList.innerHTML = `
     <article class="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-      <p class="text-sm font-semibold text-white">Alerts are warming up</p>
-      <p class="mt-2 text-sm leading-6 text-slate-300">The backend is still syncing signals. Try again in a moment.</p>
+      <p class="text-sm font-semibold text-white">Alerts warming</p>
+      <p class="mt-2 text-sm leading-6 text-slate-300">⚠️ Retry soon.</p>
     </article>
   `;
   requestAnimationFrame(syncCompanySectionAlignment);
@@ -951,7 +951,7 @@ function renderOpportunityLoading() {
   if (!elements.opportunityList || !elements.opportunityMeta) {
     return;
   }
-  elements.opportunityMeta.textContent = "Scanning top setups...";
+  elements.opportunityMeta.textContent = "Ranking...";
   elements.opportunityList.innerHTML = Array.from({ length: 3 })
     .map(
       () => `
@@ -972,7 +972,7 @@ function buildOpportunitySection(title, tone, entries, emptyMessage) {
           <p class="opportunity-group-title">${title}</p>
         </div>
         <div class="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-4 text-sm leading-6 text-slate-400">
-          No opportunities.
+          No setups.
           <span class="block mt-1 text-xs text-slate-500">${emptyMessage}</span>
         </div>
       </article>
@@ -1089,9 +1089,9 @@ function renderOpportunityPanel(entries) {
   const highConfidence = opportunityConfidenceCandidates(entries, excludedSymbols);
 
   elements.opportunityList.innerHTML = [
-    buildOpportunitySection("Top BUY", "BUY", topBuy, "Showing the best bullish setup available right now."),
-    buildOpportunitySection("Top SELL", "SELL", topSell, "Showing the weakest setup available right now."),
-    buildOpportunitySection("High confidence", "HOLD", highConfidence, "Showing the clearest available setup right now."),
+    buildOpportunitySection("📈 Top BUY", "BUY", topBuy, "Best long."),
+    buildOpportunitySection("📉 Top SELL", "SELL", topSell, "Best short."),
+    buildOpportunitySection("⚠️ High confidence", "HOLD", highConfidence, "Clearest setup."),
   ].join("");
 
   elements.opportunityList.querySelectorAll(".opportunity-card").forEach((button) => {
@@ -1112,8 +1112,8 @@ function renderOpportunityWarning(message) {
   elements.opportunityMeta.textContent = message;
   elements.opportunityList.innerHTML = `
     <article class="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-      <p class="text-sm font-semibold text-white">Opportunity panel is warming up</p>
-      <p class="mt-2 text-sm leading-6 text-slate-300">The scanner is still ranking the best BUY, SELL and high-confidence setups.</p>
+      <p class="text-sm font-semibold text-white">Panel warming</p>
+      <p class="mt-2 text-sm leading-6 text-slate-300">⚠️ Ranking setups.</p>
     </article>
   `;
 }
@@ -1132,7 +1132,7 @@ async function loadOpportunities(forceRefresh = false) {
   ).slice(0, Math.max(MAX_SIDEBAR_SLOTS, 10));
 
   if (!symbols.length) {
-    renderOpportunityWarning("No symbols to rank yet");
+    renderOpportunityWarning("No symbols");
     return [];
   }
 
@@ -1214,7 +1214,7 @@ function renderLearningStatsLoading() {
   if (!elements.learningList || !elements.learningMeta) {
     return;
   }
-  elements.learningMeta.textContent = "Loading strategy stats";
+  elements.learningMeta.textContent = "Loading";
   elements.learningMeta.className =
     "rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400";
   elements.learningList.innerHTML = Array.from({ length: 3 })
@@ -1239,13 +1239,13 @@ function renderLearningStatsError(message) {
   if (!elements.learningList || !elements.learningMeta) {
     return;
   }
-  elements.learningMeta.textContent = "Learning stats unavailable";
+  elements.learningMeta.textContent = "Learning offline";
   elements.learningMeta.className =
     "rounded-full border border-amber-400/20 bg-amber-500/10 px-4 py-2 text-xs font-medium text-amber-200";
   elements.learningList.innerHTML = `
     <article class="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-      <p class="text-sm font-semibold text-white">Learning layer unavailable</p>
-      <p class="mt-2 text-sm leading-6 text-slate-300">${message || "Performance memory could not load right now."}</p>
+      <p class="text-sm font-semibold text-white">Learning offline</p>
+      <p class="mt-2 text-sm leading-6 text-slate-300">${message || "⚠️ Try again."}</p>
     </article>
   `;
 }
@@ -1262,7 +1262,7 @@ function renderLearningStats(response = emptyLearningResponse()) {
   const selectedStatus = learningStatus(selectedProfile);
   elements.learningMeta.textContent = selectedProfile
     ? `${STRATEGY_LABELS[state.selectedStrategy]} · ${selectedStatus.label}`
-    : "No strategy stats";
+    : "No stats";
   elements.learningMeta.className = `rounded-full border px-4 py-2 text-xs font-medium ${
     selectedProfile?.eligible
       ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-200"
@@ -1274,10 +1274,8 @@ function renderLearningStats(response = emptyLearningResponse()) {
   if (!strategies.length) {
     elements.learningList.innerHTML = `
       <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-        <p class="text-sm font-semibold text-white">No closed trades yet</p>
-        <p class="mt-2 text-sm leading-6 text-slate-400">
-          Once trades are closed, win rate, average P/L and drawdown will appear here.
-        </p>
+        <p class="text-sm font-semibold text-white">No closed trades</p>
+        <p class="mt-2 text-sm leading-6 text-slate-400">Stats appear later.</p>
       </article>
     `;
     return;
@@ -1337,7 +1335,7 @@ function renderLearningStats(response = emptyLearningResponse()) {
             </div>
           </div>
 
-          <p class="mt-4 text-sm leading-6 text-slate-400">${profile.note || "No learning note available."}</p>
+          <p class="mt-4 text-sm leading-6 text-slate-400">${profile.note || "No note."}</p>
         </article>
       `;
     })
@@ -1402,10 +1400,10 @@ function renderAnalysis(analysis) {
     elements.confidenceValue.className = "mt-2 text-2xl font-semibold text-slate-200";
     elements.confidenceValue.textContent = "--";
     setConfidenceBar(0, "NO_DATA");
-    elements.confidenceHint.textContent = "No confidence without data";
+    elements.confidenceHint.textContent = "⚠️ No data";
     elements.analysisSummary.textContent = trimDecisionText(reason, 110);
-    elements.analysisGeneratedAt.textContent = "No analysis";
-    elements.biasValue.textContent = "neutral setup";
+    elements.analysisGeneratedAt.textContent = "No signal";
+    elements.biasValue.textContent = "Balanced";
     elements.noTradeReason.textContent = reason;
     if (elements.mobileConfidenceValue) {
       elements.mobileConfidenceValue.className = "mt-2 text-2xl font-semibold text-slate-200";
@@ -1416,13 +1414,13 @@ function renderAnalysis(analysis) {
       elements.mobileConfidenceBarFill.style.width = "0%";
     }
     if (elements.mobileConfidenceHint) {
-      elements.mobileConfidenceHint.textContent = "No confidence without data";
+      elements.mobileConfidenceHint.textContent = "⚠️ No data";
     }
     if (elements.mobileAnalysisSummary) {
       elements.mobileAnalysisSummary.textContent = trimDecisionText(reason, 110);
     }
     if (elements.mobileBiasValue) {
-      elements.mobileBiasValue.textContent = "Balanced signal";
+      elements.mobileBiasValue.textContent = "Balanced";
     }
     if (elements.mobileNoTradeReason) {
       elements.mobileNoTradeReason.textContent = reason;
@@ -1436,11 +1434,11 @@ function renderAnalysis(analysis) {
     elements.entryValue.textContent = "NO";
     elements.entryReason.textContent = reason;
     elements.exitValue.textContent = "NO";
-    elements.exitReason.textContent = "No trade action available.";
-    elements.positionSizeValue.textContent = "No position";
-    elements.positionSizeReason.textContent = "Data is missing.";
+    elements.exitReason.textContent = "No action.";
+    elements.positionSizeValue.textContent = "Flat";
+    elements.positionSizeReason.textContent = "No data.";
     elements.stopLossValue.textContent = "--";
-    elements.stopLossReason.textContent = "No stop loss without data.";
+    elements.stopLossReason.textContent = "No stop.";
     elements.warningsList.innerHTML =
       '<span class="rounded-full border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-200">No live data</span>';
     renderMobileStrategyCards();
@@ -1477,8 +1475,8 @@ function renderAnalysis(analysis) {
   elements.noTradeReason.textContent = analysis.no_trade
     ? trimDecisionText(noTradeHint, 96)
     : mixedSignals
-      ? "Mixed signals. Wait for clearer alignment."
-      : "Setup is tradable with current confirmation.";
+      ? "⚠️ Mixed."
+      : "📈 Ready.";
   if (elements.mobileConfidenceValue) {
     elements.mobileConfidenceValue.className = `mt-2 text-2xl font-semibold ${confidenceToneClass(analysis.confidence)}`;
     elements.mobileConfidenceValue.textContent = `${Math.round(confidencePercent)}%`;
@@ -1511,14 +1509,14 @@ function renderAnalysis(analysis) {
   elements.coverageReason.textContent = dataQuality.reason;
   elements.entryValue.className = `mt-3 text-2xl font-semibold ${analysis.entry_signal ? "text-emerald-300" : "text-slate-200"}`;
   elements.entryValue.textContent = yesNoLabel(analysis.entry_signal);
-  elements.entryReason.textContent = analysis.entry_reason || "No entry guidance.";
+  elements.entryReason.textContent = analysis.entry_reason || "No entry.";
   elements.exitValue.className = `mt-3 text-2xl font-semibold ${analysis.exit_signal ? "text-rose-300" : "text-slate-200"}`;
   elements.exitValue.textContent = yesNoLabel(analysis.exit_signal);
-  elements.exitReason.textContent = analysis.exit_reason || "No exit guidance.";
+  elements.exitReason.textContent = analysis.exit_reason || "No exit.";
   elements.positionSizeValue.textContent = sizeBucket(analysis.position_size_percent);
-  elements.positionSizeReason.textContent = analysis.position_size_reason || "No sizing guidance.";
+  elements.positionSizeReason.textContent = analysis.position_size_reason || "No size.";
   elements.stopLossValue.textContent = analysis.stop_loss_level ? currency(analysis.stop_loss_level) : "--";
-  elements.stopLossReason.textContent = analysis.stop_loss_reason || "No stop loss guidance.";
+  elements.stopLossReason.textContent = analysis.stop_loss_reason || "No stop.";
   elements.warningsList.innerHTML = warnings.length
     ? warnings
         .map((warning) => {
@@ -1528,7 +1526,7 @@ function renderAnalysis(analysis) {
           return `<span class="rounded-full border px-3 py-2 text-xs font-medium ${tone}">${warning}</span>`;
         })
         .join("")
-    : '<span class="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-200">No urgent warnings</span>';
+    : '<span class="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-200">Clear</span>';
   renderMobileStrategyCards();
   syncMobileFavoriteButton();
 }
@@ -1553,10 +1551,10 @@ function renderMobileStrategyCardsLoading(symbol) {
         <button type="button" class="mobile-strategy-card mobile-only rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-left" data-mobile-strategy="${key}">
           <div class="flex items-center justify-between gap-3">
             <p class="text-sm font-semibold text-white">${label}</p>
-            <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-slate-300">Loading</span>
+            <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-slate-300">Scan</span>
           </div>
           <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/10"><div class="mobile-skeleton h-full w-1/2 rounded-full"></div></div>
-          <p class="mt-3 text-sm text-slate-400">Checking ${label} setup for ${symbol}...</p>
+          <p class="mt-3 text-sm text-slate-400">Checking ${symbol}</p>
         </button>
       `,
     )
@@ -1579,7 +1577,7 @@ function renderMobileStrategyCards() {
         : `${Math.round(normalizeConfidencePercent(analysis?.confidence || 0))}%`;
       const reason =
         (analysis?.no_trade ? analysis.no_trade_reason : analysis?.reason) ||
-        (analysis?.no_data ? analysis.no_data_reason : `Loading ${label} analysis...`);
+        (analysis?.no_data ? analysis.no_data_reason : `Loading ${label}...`);
       const tone = strategyToneClasses(recommendation);
       const active = current ? "ring-1 ring-teal-400/35 shadow-lg shadow-teal-500/10" : "";
       return `
@@ -1667,8 +1665,8 @@ function renderPortfolioSheet(portfolio) {
   if (!portfolio.positions?.length) {
     elements.portfolioSheetPositions.innerHTML = `
       <article class="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-        <p class="text-sm font-semibold text-white">No positions yet</p>
-        <p class="mt-2 text-sm leading-6 text-slate-400">Add portfolio positions later to track allocation and PnL here.</p>
+        <p class="text-sm font-semibold text-white">No positions</p>
+        <p class="mt-2 text-sm leading-6 text-slate-400">Add later.</p>
       </article>
     `;
     return;
@@ -1708,8 +1706,8 @@ function openPortfolioSheet() {
     .catch((error) => {
       elements.portfolioSheetPositions.innerHTML = `
         <article class="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-          <p class="text-sm font-semibold text-white">Portfolio unavailable</p>
-          <p class="mt-2 text-sm leading-6 text-slate-300">${error.message || "Portfolio data could not load right now."}</p>
+          <p class="text-sm font-semibold text-white">Portfolio offline</p>
+          <p class="mt-2 text-sm leading-6 text-slate-300">${error.message || "⚠️ Try again."}</p>
         </article>
       `;
     });
@@ -1890,8 +1888,8 @@ function renderFavorites() {
   if (!favoriteItems.length) {
     elements.favoritesBody.innerHTML = `
       <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-        <p class="text-sm font-semibold text-white">No favorites yet</p>
-        <p class="mt-2 text-sm leading-6 text-slate-400">Use the star button on a stock to pin it here.</p>
+        <p class="text-sm font-semibold text-white">No favorites</p>
+        <p class="mt-2 text-sm leading-6 text-slate-400">☆ Star to pin.</p>
       </article>
     `;
     return;
@@ -1972,7 +1970,7 @@ async function loadLearningStats(forceRefresh = false) {
     renderLearningStatsLoading();
   } else {
     renderLearningStats(cachedLearningStats);
-    elements.learningMeta.textContent = "Refreshing strategy stats";
+    elements.learningMeta.textContent = "Refreshing";
     elements.learningMeta.className =
       "rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400";
   }
@@ -1987,12 +1985,12 @@ async function loadLearningStats(forceRefresh = false) {
   } catch (error) {
     if (cachedLearningStats) {
       renderLearningStats(cachedLearningStats);
-      elements.learningMeta.textContent = "Showing cached stats";
+      elements.learningMeta.textContent = "Cached";
       elements.learningMeta.className =
         "rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400";
       return cachedLearningStats;
     }
-    renderLearningStatsError(error.message || "Performance memory could not load right now.");
+    renderLearningStatsError(error.message || "⚠️ Load failed.");
     throw error;
   }
 }
@@ -2674,8 +2672,8 @@ function setChartInteractionEnabled(enabled) {
   elements.tradingviewChartFrame.classList.toggle("chart-locked", !enabled);
   elements.tradingviewChartFrame.classList.toggle("chart-interactive", enabled);
   elements.chartInteractionGuard.textContent = enabled
-    ? "Chart active · move cursor out to lock"
-    : "Scroll-safe chart · click to interact";
+    ? "📈 Chart on"
+    : "Tap chart";
 }
 
 function syncCompanySectionAlignment() {
