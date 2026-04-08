@@ -421,6 +421,18 @@ function hasActiveSubscription() {
   return Boolean(state.auth.subscription?.active);
 }
 
+function isPricingPage() {
+  return window.location.pathname === "/pricing.html" || window.location.pathname.endsWith("/pricing.html");
+}
+
+function redirectToPricingPage() {
+  if (isPricingPage()) {
+    return;
+  }
+  hidePaywall();
+  window.location.replace("/pricing.html");
+}
+
 function showPaywall(message = "Subscribe to access live signals, alerts and watchlists.") {
   elements.authOverlay.classList.add("hidden");
   elements.authOverlay.hidden = true;
@@ -552,7 +564,7 @@ async function initializeManagedAuth() {
           void bootDashboard();
           return;
         }
-        showPaywall();
+        redirectToPricingPage();
       } catch (error) {
         console.error("[frontend] clerk session sync failed", error);
         setAuthError("Session sync failed.");
@@ -3604,7 +3616,7 @@ async function loadStrategySnapshots(symbol, forceRefresh = false) {
 
 async function bootDashboard(forceRefresh = false) {
   if (state.auth.enabled && !hasActiveSubscription()) {
-    showPaywall();
+    redirectToPricingPage();
     return;
   }
   clearError();
@@ -3948,7 +3960,7 @@ async function initializeApp() {
       void bootDashboard();
       return;
     }
-    showPaywall();
+    redirectToPricingPage();
     return;
   }
 

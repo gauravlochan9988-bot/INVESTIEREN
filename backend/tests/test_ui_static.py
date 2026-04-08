@@ -57,7 +57,7 @@ def test_static_assets_are_available(client):
     assert "initializeManagedAuth" in response.text
     assert "ensureClerkFrontendLoaded" in response.text
     assert "mountSignIn" in response.text
-    assert "showPaywall" in response.text
+    assert 'window.location.replace("/pricing.html")' in response.text
     assert "hasActiveSubscription" in response.text
     assert "showLoginOverlay" in response.text
     assert "showAppShell" in response.text
