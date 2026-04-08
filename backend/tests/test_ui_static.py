@@ -5,11 +5,11 @@ def test_root_serves_static_dashboard(client):
     assert "Investieren AI" in response.text
     assert 'id="authOverlay"' in response.text
     assert "Access dashboard" in response.text
-    assert "Continue with Google" in response.text
-    assert "Continue with Apple" in response.text
+    assert "Email, Google and Apple are managed securely by Clerk." in response.text
     assert "Create Account" in response.text
     assert "Login" in response.text
     assert 'id="authManagedPanel"' in response.text
+    assert 'id="authClerkMount"' in response.text
     assert 'id="paywallOverlay"' in response.text
     assert "Upgrade to unlock the dashboard" in response.text
     assert "Upgrade €9.99 / month" in response.text
@@ -55,7 +55,8 @@ def test_static_assets_are_available(client):
     assert "/api/auth/me" in response.text
     assert "sessionStorage" in response.text
     assert "initializeManagedAuth" in response.text
-    assert "createAuth0Client" in response.text
+    assert "ensureClerkFrontendLoaded" in response.text
+    assert "mountSignIn" in response.text
     assert "showPaywall" in response.text
     assert "hasActiveSubscription" in response.text
     assert "showLoginOverlay" in response.text

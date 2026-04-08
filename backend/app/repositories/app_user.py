@@ -18,22 +18,24 @@ class AppUserRepository:
         db: Session,
         *,
         auth_subject: str,
+        provider: Optional[str] = None,
         email: Optional[str],
         name: Optional[str],
         picture_url: Optional[str],
     ) -> AppUser:
         row = self.get_by_subject(db, auth_subject=auth_subject)
-        provider = auth_subject.split("|", 1)[0] if "|" in auth_subject else "auth0"
+        resolved_provider = provider or (auth_subject.split("|", 1)[0] if "|" in auth_subject else "clerk")
         if row is None:
             row = AppUser(
                 auth_subject=auth_subject,
-                provider=provider,
+                provider=resolved_provider,
                 email=email,
                 name=name,
                 picture_url=picture_url,
             )
             db.add(row)
         else:
+            row.provider = resolved_provider
             row.email = email
             row.name = name
             row.picture_url = picture_url

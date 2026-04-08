@@ -5,11 +5,9 @@ from pydantic import BaseModel
 
 class AuthConfigResponse(BaseModel):
     enabled: bool
-    domain: Optional[str] = None
-    client_id: Optional[str] = None
-    audience: Optional[str] = None
-    google_connection: Optional[str] = None
-    apple_connection: Optional[str] = None
+    provider: Optional[str] = None
+    publishable_key: Optional[str] = None
+    frontend_api_url: Optional[str] = None
 
 
 class AppUserResponse(BaseModel):

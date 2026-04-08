@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import Depends, Header
 from sqlalchemy.orm import Session
 
-from app.core.auth import Auth0TokenVerifier
+from app.core.auth import ClerkTokenVerifier
 from app.core.config import get_settings
 from app.core.database import get_db, get_session_factory
 from app.repositories.alert_repository import AlertRepository
@@ -246,16 +246,16 @@ def get_analysis_threshold_repository() -> AnalysisThresholdRepository:
 
 
 @lru_cache
-def get_auth0_verifier_instance() -> Auth0TokenVerifier:
+def get_clerk_verifier_instance() -> ClerkTokenVerifier:
     settings = get_settings()
-    return Auth0TokenVerifier(
-        domain=settings.auth0_domain,
-        audience=settings.auth0_audience,
+    return ClerkTokenVerifier(
+        jwt_key=settings.clerk_jwt_key,
+        authorized_party=settings.frontend_origin,
     )
 
 
-def get_auth0_verifier() -> Auth0TokenVerifier:
-    return get_auth0_verifier_instance()
+def get_clerk_verifier() -> ClerkTokenVerifier:
+    return get_clerk_verifier_instance()
 
 
 def get_app_user_repository() -> AppUserRepository:
@@ -269,7 +269,7 @@ def get_app_subscription_repository() -> AppSubscriptionRepository:
 def get_request_user_context(
     authorization: Optional[str] = Header(default=None),
     db: Session = Depends(get_db),
-    verifier: Auth0TokenVerifier = Depends(get_auth0_verifier),
+    verifier: ClerkTokenVerifier = Depends(get_clerk_verifier),
     app_user_repository: AppUserRepository = Depends(get_app_user_repository),
 ) -> RequestUserContext:
     if not authorization or not verifier.enabled:
@@ -286,9 +286,10 @@ def get_request_user_context(
     user = app_user_repository.upsert_from_claims(
         db,
         auth_subject=auth_subject,
+        provider="clerk",
         email=(claims.get("email") or None),
-        name=(claims.get("name") or claims.get("nickname") or None),
-        picture_url=(claims.get("picture") or None),
+        name=(claims.get("full_name") or claims.get("name") or claims.get("username") or None),
+        picture_url=(claims.get("image_url") or claims.get("picture") or None),
     )
     return RequestUserContext(
         user_key=user.auth_subject,

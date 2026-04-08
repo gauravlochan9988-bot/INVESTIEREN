@@ -75,6 +75,7 @@ const state = {
     ready: false,
     config: null,
     client: null,
+    view: "login",
     accessToken: "",
     tokenFetchedAt: 0,
     currentUser: null,
@@ -89,9 +90,8 @@ const elements = {
   paywallLogoutButton: document.getElementById("paywallLogoutButton"),
   paywallMessage: document.getElementById("paywallMessage"),
   authManagedPanel: document.getElementById("authManagedPanel"),
+  authClerkMount: document.getElementById("authClerkMount"),
   authForm: document.getElementById("authForm"),
-  authGoogleButton: document.getElementById("authGoogleButton"),
-  authAppleButton: document.getElementById("authAppleButton"),
   authCreateAccountButton: document.getElementById("authCreateAccountButton"),
   authLoginButton: document.getElementById("authLoginButton"),
   authLoading: document.getElementById("authLoading"),
@@ -248,9 +248,87 @@ async function fetchAuthConfig() {
     skipAuth: true,
   });
   state.auth.config = config;
-  state.auth.enabled = Boolean(config?.enabled && config.domain && config.client_id && config.audience);
+  state.auth.enabled = Boolean(
+    config?.enabled && config.provider === "clerk" && config.publishable_key && config.frontend_api_url,
+  );
   renderAuthMode();
   return config;
+}
+
+async function ensureClerkFrontendLoaded(config) {
+  if (window.Clerk) {
+    return window.Clerk;
+  }
+
+  const scriptId = "clerk-js-sdk";
+  const existing = document.getElementById(scriptId);
+  if (existing) {
+    if (window.Clerk) {
+      return window.Clerk;
+    }
+    await new Promise((resolve, reject) => {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error("Clerk failed to load.")), { once: true });
+    });
+    return window.Clerk;
+  }
+
+  const frontendApi = String(config.frontend_api_url || "").replace(/\/+$/, "");
+  const script = document.createElement("script");
+  script.id = scriptId;
+  script.async = true;
+  script.crossOrigin = "anonymous";
+  script.dataset.clerkPublishableKey = config.publishable_key;
+  script.src = `${frontendApi}/npm/@clerk/clerk-js@5/dist/clerk.browser.js`;
+
+  await new Promise((resolve, reject) => {
+    script.addEventListener("load", () => resolve(), { once: true });
+    script.addEventListener("error", () => reject(new Error("Clerk failed to load.")), { once: true });
+    document.head.appendChild(script);
+  });
+
+  return window.Clerk;
+}
+
+function syncAuthModeButtons() {
+  const loginActive = state.auth.view !== "signup";
+  if (elements.authLoginButton) {
+    elements.authLoginButton.classList.toggle("auth-primary-action", loginActive);
+    elements.authLoginButton.classList.toggle("auth-secondary-action", !loginActive);
+  }
+  if (elements.authCreateAccountButton) {
+    elements.authCreateAccountButton.classList.toggle("auth-primary-action", !loginActive);
+    elements.authCreateAccountButton.classList.toggle("auth-secondary-action", loginActive);
+  }
+}
+
+function renderManagedAuthView(mode = "login") {
+  if (!state.auth.enabled || !state.auth.client || !elements.authClerkMount) {
+    return;
+  }
+
+  state.auth.view = mode === "signup" ? "signup" : "login";
+  syncAuthModeButtons();
+
+  try {
+    state.auth.client.unmountSignIn?.(elements.authClerkMount);
+    state.auth.client.unmountSignUp?.(elements.authClerkMount);
+  } catch (error) {
+    console.debug("[frontend] auth unmount skipped", error);
+  }
+  elements.authClerkMount.innerHTML = "";
+
+  const sharedOptions = {
+    path: window.location.pathname,
+    forceRedirectUrl: `${window.location.origin}${window.location.pathname}`,
+  };
+
+  if (state.auth.view === "signup") {
+    state.auth.client.mountSignUp(elements.authClerkMount, sharedOptions);
+    return;
+  }
+
+  state.auth.client.mountSignIn(elements.authClerkMount, sharedOptions);
 }
 
 async function getAccessToken(forceRefresh = false) {
@@ -267,7 +345,7 @@ async function getAccessToken(forceRefresh = false) {
   }
 
   try {
-    const token = await state.auth.client.getTokenSilently();
+    const token = await state.auth.client.session?.getToken();
     state.auth.accessToken = token;
     state.auth.tokenFetchedAt = Date.now();
     return token;
@@ -421,7 +499,7 @@ async function initializeManagedAuth() {
     return false;
   }
 
-  if (typeof window.createAuth0Client !== "function") {
+  if (!config.publishable_key || !config.frontend_api_url) {
     state.auth.ready = true;
     state.auth.enabled = false;
     renderAuthMode();
@@ -429,24 +507,42 @@ async function initializeManagedAuth() {
     return false;
   }
 
-  state.auth.client = await window.createAuth0Client({
-    domain: config.domain,
-    clientId: config.client_id,
-    cacheLocation: "memory",
-    authorizationParams: {
-      audience: config.audience,
-      redirect_uri: `${window.location.origin}${window.location.pathname}`,
-      scope: "openid profile email",
-    },
-  });
+  const clerk = await ensureClerkFrontendLoaded(config);
+  if (!clerk?.load) {
+    throw new Error("Clerk SDK is unavailable.");
+  }
+  await clerk.load();
+  state.auth.client = clerk;
 
-  const params = new URLSearchParams(window.location.search);
-  if (params.has("code") && params.has("state")) {
-    await state.auth.client.handleRedirectCallback();
-    window.history.replaceState({}, document.title, window.location.pathname);
+  if (typeof state.auth.client.addListener === "function") {
+    state.auth.client.addListener(async ({ user, session }) => {
+      if (!user || !session) {
+        setAuthenticated(false);
+        state.auth.subscription = null;
+        renderSubscriptionButton();
+        showLoginOverlay();
+        return;
+      }
+
+      try {
+        await syncAuthenticatedUser(true);
+        await loadSubscriptionStatus();
+        if (hasActiveSubscription()) {
+          showAppShell();
+          void bootDashboard();
+          return;
+        }
+        showPaywall();
+      } catch (error) {
+        console.error("[frontend] clerk session sync failed", error);
+        setAuthError("Session sync failed.");
+      }
+    });
   }
 
-  if (await state.auth.client.isAuthenticated()) {
+  renderManagedAuthView("login");
+
+  if (state.auth.client.user && state.auth.client.session) {
     await syncAuthenticatedUser(true);
   }
 
@@ -455,26 +551,17 @@ async function initializeManagedAuth() {
   return isAuthenticated();
 }
 
-async function loginWithManagedProvider(mode = "login", connection = "") {
+async function loginWithManagedProvider(mode = "login") {
   if (!state.auth.enabled || !state.auth.client) {
     setAuthError("Managed login is not configured.");
     return;
   }
 
   setAuthError("");
-  setAuthLoading(true);
   try {
-    const authorizationParams = {};
-    if (mode === "signup") {
-      authorizationParams.screen_hint = "signup";
-    }
-    if (connection) {
-      authorizationParams.connection = connection;
-    }
-    await state.auth.client.loginWithRedirect({ authorizationParams });
+    renderManagedAuthView(mode);
   } catch (error) {
-    console.error("[frontend] login redirect failed", error);
-    setAuthLoading(false);
+    console.error("[frontend] auth view switch failed", error);
     setAuthError("Login failed. Try again.");
   }
 }
@@ -2464,7 +2551,10 @@ function showLoginOverlay() {
   elements.mobileQuickActions?.classList.add("hidden");
   closePortfolioSheet();
   elements.authError.hidden = true;
-  elements.authForm.reset();
+  elements.authForm?.reset();
+  if (state.auth.enabled) {
+    renderManagedAuthView(state.auth.view || "login");
+  }
 }
 
 async function api(path, options = {}) {
@@ -3572,16 +3662,6 @@ async function bootDashboard(forceRefresh = false) {
 }
 
 function bindAuth() {
-  elements.authGoogleButton?.addEventListener("click", () => {
-    const connection = state.auth.config?.google_connection || "google-oauth2";
-    void loginWithManagedProvider("login", connection);
-  });
-
-  elements.authAppleButton?.addEventListener("click", () => {
-    const connection = state.auth.config?.apple_connection || "apple";
-    void loginWithManagedProvider("login", connection);
-  });
-
   elements.authCreateAccountButton?.addEventListener("click", () => {
     void loginWithManagedProvider("signup");
   });
@@ -3652,11 +3732,8 @@ function bindApp() {
 
   elements.logoutButton.addEventListener("click", async () => {
     if (state.auth.enabled && state.auth.client) {
-      await state.auth.client.logout({
-        logoutParams: {
-          returnTo: `${window.location.origin}${window.location.pathname}`,
-        },
-      });
+      await state.auth.client.signOut();
+      window.location.replace(window.location.pathname);
       return;
     }
     setAuthenticated(false);
@@ -3673,11 +3750,8 @@ function bindApp() {
 
   elements.paywallLogoutButton?.addEventListener("click", async () => {
     if (state.auth.enabled && state.auth.client) {
-      await state.auth.client.logout({
-        logoutParams: {
-          returnTo: `${window.location.origin}${window.location.pathname}`,
-        },
-      });
+      await state.auth.client.signOut();
+      window.location.replace(window.location.pathname);
       return;
     }
     setAuthenticated(false);

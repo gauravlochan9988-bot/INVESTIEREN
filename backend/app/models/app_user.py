@@ -15,7 +15,7 @@ class AppUser(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     auth_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    provider: Mapped[str] = mapped_column(String(64), nullable=False, default="auth0")
+    provider: Mapped[str] = mapped_column(String(64), nullable=False, default="clerk")
     email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     picture_url: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
