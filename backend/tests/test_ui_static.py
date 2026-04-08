@@ -4,11 +4,16 @@ def test_root_serves_static_dashboard(client):
     assert response.status_code == 200
     assert "Investieren AI" in response.text
     assert 'id="authOverlay"' in response.text
-    assert "Welcome to GQ Trading" in response.text
+    assert "GQ Trading" in response.text
+    assert "Get real trading signals. Not guesses." in response.text
     assert "Continue with Google" in response.text
     assert "Continue with Apple" in response.text
-    assert "Email Login" in response.text
-    assert "Admin Mode" in response.text
+    assert "Continue with Email" in response.text
+    assert "Unlock your private trading workspace." in response.text
+    assert "AI-powered trade decisions" in response.text
+    assert "Live BUY / SELL signals" in response.text
+    assert "Alerts &amp; favorites" in response.text
+    assert "(Admin only)" in response.text
     assert 'id="authManagedPanel"' in response.text
     assert 'id="authClerkMount"' in response.text
     assert 'id="paywallOverlay"' in response.text

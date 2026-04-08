@@ -53,7 +53,8 @@
           <div class="auth-desktop-right">
             <div class="auth-bottom-card login-card auth-desktop-card">
               <div class="space-y-3 auth-copy-text">
-                <h2 class="auth-panel-title">Welcome to GQ Trading</h2>
+                <h2 class="auth-panel-title">GQ Trading</h2>
+                <p class="auth-panel-copy">Get real trading signals. Not guesses.</p>
               </div>
 
               <div id="authManagedPanel" class="w-full max-w-md space-y-4 auth-form-panel" hidden>
@@ -77,15 +78,25 @@
                     type="button"
                     class="auth-secondary-action rounded-2xl px-6 py-3 text-sm font-semibold transition hover:translate-y-[-1px]"
                   >
-                    Email Login
+                    Continue with Email
                   </button>
                 </div>
+                <div class="auth-divider" aria-hidden="true"></div>
+                <div class="auth-benefit-copy space-y-3">
+                  <p class="auth-benefit-text">Unlock your private trading workspace.</p>
+                  <ul class="auth-benefit-list">
+                    <li>AI-powered trade decisions</li>
+                    <li>Live BUY / SELL signals</li>
+                    <li>Alerts &amp; favorites</li>
+                  </ul>
+                </div>
+                <div class="auth-divider" aria-hidden="true"></div>
                 <button
                   id="authAdminToggleButton"
                   type="button"
                   class="auth-admin-link text-xs font-medium text-slate-400 transition hover:text-slate-200"
                 >
-                  Admin Mode
+                  (Admin only)
                 </button>
                 <div id="authClerkPanel" hidden>
                   <div
@@ -99,18 +110,14 @@
 
               <form id="authForm" class="w-full max-w-md space-y-4 auth-form-panel auth-private-panel" novalidate hidden>
                 <div class="space-y-2">
-                  <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">Admin Mode</p>
-                  <p class="text-sm text-slate-400">Use your private code for full access.</p>
+                  <p class="text-xs font-semibold text-slate-400">(Admin only)</p>
                 </div>
                 <div class="space-y-2">
-                  <label for="authPassword" class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-                    Private Code
-                  </label>
                   <input
                     id="authPassword"
                     name="password"
                     type="password"
-                    placeholder="Enter private code"
+                    placeholder="Enter access code"
                     autocomplete="current-password"
                     class="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base text-white outline-none transition focus:border-emerald-400/60 focus:bg-white/10 login-input"
                   />
