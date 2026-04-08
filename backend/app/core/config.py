@@ -63,6 +63,10 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = ""
     stripe_publishable_key: str = ""
     stripe_price_id: str = ""
+    admin_access_code: str = "9988"
+    admin_session_secret: str = "investieren-admin-session-secret"
+    admin_access_max_attempts: int = 5
+    admin_access_lockout_seconds: int = 900
     watchlist: Dict[str, str] = Field(default_factory=lambda: DEFAULT_WATCHLIST.copy())
 
     @field_validator("database_url", mode="before")

@@ -14,7 +14,7 @@ const DEFAULT_CLERK_PLAN = {
 };
 const STORAGE_KEYS = {
   authenticated: "investieren:authenticated",
-  accessOverride: "investieren:accessOverride",
+  adminSession: "investieren:adminSession",
   selectedSymbol: "investieren:selectedSymbol",
   selectedStrategy: "investieren:selectedStrategy",
   favoriteSymbols: "investieren:favoriteSymbols",
@@ -88,7 +88,7 @@ const state = {
     tokenFetchedAt: 0,
     currentUser: null,
     subscription: null,
-    accessOverride: window.sessionStorage.getItem(STORAGE_KEYS.accessOverride) === "1",
+    adminSession: window.sessionStorage.getItem(STORAGE_KEYS.adminSession) || "",
   },
 };
 
@@ -422,16 +422,16 @@ function managedPlanConfig() {
 }
 
 function hasActiveSubscription() {
-  return Boolean(state.auth.subscription?.active || state.auth.accessOverride);
+  return Boolean(state.auth.subscription?.active || state.auth.adminSession);
 }
 
-function setAccessOverride(value) {
-  state.auth.accessOverride = Boolean(value);
-  if (state.auth.accessOverride) {
-    window.sessionStorage.setItem(STORAGE_KEYS.accessOverride, "1");
+function setAdminSessionToken(token = "") {
+  state.auth.adminSession = String(token || "").trim();
+  if (state.auth.adminSession) {
+    window.sessionStorage.setItem(STORAGE_KEYS.adminSession, state.auth.adminSession);
     return;
   }
-  window.sessionStorage.removeItem(STORAGE_KEYS.accessOverride);
+  window.sessionStorage.removeItem(STORAGE_KEYS.adminSession);
 }
 
 function isPricingPage() {
@@ -484,10 +484,10 @@ function syncLimitedAccessBanner() {
 }
 
 async function loadSubscriptionStatus() {
-  if (state.auth.accessOverride && !state.auth.currentUser) {
+  if (state.auth.adminSession && !state.auth.currentUser) {
     state.auth.subscription = {
       active: true,
-      status: "override",
+      status: "admin",
       amount_cents: 0,
       currency: "eur",
       interval: "month",
@@ -581,7 +581,7 @@ async function initializeManagedAuth() {
         setAuthenticated(false);
         state.auth.subscription = null;
         renderSubscriptionButton();
-        if (state.auth.accessOverride) {
+        if (state.auth.adminSession) {
           showAppShell();
           void bootDashboard();
           return;
@@ -2228,7 +2228,7 @@ function setAuthenticated(value) {
       state.auth.currentUser = null;
       state.auth.accessToken = "";
       state.auth.tokenFetchedAt = 0;
-      setAccessOverride(false);
+      setAdminSessionToken("");
     }
     return;
   }
@@ -2241,7 +2241,7 @@ function setAuthenticated(value) {
 
 function isAuthenticated() {
   if (state.auth.enabled) {
-    return Boolean(state.auth.currentUser || state.auth.accessOverride);
+    return Boolean(state.auth.currentUser || state.auth.adminSession);
   }
   return window.sessionStorage.getItem(STORAGE_KEYS.authenticated) === "1";
 }
@@ -2639,8 +2639,8 @@ async function api(path, options = {}) {
     !options.skipAuth && String(path || "").startsWith("/api/") && path !== "/api/auth/config"
       ? await (async () => {
           const token = await getAccessToken();
-          const accessCodeHeaders = state.auth.accessOverride ? { "X-Access-Code": "9988" } : {};
-          return token ? { Authorization: `Bearer ${token}`, ...accessCodeHeaders } : accessCodeHeaders;
+          const adminHeaders = state.auth.adminSession ? { "X-Admin-Session": state.auth.adminSession } : {};
+          return token ? { Authorization: `Bearer ${token}`, ...adminHeaders } : adminHeaders;
         })()
       : {};
 
@@ -3751,17 +3751,23 @@ function bindAuth() {
 
   elements.authForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (elements.authPassword.value.trim() !== "9988") {
-      setAuthError("Wrong password");
+    try {
+      const result = await api("/api/auth/access-code", {
+        method: "POST",
+        body: JSON.stringify({ code: elements.authPassword.value.trim() }),
+      });
+      setAuthError("");
+      setAdminSessionToken(result.session_token || "");
+      if (result.user) {
+        state.auth.currentUser = result.user;
+      }
+      showAppShell();
+      await loadSubscriptionStatus();
+      await bootDashboard();
+    } catch (error) {
+      setAuthError(error.message || "Wrong password");
       elements.authPassword.select();
-      return;
     }
-
-    setAuthError("");
-    setAccessOverride(true);
-    showAppShell();
-    await loadSubscriptionStatus();
-    await bootDashboard();
   });
 }
 
@@ -3799,6 +3805,7 @@ function bindApp() {
   };
 
   elements.logoutButton.addEventListener("click", async () => {
+    setAdminSessionToken("");
     if (state.auth.enabled && state.auth.client) {
       await state.auth.client.signOut();
       window.location.replace(window.location.pathname);
@@ -3821,6 +3828,7 @@ function bindApp() {
   });
 
   elements.paywallLogoutButton?.addEventListener("click", async () => {
+    setAdminSessionToken("");
     if (state.auth.enabled && state.auth.client) {
       await state.auth.client.signOut();
       window.location.replace(window.location.pathname);

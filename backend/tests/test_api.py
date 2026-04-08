@@ -568,19 +568,23 @@ def test_authenticated_user_context_isolates_alerts(client, db_session):
         client.app.dependency_overrides.pop(get_request_user_context, None)
 
 
-def test_access_code_header_grants_full_alerts_and_favorites_access(client, db_session):
+def test_access_code_session_grants_full_alerts_and_favorites_access(client, db_session):
+    access_response = client.post("/api/auth/access-code", json={"code": "9988"})
+    assert access_response.status_code == 200
+    session_token = access_response.json()["session_token"]
+
     favorite_response = client.post(
         "/api/favorites",
         json={"symbol": "AAPL"},
-        headers={"X-Access-Code": "9988"},
+        headers={"X-Admin-Session": session_token},
     )
     assert favorite_response.status_code == 200
-    assert favorite_response.json() == {"symbol": "AAPL", "user_key": "access-code|9988"}
+    assert favorite_response.json() == {"symbol": "AAPL", "user_key": "admin-access|local"}
 
     alerts_response = client.get(
         "/api/alerts",
         params={"strategy": "simple", "favorites_only": True, "limit": 6},
-        headers={"X-Access-Code": "9988"},
+        headers={"X-Admin-Session": session_token},
     )
     assert alerts_response.status_code == 200
     payload = alerts_response.json()
@@ -588,7 +592,13 @@ def test_access_code_header_grants_full_alerts_and_favorites_access(client, db_s
     assert all(item["symbol"] == "AAPL" for item in payload)
 
     saved = list(db_session.scalars(select(AlertEvent)).all())
-    assert any(row.symbol == "AAPL" and row.user_key == "access-code|9988" for row in saved)
+    assert any(row.symbol == "AAPL" and row.user_key == "admin-access|local" for row in saved)
+
+
+def test_access_code_rejects_invalid_attempts(client):
+    response = client.post("/api/auth/access-code", json={"code": "1111"})
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid access code."
 
 
 def test_billing_checkout_creates_checkout_session_for_authenticated_user(client, db_session):

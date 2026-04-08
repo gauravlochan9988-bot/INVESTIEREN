@@ -22,3 +22,13 @@ class AppUserResponse(BaseModel):
     email: Optional[str] = None
     name: Optional[str] = None
     picture_url: Optional[str] = None
+
+
+class AdminAccessRequest(BaseModel):
+    code: str
+
+
+class AdminAccessResponse(BaseModel):
+    session_token: str
+    is_admin: bool = True
+    user: AppUserResponse

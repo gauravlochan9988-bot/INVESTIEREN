@@ -6,7 +6,7 @@ from fastapi import Depends, Header
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.auth import ClerkTokenVerifier
+from app.core.auth import AdminSessionManager, ClerkTokenVerifier
 from app.core.config import get_settings
 from app.core.database import get_db, get_session_factory
 from app.repositories.alert_repository import AlertRepository
@@ -259,6 +259,16 @@ def get_clerk_verifier() -> ClerkTokenVerifier:
     return get_clerk_verifier_instance()
 
 
+@lru_cache
+def get_admin_session_manager_instance() -> AdminSessionManager:
+    settings = get_settings()
+    return AdminSessionManager(secret=settings.admin_session_secret)
+
+
+def get_admin_session_manager() -> AdminSessionManager:
+    return get_admin_session_manager_instance()
+
+
 def get_app_user_repository() -> AppUserRepository:
     return get_app_user_repository_instance()
 
@@ -269,18 +279,20 @@ def get_app_subscription_repository() -> AppSubscriptionRepository:
 
 def get_request_user_context(
     authorization: Optional[str] = Header(default=None),
-    x_access_code: Optional[str] = Header(default=None),
+    x_admin_session: Optional[str] = Header(default=None),
     db: Session = Depends(get_db),
     verifier: ClerkTokenVerifier = Depends(get_clerk_verifier),
+    admin_session_manager: AdminSessionManager = Depends(get_admin_session_manager),
     app_user_repository: AppUserRepository = Depends(get_app_user_repository),
 ) -> RequestUserContext:
-    if (x_access_code or "").strip() == "9988":
+    if x_admin_session and admin_session_manager.enabled:
+        claims = admin_session_manager.verify(x_admin_session.strip())
         user = app_user_repository.upsert_from_claims(
             db,
-            auth_subject="access-code|9988",
-            provider="access_code",
+            auth_subject=str(claims.get("sub") or "admin-access|local").strip() or "admin-access|local",
+            provider=str(claims.get("provider") or "admin_access"),
             email=None,
-            name="Access Code",
+            name="Admin Access",
             picture_url=None,
         )
         return RequestUserContext(

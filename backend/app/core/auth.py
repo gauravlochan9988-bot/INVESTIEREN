@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 from fastapi import HTTPException, status
@@ -66,3 +67,54 @@ def extract_bearer_token(authorization: Optional[str]) -> str:
             headers={"WWW-Authenticate": "Bearer"},
         )
     return token.strip()
+
+
+class AdminSessionManager:
+    def __init__(self, *, secret: str, ttl_seconds: int = 60 * 60 * 12) -> None:
+        self.secret = secret.strip()
+        self.ttl_seconds = ttl_seconds
+
+    @property
+    def enabled(self) -> bool:
+        return bool(self.secret)
+
+    def create(self, *, auth_subject: str, provider: str = "admin_access") -> str:
+        if not self.enabled:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Admin access is not configured.",
+            )
+
+        now = datetime.now(timezone.utc)
+        payload = {
+            "sub": auth_subject,
+            "provider": provider,
+            "is_admin": True,
+            "iat": int(now.timestamp()),
+            "exp": int((now + timedelta(seconds=self.ttl_seconds)).timestamp()),
+        }
+        return jwt.encode(payload, self.secret, algorithm="HS256")
+
+    def verify(self, token: str) -> Dict[str, Any]:
+        if not self.enabled:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Admin access is not configured.",
+            )
+
+        try:
+            claims = jwt.decode(token, self.secret, algorithms=["HS256"])
+        except JWTError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid admin session.",
+                headers={"WWW-Authenticate": "Bearer"},
+            ) from exc
+
+        if not claims.get("is_admin"):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid admin session.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return claims
