@@ -14,6 +14,7 @@ const DEFAULT_CLERK_PLAN = {
 };
 const STORAGE_KEYS = {
   authenticated: "investieren:authenticated",
+  accessOverride: "investieren:accessOverride",
   selectedSymbol: "investieren:selectedSymbol",
   selectedStrategy: "investieren:selectedStrategy",
   favoriteSymbols: "investieren:favoriteSymbols",
@@ -87,6 +88,7 @@ const state = {
     tokenFetchedAt: 0,
     currentUser: null,
     subscription: null,
+    accessOverride: window.sessionStorage.getItem(STORAGE_KEYS.accessOverride) === "1",
   },
 };
 
@@ -110,6 +112,8 @@ const elements = {
   errorBanner: document.getElementById("errorBanner"),
   limitedAccessBanner: document.getElementById("limitedAccessBanner"),
   limitedAccessMessage: document.getElementById("limitedAccessMessage"),
+  limitedAccessCode: document.getElementById("limitedAccessCode"),
+  limitedAccessCodeButton: document.getElementById("limitedAccessCodeButton"),
   limitedAccessUpgradeButton: document.getElementById("limitedAccessUpgradeButton"),
   alertsSection: document.getElementById("alertsSection"),
   alertsMeta: document.getElementById("alertsMeta"),
@@ -394,9 +398,8 @@ function renderSubscriptionButton() {
     return;
   }
 
-  const subscription = state.auth.subscription;
-  if (subscription?.active) {
-    elements.subscribeButton.textContent = "Pro Active";
+  if (hasActiveSubscription()) {
+    elements.subscribeButton.textContent = state.auth.subscription?.active ? "Pro Active" : "Full Access";
     elements.subscribeButton.disabled = true;
     elements.subscribeButton.className =
       "action-secondary rounded-2xl border border-emerald-400/25 bg-emerald-400/12 px-4 py-3 text-sm font-semibold text-emerald-200 opacity-90 xl:min-w-[132px]";
@@ -421,7 +424,16 @@ function managedPlanConfig() {
 }
 
 function hasActiveSubscription() {
-  return Boolean(state.auth.subscription?.active);
+  return Boolean(state.auth.subscription?.active || state.auth.accessOverride);
+}
+
+function setAccessOverride(value) {
+  state.auth.accessOverride = Boolean(value);
+  if (state.auth.accessOverride) {
+    window.sessionStorage.setItem(STORAGE_KEYS.accessOverride, "1");
+    return;
+  }
+  window.sessionStorage.removeItem(STORAGE_KEYS.accessOverride);
 }
 
 function isPricingPage() {
@@ -2201,6 +2213,7 @@ function setAuthenticated(value) {
       state.auth.currentUser = null;
       state.auth.accessToken = "";
       state.auth.tokenFetchedAt = 0;
+      setAccessOverride(false);
     }
     return;
   }
@@ -2587,6 +2600,9 @@ function showLoginOverlay() {
   elements.limitedAccessBanner?.classList.remove("flex");
   if (elements.limitedAccessBanner) {
     elements.limitedAccessBanner.hidden = true;
+  }
+  if (elements.limitedAccessCode) {
+    elements.limitedAccessCode.value = "";
   }
   elements.authOverlay.classList.remove("hidden");
   elements.authOverlay.hidden = false;
@@ -3784,6 +3800,19 @@ function bindApp() {
 
   elements.limitedAccessUpgradeButton?.addEventListener("click", () => {
     void startCheckout();
+  });
+
+  elements.limitedAccessCodeButton?.addEventListener("click", () => {
+    if ((elements.limitedAccessCode?.value || "").trim() !== "9988") {
+      showError("Wrong access code.");
+      elements.limitedAccessCode?.focus();
+      elements.limitedAccessCode?.select();
+      return;
+    }
+    clearError();
+    setAccessOverride(true);
+    renderSubscriptionButton();
+    syncLimitedAccessBanner();
   });
 
   elements.paywallUpgradeButton?.addEventListener("click", () => {
