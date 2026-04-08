@@ -171,6 +171,27 @@
           </div>
         </header>
 
+        <nav
+          id="mobileQuickActions"
+          class="mobile-only hidden mb-3"
+          aria-label="Quick actions"
+        >
+          <div class="grid grid-cols-3 gap-2 rounded-[18px] border border-white/10 bg-slate-950/82 p-2 shadow-xl shadow-black/20 backdrop-blur-xl">
+            <button id="mobileFavoriteButton" type="button" class="mobile-quick-action" aria-label="Toggle favorite">
+              <span class="text-lg">☆</span>
+              <span>Favorite</span>
+            </button>
+            <button id="mobileAlertButton" type="button" class="mobile-quick-action" aria-label="Open alerts">
+              <span class="text-lg">🔔</span>
+              <span>Alerts</span>
+            </button>
+            <button id="mobilePortfolioButton" type="button" class="mobile-quick-action" aria-label="Open portfolio">
+              <span class="text-lg">📊</span>
+              <span>Portfolio</span>
+            </button>
+          </div>
+        </nav>
+
         <div id="errorBanner" class="mb-4 hidden rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
 
         <main id="dashboardWorkspace" class="grid flex-1 items-start gap-5 xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_minmax(280px,340px)] 2xl:grid-cols-[minmax(280px,340px)_minmax(0,1fr)_minmax(300px,360px)]">
@@ -540,26 +561,6 @@
     </div>
 
     <div id="portfolioSheetBackdrop" class="mobile-only hidden fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm"></div>
-    <nav
-      id="mobileQuickActions"
-      class="mobile-only hidden fixed inset-x-0 bottom-0 z-30 px-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.8rem)] pt-3"
-      aria-label="Quick actions"
-    >
-      <div class="grid grid-cols-3 gap-2 rounded-[22px] border border-white/10 bg-slate-950/92 p-2 shadow-2xl shadow-black/40 backdrop-blur-xl">
-        <button id="mobileFavoriteButton" type="button" class="mobile-quick-action" aria-label="Toggle favorite">
-          <span class="text-lg">☆</span>
-          <span>Favorite</span>
-        </button>
-        <button id="mobileAlertButton" type="button" class="mobile-quick-action" aria-label="Open alerts">
-          <span class="text-lg">🔔</span>
-          <span>Alert</span>
-        </button>
-        <button id="mobilePortfolioButton" type="button" class="mobile-quick-action" aria-label="Open portfolio">
-          <span class="text-lg">📊</span>
-          <span>📊</span>
-        </button>
-      </div>
-    </nav>
     <section id="portfolioSheet" class="mobile-only hidden fixed inset-x-0 bottom-0 z-50 max-h-[78vh] overflow-y-auto rounded-t-[28px] border border-white/10 bg-slate-950/95 p-4 shadow-2xl shadow-black/50">
       <div class="flex items-center justify-between gap-3">
         <div>

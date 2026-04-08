@@ -1873,7 +1873,7 @@ body {
 
   #appShell > div {
     padding: 12px;
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 104px);
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
   }
 
   #dashboardWorkspace,
@@ -2282,11 +2282,7 @@ body {
   }
 
   #mobileQuickActions {
-    pointer-events: none;
-  }
-
-  #mobileQuickActions > div {
-    pointer-events: auto;
+    margin-bottom: 0.25rem;
   }
 
   #mobileStrategyCards {
@@ -2479,7 +2475,7 @@ body {
 
   #appShell > div {
     padding: 10px;
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
   }
 
   .dashboard-topbar,
@@ -2882,7 +2878,7 @@ body {
 @media (max-width: 768px) {
   #appShell > div {
     padding: 8px;
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 92px);
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
   }
 
   #dashboardWorkspace {
