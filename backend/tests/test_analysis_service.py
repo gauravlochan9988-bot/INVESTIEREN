@@ -640,9 +640,9 @@ def test_hedgefund_confirmation_can_hold_while_ai_model_stays_more_bearish(analy
     assert ai.strategy == "ai"
     assert hedgefund.strategy == "hedgefund"
     assert ai.score < hedgefund.score
-    assert ai.recommendation == "HOLD"
+    assert ai.recommendation == "SELL"
     assert hedgefund.recommendation == "HOLD"
-    assert "conflicting" in ai.reason.lower()
+    assert "bearish" in ai.reason.lower() or "sell" in ai.reason.lower()
     assert hedgefund.reason.startswith("HOLD because")
 
 

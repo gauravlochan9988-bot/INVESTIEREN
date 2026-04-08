@@ -698,7 +698,7 @@ class AnalysisService:
             )
             if trade_filter.block_reason:
                 decision["reason"] = (
-                    f"HOLD because {trade_filter.block_reason}. "
+                    f"{decision['recommendation']} bias, but {trade_filter.block_reason}. "
                     f"Confidence {float(decision['confidence']):.0f}/100."
                 )
             probability_up = self._probability_from_strategy_score(
@@ -753,13 +753,13 @@ class AnalysisService:
         )
         summary = decision["reason"]
 
-        no_trade = decision["recommendation"] == "HOLD"
+        no_trade = decision["recommendation"] == "HOLD" or bool(trade_filter.block_reason)
         no_trade_reason = "Trade evaluation available."
-        if no_trade:
+        if trade_filter.block_reason:
+            no_trade_reason = f"{trade_filter.block_reason.capitalize()}."
+        elif no_trade:
             no_trade_reason = (
-                f"{trade_filter.block_reason.capitalize()}."
-                if trade_filter.block_reason
-                else "Strong uncertainty keeps the setup on HOLD."
+                "Strong uncertainty keeps the setup on HOLD."
             )
 
         return AnalysisResponse(
@@ -1089,6 +1089,31 @@ class AnalysisService:
             return "SELL"
         return "HOLD"
 
+    def _tilt_hold_by_bias(
+        self,
+        *,
+        recommendation: Recommendation,
+        score_band: int,
+        raw_score: int,
+        trend_score: int = 0,
+        momentum_score: int = 0,
+    ) -> Recommendation:
+        if recommendation != "HOLD":
+            return recommendation
+        if score_band > 0:
+            return "BUY"
+        if score_band < 0:
+            return "SELL"
+        if raw_score > 0:
+            return "BUY"
+        if raw_score < 0:
+            return "SELL"
+        if trend_score > 0 and momentum_score >= 0:
+            return "BUY"
+        if trend_score < 0 and momentum_score <= 0:
+            return "SELL"
+        return "HOLD"
+
     def _recommendation_for_strategy(
         self,
         *,
@@ -1270,8 +1295,8 @@ class AnalysisService:
             )
 
         return TradeFilterDecision(
-            recommendation="HOLD",
-            signal_quality="FULL",
+            recommendation=recommendation,
+            signal_quality="PARTIAL" if signal_quality == "FULL" else signal_quality,
             confidence=round(min(confidence, 44.0), 1),
             block_reason=block_reason,
         )
@@ -1428,8 +1453,12 @@ class AnalysisService:
             data_quality=context["base_data_quality_decision"].level,
         )
         normalized_score = self._score_band("simple", adjusted_score)
-        recommendation: Recommendation = self._recommendation_from_score_band(
-            "simple", normalized_score
+        recommendation: Recommendation = self._tilt_hold_by_bias(
+            recommendation=self._recommendation_from_score_band("simple", normalized_score),
+            score_band=normalized_score,
+            raw_score=adjusted_score,
+            trend_score=signal_scores["trend"],
+            momentum_score=signal_scores["momentum"],
         )
         risk_level = self._simple_strategy_risk(
             score=adjusted_score,
@@ -1495,8 +1524,12 @@ class AnalysisService:
             data_quality=context["base_data_quality_decision"].level,
         )
         normalized_score = self._score_band("ai", adjusted_score)
-        recommendation: Recommendation = self._recommendation_from_score_band(
-            "ai", normalized_score
+        recommendation: Recommendation = self._tilt_hold_by_bias(
+            recommendation=self._recommendation_from_score_band("ai", normalized_score),
+            score_band=normalized_score,
+            raw_score=adjusted_score,
+            trend_score=signal_scores["trend"],
+            momentum_score=signal_scores["momentum"],
         )
         risk_level = self._weighted_strategy_risk(
             score=adjusted_score,
@@ -1587,6 +1620,13 @@ class AnalysisService:
             )
         else:
             recommendation = "HOLD"
+        recommendation = self._tilt_hold_by_bias(
+            recommendation=recommendation,
+            score_band=normalized_score,
+            raw_score=adjusted_score,
+            trend_score=signal_scores["trend"],
+            momentum_score=signal_scores["momentum"],
+        )
         risk_level = self._weighted_strategy_risk(
             score=adjusted_score,
             volatility_30d=context["volatility_30d"],
