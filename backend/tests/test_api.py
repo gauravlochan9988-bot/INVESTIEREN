@@ -2,7 +2,7 @@ from sqlalchemy import select
 
 from datetime import date, datetime, timezone
 
-from app.api.deps import get_analysis_service
+from app.api.deps import RequestUserContext, get_analysis_service, get_request_user_context
 from app.core.exceptions import ExternalServiceError
 from app.models.alert_event import AlertEvent
 from app.models.analysis_log import AnalysisLog
@@ -462,6 +462,54 @@ def test_favorites_can_be_listed_and_deleted(client):
     final_list = client.get("/api/favorites", params={"user_key": "desk"})
     assert final_list.status_code == 200
     assert final_list.json() == []
+
+
+def test_authenticated_user_context_overrides_favorite_user_key(client):
+    client.app.dependency_overrides[get_request_user_context] = lambda: RequestUserContext(
+        user_key="auth0|user-123",
+        app_user_id=7,
+        is_authenticated=True,
+    )
+    try:
+        create_response = client.post("/api/favorites", json={"symbol": "AAPL", "user_key": "desk"})
+        assert create_response.status_code == 200
+        assert create_response.json() == {"symbol": "AAPL", "user_key": "auth0|user-123"}
+
+        list_response = client.get("/api/favorites", params={"user_key": "desk"})
+        assert list_response.status_code == 200
+        assert list_response.json() == [{"symbol": "AAPL", "user_key": "auth0|user-123"}]
+    finally:
+        client.app.dependency_overrides.pop(get_request_user_context, None)
+
+
+def test_authenticated_user_context_isolates_alerts(client, db_session):
+    client.app.dependency_overrides[get_request_user_context] = lambda: RequestUserContext(
+        user_key="auth0|alerts-1",
+        app_user_id=9,
+        is_authenticated=True,
+    )
+    try:
+        favorite_response = client.post(
+            "/api/favorites",
+            json={"symbol": "AAPL", "user_key": "desk"},
+        )
+        assert favorite_response.status_code == 200
+        assert favorite_response.json() == {"symbol": "AAPL", "user_key": "auth0|alerts-1"}
+
+        alerts_response = client.get(
+            "/api/alerts",
+            params={"strategy": "simple", "user_key": "desk", "favorites_only": True, "limit": 6},
+        )
+        assert alerts_response.status_code == 200
+        payload = alerts_response.json()
+        assert payload
+        assert all(item["symbol"] == "AAPL" for item in payload)
+
+        saved = list(db_session.scalars(select(AlertEvent)).all())
+        assert any(row.symbol == "AAPL" and row.user_key == "auth0|alerts-1" for row in saved)
+        assert not any(row.user_key == "desk" for row in saved)
+    finally:
+        client.app.dependency_overrides.pop(get_request_user_context, None)
 
 
 def test_buy_opens_trade_and_sell_closes_trade(client, db_session):

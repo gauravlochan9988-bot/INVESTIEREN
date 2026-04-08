@@ -1,8 +1,13 @@
+from dataclasses import dataclass
 from functools import lru_cache
+from typing import Optional
+
+from fastapi import Depends, Header
+from sqlalchemy.orm import Session
 
 from app.core.auth import Auth0TokenVerifier
 from app.core.config import get_settings
-from app.core.database import get_session_factory
+from app.core.database import get_db, get_session_factory
 from app.repositories.alert_repository import AlertRepository
 from app.repositories.analysis_log import AnalysisLogRepository
 from app.repositories.analysis_threshold import AnalysisThresholdRepository
@@ -41,6 +46,13 @@ FIXED_STRATEGY_THRESHOLDS: dict[str, tuple[float, float]] = {
 
 
 DASHBOARD_WATCHLIST = ("AAPL", "MSFT", "NVDA", "AMZN", "META", "TSLA")
+
+
+@dataclass
+class RequestUserContext:
+    user_key: str
+    app_user_id: Optional[int]
+    is_authenticated: bool
 
 
 @lru_cache
@@ -241,6 +253,37 @@ def get_auth0_verifier() -> Auth0TokenVerifier:
 
 def get_app_user_repository() -> AppUserRepository:
     return get_app_user_repository_instance()
+
+
+def get_request_user_context(
+    authorization: Optional[str] = Header(default=None),
+    db: Session = Depends(get_db),
+    verifier: Auth0TokenVerifier = Depends(get_auth0_verifier),
+    app_user_repository: AppUserRepository = Depends(get_app_user_repository),
+) -> RequestUserContext:
+    if not authorization or not verifier.enabled:
+        return RequestUserContext(user_key="default", app_user_id=None, is_authenticated=False)
+
+    from app.core.auth import extract_bearer_token
+
+    token = extract_bearer_token(authorization)
+    claims = verifier.verify(token)
+    auth_subject = str(claims.get("sub") or "").strip()
+    if not auth_subject:
+        return RequestUserContext(user_key="default", app_user_id=None, is_authenticated=False)
+
+    user = app_user_repository.upsert_from_claims(
+        db,
+        auth_subject=auth_subject,
+        email=(claims.get("email") or None),
+        name=(claims.get("name") or claims.get("nickname") or None),
+        picture_url=(claims.get("picture") or None),
+    )
+    return RequestUserContext(
+        user_key=user.auth_subject,
+        app_user_id=user.id,
+        is_authenticated=True,
+    )
 
 
 def get_analysis_calibration_service() -> AnalysisCalibrationService:

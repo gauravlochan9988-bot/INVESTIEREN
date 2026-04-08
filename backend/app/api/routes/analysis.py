@@ -6,8 +6,10 @@ from app.api.deps import (
     get_analysis_calibration_service,
     get_analysis_log_repository,
     get_analysis_service,
+    get_request_user_context,
     get_strategy_learning_service,
     get_trade_history_service,
+    RequestUserContext,
 )
 from app.core.database import get_db
 from app.schemas.analysis import (
@@ -85,13 +87,15 @@ def get_alerts(
     favorites_only: bool = Query(default=False),
     db: Session = Depends(get_db),
     alert_service: AlertService = Depends(get_alert_service),
+    user_context: RequestUserContext = Depends(get_request_user_context),
 ) -> list[AnalysisAlert]:
+    resolved_user_key = user_context.user_key if user_context.is_authenticated else user_key
     return alert_service.sync_alerts(
         db,
         strategy=strategy,
         force_refresh=refresh,
         limit=limit,
-        user_key=user_key,
+        user_key=resolved_user_key,
         favorites_only=favorites_only,
     )
 
@@ -101,10 +105,12 @@ def get_favorites(
     user_key: str = Query(default="default", min_length=1, max_length=64),
     db: Session = Depends(get_db),
     alert_service: AlertService = Depends(get_alert_service),
+    user_context: RequestUserContext = Depends(get_request_user_context),
 ) -> list[FavoriteSymbolResponse]:
+    resolved_user_key = user_context.user_key if user_context.is_authenticated else user_key
     return [
-        FavoriteSymbolResponse(symbol=symbol, user_key=user_key)
-        for symbol in alert_service.list_favorites(db, user_key=user_key)
+        FavoriteSymbolResponse(symbol=symbol, user_key=resolved_user_key)
+        for symbol in alert_service.list_favorites(db, user_key=resolved_user_key)
     ]
 
 
@@ -113,9 +119,11 @@ def add_favorite(
     payload: FavoriteSymbolCreate,
     db: Session = Depends(get_db),
     alert_service: AlertService = Depends(get_alert_service),
+    user_context: RequestUserContext = Depends(get_request_user_context),
 ) -> FavoriteSymbolResponse:
-    symbol = alert_service.add_favorite(db, user_key=payload.user_key, symbol=payload.symbol)
-    return FavoriteSymbolResponse(symbol=symbol, user_key=payload.user_key)
+    resolved_user_key = user_context.user_key if user_context.is_authenticated else payload.user_key
+    symbol = alert_service.add_favorite(db, user_key=resolved_user_key, symbol=payload.symbol)
+    return FavoriteSymbolResponse(symbol=symbol, user_key=resolved_user_key)
 
 
 @router.delete("/favorites/{symbol}", response_model=FavoriteSymbolResponse)
@@ -124,9 +132,11 @@ def delete_favorite(
     user_key: str = Query(default="default", min_length=1, max_length=64),
     db: Session = Depends(get_db),
     alert_service: AlertService = Depends(get_alert_service),
+    user_context: RequestUserContext = Depends(get_request_user_context),
 ) -> FavoriteSymbolResponse:
-    alert_service.remove_favorite(db, user_key=user_key, symbol=symbol)
-    return FavoriteSymbolResponse(symbol=symbol.strip().upper(), user_key=user_key)
+    resolved_user_key = user_context.user_key if user_context.is_authenticated else user_key
+    alert_service.remove_favorite(db, user_key=resolved_user_key, symbol=symbol)
+    return FavoriteSymbolResponse(symbol=symbol.strip().upper(), user_key=resolved_user_key)
 
 
 @router.post("/analyze", response_model=AnalysisResponse)
