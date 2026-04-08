@@ -3362,10 +3362,7 @@ function bindApp() {
       dragState.pointerId = null;
       elements.strategyToggle.releasePointerCapture(event.pointerId);
       resetThumb();
-      if (!dragState.moved && dragState.startStrategy) {
-        state.suppressStrategyClick = true;
-        await applyStrategy(dragState.startStrategy);
-      } else if (dragState.moved && nextStrategy) {
+      if (dragState.moved && nextStrategy) {
         state.suppressStrategyClick = true;
         await applyStrategy(nextStrategy);
       }

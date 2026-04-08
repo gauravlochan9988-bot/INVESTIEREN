@@ -2913,6 +2913,30 @@ body {
     display: none !important;
   }
 
+  #strategyToggle {
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 0.28rem !important;
+    padding: 0.28rem !important;
+    border-radius: 16px !important;
+    touch-action: pan-y;
+    cursor: default;
+  }
+
+  #strategyToggleThumb {
+    border-radius: 0.8rem;
+  }
+
+  .strategy-button {
+    min-width: 0;
+    min-height: 46px !important;
+    padding: 0.72rem 0.45rem !important;
+    font-size: 0.74rem !important;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-align: center;
+  }
+
   #tradeDecisionSection {
     order: 1;
   }
