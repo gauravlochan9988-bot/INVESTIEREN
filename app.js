@@ -108,6 +108,9 @@ const elements = {
   appShell: document.getElementById("appShell"),
   backendStatus: document.getElementById("backendStatus"),
   errorBanner: document.getElementById("errorBanner"),
+  limitedAccessBanner: document.getElementById("limitedAccessBanner"),
+  limitedAccessMessage: document.getElementById("limitedAccessMessage"),
+  limitedAccessUpgradeButton: document.getElementById("limitedAccessUpgradeButton"),
   alertsSection: document.getElementById("alertsSection"),
   alertsMeta: document.getElementById("alertsMeta"),
   alertsList: document.getElementById("alertsList"),
@@ -401,7 +404,7 @@ function renderSubscriptionButton() {
   }
 
   elements.subscribeButton.disabled = !state.auth.enabled || !isAuthenticated();
-  elements.subscribeButton.textContent = "Subscribe €4.99";
+  elements.subscribeButton.textContent = "Unlock €4.99";
   elements.subscribeButton.className =
     "action-secondary rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/15 xl:min-w-[132px]";
 }
@@ -451,10 +454,30 @@ function hidePaywall() {
   elements.paywallOverlay.hidden = true;
 }
 
+function syncLimitedAccessBanner() {
+  const shouldShow = Boolean(state.auth.enabled && isAuthenticated() && !hasActiveSubscription());
+  if (!elements.limitedAccessBanner) {
+    return;
+  }
+  if (shouldShow) {
+    elements.limitedAccessBanner.classList.remove("hidden");
+    elements.limitedAccessBanner.classList.add("flex");
+    elements.limitedAccessBanner.hidden = false;
+    if (elements.limitedAccessMessage) {
+      elements.limitedAccessMessage.textContent = "You can explore the dashboard. Unlock live signals and alerts for full access.";
+    }
+    return;
+  }
+  elements.limitedAccessBanner.classList.add("hidden");
+  elements.limitedAccessBanner.classList.remove("flex");
+  elements.limitedAccessBanner.hidden = true;
+}
+
 async function loadSubscriptionStatus() {
   if (!state.auth.enabled || !isAuthenticated()) {
     state.auth.subscription = null;
     renderSubscriptionButton();
+    syncLimitedAccessBanner();
     return null;
   }
 
@@ -469,6 +492,7 @@ async function loadSubscriptionStatus() {
     state.auth.subscription = null;
   }
   renderSubscriptionButton();
+  syncLimitedAccessBanner();
   return state.auth.subscription;
 }
 
@@ -542,12 +566,8 @@ async function initializeManagedAuth() {
       try {
         await syncAuthenticatedUser(true);
         await loadSubscriptionStatus();
-        if (hasActiveSubscription()) {
-          showAppShell();
-          void bootDashboard();
-          return;
-        }
-        redirectToPricingPage();
+        showAppShell();
+        void bootDashboard();
       } catch (error) {
         console.error("[frontend] clerk session sync failed", error);
         setAuthError("Session sync failed.");
@@ -2556,12 +2576,18 @@ function showAppShell() {
   elements.appShell.classList.remove("hidden");
   elements.appShell.hidden = false;
   elements.mobileQuickActions?.classList.remove("hidden");
+  syncLimitedAccessBanner();
 }
 
 function showLoginOverlay() {
   hidePaywall();
   elements.appShell.classList.add("hidden");
   elements.appShell.hidden = true;
+  elements.limitedAccessBanner?.classList.add("hidden");
+  elements.limitedAccessBanner?.classList.remove("flex");
+  if (elements.limitedAccessBanner) {
+    elements.limitedAccessBanner.hidden = true;
+  }
   elements.authOverlay.classList.remove("hidden");
   elements.authOverlay.hidden = false;
   elements.mobileQuickActions?.classList.add("hidden");
@@ -3598,10 +3624,6 @@ async function loadStrategySnapshots(symbol, forceRefresh = false) {
 }
 
 async function bootDashboard(forceRefresh = false) {
-  if (state.auth.enabled && !hasActiveSubscription()) {
-    redirectToPricingPage();
-    return;
-  }
   clearError();
   updateChartCompareUi();
   if (!forceRefresh) {
@@ -3757,6 +3779,10 @@ function bindApp() {
   });
 
   elements.subscribeButton?.addEventListener("click", () => {
+    void startCheckout();
+  });
+
+  elements.limitedAccessUpgradeButton?.addEventListener("click", () => {
     void startCheckout();
   });
 
@@ -3938,12 +3964,8 @@ async function initializeApp() {
 
   if (isAuthenticated()) {
     await loadSubscriptionStatus();
-    if (hasActiveSubscription()) {
-      showAppShell();
-      void bootDashboard();
-      return;
-    }
-    redirectToPricingPage();
+    showAppShell();
+    void bootDashboard();
     return;
   }
 

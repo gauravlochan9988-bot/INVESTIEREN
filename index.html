@@ -252,6 +252,23 @@
         </nav>
 
         <div id="errorBanner" class="mb-4 hidden rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
+        <section
+          id="limitedAccessBanner"
+          class="mb-4 hidden items-center justify-between gap-4 rounded-[24px] border border-emerald-400/20 bg-emerald-400/10 px-4 py-4 text-sm text-emerald-100 sm:px-5"
+          hidden
+        >
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">Limited access</p>
+            <p id="limitedAccessMessage" class="mt-1 text-sm text-emerald-100">You can explore the dashboard. Unlock live signals and alerts for full access.</p>
+          </div>
+          <button
+            id="limitedAccessUpgradeButton"
+            type="button"
+            class="shrink-0 rounded-2xl bg-gradient-to-r from-cyan-300 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px]"
+          >
+            Unlock €4.99
+          </button>
+        </section>
 
         <main id="dashboardWorkspace" class="grid flex-1 items-start gap-5 xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_minmax(280px,340px)] 2xl:grid-cols-[minmax(280px,340px)_minmax(0,1fr)_minmax(300px,360px)]">
           <aside id="watchlistSection" class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
