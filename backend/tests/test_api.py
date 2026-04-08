@@ -7,6 +7,7 @@ from app.api.deps import (
     get_analysis_service,
     get_billing_service,
     get_request_user_context,
+    require_full_access_user_context,
 )
 from app.core.exceptions import ExternalServiceError
 from app.models.alert_event import AlertEvent
@@ -154,6 +155,47 @@ def test_search_universe_endpoint_returns_full_known_catalog(client):
     assert len(payload) >= 100
     symbols = {item["symbol"] for item in payload}
     assert {"AAPL", "KO", "SPY", "COIN"}.issubset(symbols)
+
+
+def test_full_access_dependency_requires_authentication(client):
+    client.app.dependency_overrides.pop(require_full_access_user_context, None)
+    try:
+        response = client.get("/api/dashboard/watchlist")
+        assert response.status_code == 401
+        assert response.json()["detail"] == "Authentication required."
+    finally:
+        client.app.dependency_overrides[require_full_access_user_context] = lambda: RequestUserContext(
+            user_key="test|full-access",
+            app_user_id=1,
+            is_authenticated=True,
+            is_admin=True,
+        )
+
+
+def test_full_access_dependency_requires_subscription_or_admin(client, db_session):
+    client.app.dependency_overrides.pop(require_full_access_user_context, None)
+    client.app.dependency_overrides[get_request_user_context] = lambda: RequestUserContext(
+        user_key="clerk|basic-user",
+        app_user_id=77,
+        is_authenticated=True,
+        is_admin=False,
+    )
+    try:
+        user = AppUser(auth_subject="clerk|basic-user", provider="clerk", email="basic@example.com", name="Basic User")
+        db_session.add(user)
+        db_session.commit()
+
+        response = client.get("/api/dashboard/watchlist")
+        assert response.status_code == 402
+        assert response.json()["detail"] == "Active subscription required."
+    finally:
+        client.app.dependency_overrides.pop(get_request_user_context, None)
+        client.app.dependency_overrides[require_full_access_user_context] = lambda: RequestUserContext(
+            user_key="test|full-access",
+            app_user_id=1,
+            is_authenticated=True,
+            is_admin=True,
+        )
 
 
 def test_analyze_endpoint_returns_decision_payload(client):

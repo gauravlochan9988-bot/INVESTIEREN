@@ -593,8 +593,12 @@ async function initializeManagedAuth() {
       try {
         await syncAuthenticatedUser(true);
         await loadSubscriptionStatus();
-        showAppShell();
-        void bootDashboard();
+        if (hasActiveSubscription()) {
+          showAppShell();
+          void bootDashboard();
+          return;
+        }
+        showPaywall("Subscribe to access live signals, alerts and watchlists.");
       } catch (error) {
         console.error("[frontend] clerk session sync failed", error);
         setAuthError("Session sync failed.");
@@ -2719,6 +2723,9 @@ async function api(path, options = {}) {
   if (!response.ok) {
     const detail = payload?.error || payload?.detail || payload || "Request failed.";
     console.error("[frontend] API failure", { path, status: response.status, detail });
+    if (response.status === 402 && state.auth.enabled && isAuthenticated()) {
+      showPaywall("Upgrade to unlock the dashboard.");
+    }
     if (shouldFallbackToDeployedApi(path, options, baseUrl)) {
       console.warn("[frontend] local API returned error, retrying against deployed backend", {
         path,
@@ -3653,6 +3660,10 @@ async function loadStrategySnapshots(symbol, forceRefresh = false) {
 }
 
 async function bootDashboard(forceRefresh = false) {
+  if (state.auth.enabled && isAuthenticated() && !hasActiveSubscription()) {
+    showPaywall("Subscribe to access live signals, alerts and watchlists.");
+    return;
+  }
   clearError();
   updateChartCompareUi();
   if (!forceRefresh) {
@@ -4002,8 +4013,12 @@ async function initializeApp() {
 
   if (isAuthenticated()) {
     await loadSubscriptionStatus();
-    showAppShell();
-    void bootDashboard();
+    if (hasActiveSubscription()) {
+      showAppShell();
+      void bootDashboard();
+      return;
+    }
+    showPaywall("Subscribe to access live signals, alerts and watchlists.");
     return;
   }
 

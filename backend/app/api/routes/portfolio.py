@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_portfolio_service
+from app.api.deps import get_portfolio_service, require_full_access_user_context
 from app.core.database import get_db
 from app.schemas.portfolio import (
     PortfolioResponse,
@@ -13,7 +13,11 @@ from app.schemas.portfolio import (
 )
 from app.services.portfolio import PortfolioService
 
-router = APIRouter(prefix="/portfolio", tags=["portfolio"])
+router = APIRouter(
+    prefix="/portfolio",
+    tags=["portfolio"],
+    dependencies=[Depends(require_full_access_user_context)],
+)
 
 
 @router.get("", response_model=PortfolioResponse)

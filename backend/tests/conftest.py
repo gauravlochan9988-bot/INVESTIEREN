@@ -14,8 +14,10 @@ from app.api.deps import (
     get_analysis_service,
     get_market_data_service,
     get_portfolio_service,
+    require_full_access_user_context,
     get_stock_search_service,
     get_trade_history_service,
+    RequestUserContext,
 )
 from app.core.database import get_db
 from app.models import Base
@@ -163,6 +165,12 @@ def client(
     app.dependency_overrides[get_portfolio_service] = lambda: portfolio_service
     app.dependency_overrides[get_stock_search_service] = lambda: stock_search_service
     app.dependency_overrides[get_trade_history_service] = lambda: trade_history_service
+    app.dependency_overrides[require_full_access_user_context] = lambda: RequestUserContext(
+        user_key="test|full-access",
+        app_user_id=1,
+        is_authenticated=True,
+        is_admin=True,
+    )
 
     with TestClient(app) as test_client:
         yield test_client

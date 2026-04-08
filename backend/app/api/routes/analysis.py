@@ -8,6 +8,7 @@ from app.api.deps import (
     get_analysis_service,
     get_request_user_context,
     require_authenticated_user_context,
+    require_full_access_user_context,
     get_strategy_learning_service,
     get_trade_history_service,
     RequestUserContext,
@@ -29,7 +30,7 @@ from app.services.analysis import AnalysisService
 from app.services.strategy_learning import StrategyLearningService
 from app.services.trade_history import TradeHistoryService
 
-router = APIRouter(tags=["analysis"])
+router = APIRouter(tags=["analysis"], dependencies=[Depends(require_full_access_user_context)])
 
 
 @router.get("/analysis/stats", response_model=AnalysisDistributionStats)

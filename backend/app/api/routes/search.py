@@ -1,11 +1,14 @@
 from fastapi import APIRouter, Depends, Query
 
-from app.api.deps import get_stock_search_service
+from app.api.deps import get_stock_search_service, require_full_access_user_context
 from app.schemas.search import SearchResult
 from app.services.search import StockSearchService
 
 
-router = APIRouter(tags=["search"])
+router = APIRouter(
+    tags=["search"],
+    dependencies=[Depends(require_full_access_user_context)],
+)
 
 
 @router.get("/search", response_model=list[SearchResult])

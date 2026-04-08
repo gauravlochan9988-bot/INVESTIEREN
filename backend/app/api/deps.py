@@ -56,6 +56,7 @@ class RequestUserContext:
     user_key: str
     app_user_id: Optional[int]
     is_authenticated: bool
+    is_admin: bool = False
 
 
 @lru_cache
@@ -299,6 +300,7 @@ def get_request_user_context(
             user_key=user.auth_subject,
             app_user_id=user.id,
             is_authenticated=True,
+            is_admin=True,
         )
 
     if not authorization or not verifier.enabled:
@@ -324,6 +326,7 @@ def get_request_user_context(
         user_key=user.auth_subject,
         app_user_id=user.id,
         is_authenticated=True,
+        is_admin=False,
     )
 
 
@@ -336,6 +339,24 @@ def require_authenticated_user_context(
             detail="Authentication required.",
         )
     return user_context
+
+
+def require_full_access_user_context(
+    user_context: RequestUserContext = Depends(require_authenticated_user_context),
+    db: Session = Depends(get_db),
+    subscription_repository: AppSubscriptionRepository = Depends(get_app_subscription_repository),
+) -> RequestUserContext:
+    if user_context.is_admin:
+        return user_context
+
+    subscription = subscription_repository.get_by_user_id(db, app_user_id=user_context.app_user_id)
+    if subscription and subscription.status in {"active", "trialing"}:
+        return user_context
+
+    raise HTTPException(
+        status_code=status.HTTP_402_PAYMENT_REQUIRED,
+        detail="Active subscription required.",
+    )
 
 
 def get_analysis_calibration_service() -> AnalysisCalibrationService:

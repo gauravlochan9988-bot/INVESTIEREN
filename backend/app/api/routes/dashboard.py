@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 
-from app.api.deps import get_finnhub_dashboard_service
+from app.api.deps import get_finnhub_dashboard_service, require_full_access_user_context
 from app.schemas.dashboard import (
     DashboardNewsItem,
     DashboardSymbolOverview,
@@ -9,7 +9,11 @@ from app.schemas.dashboard import (
 from app.services.finnhub_dashboard import FinnhubDashboardService
 
 
-router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+router = APIRouter(
+    prefix="/dashboard",
+    tags=["dashboard"],
+    dependencies=[Depends(require_full_access_user_context)],
+)
 
 
 @router.get("/watchlist", response_model=list[DashboardWatchlistItem])
