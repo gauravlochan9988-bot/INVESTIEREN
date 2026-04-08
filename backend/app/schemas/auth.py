@@ -22,6 +22,7 @@ class AppUserResponse(BaseModel):
     email: Optional[str] = None
     name: Optional[str] = None
     picture_url: Optional[str] = None
+    is_admin: bool = False
 
 
 class AdminAccessRequest(BaseModel):

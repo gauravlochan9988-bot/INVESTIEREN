@@ -1,4 +1,5 @@
 from base64 import urlsafe_b64decode
+import secrets
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
@@ -23,7 +24,35 @@ from app.services.cache import TTLCache
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-_admin_attempt_cache: TTLCache[int] = TTLCache(ttl_seconds=900)
+_admin_attempt_cache: Optional[TTLCache[int]] = None
+_admin_attempt_cache_ttl_seconds = 0
+
+
+def _get_admin_attempt_cache(ttl_seconds: int) -> TTLCache[int]:
+    global _admin_attempt_cache, _admin_attempt_cache_ttl_seconds
+    normalized_ttl = max(1, int(ttl_seconds))
+    if _admin_attempt_cache is None or _admin_attempt_cache_ttl_seconds != normalized_ttl:
+        _admin_attempt_cache = TTLCache(ttl_seconds=normalized_ttl)
+        _admin_attempt_cache_ttl_seconds = normalized_ttl
+    return _admin_attempt_cache
+
+
+def _serialize_user(user, *, is_admin: bool = False) -> AppUserResponse:
+    return AppUserResponse(
+        id=user.id,
+        auth_subject=user.auth_subject,
+        provider=user.provider,
+        email=user.email,
+        name=user.name,
+        picture_url=user.picture_url,
+        is_admin=is_admin,
+    )
+
+
+def verify_access_code(code: str, expected_code: str) -> bool:
+    submitted = str(code or "").strip()
+    configured = str(expected_code or "").strip()
+    return bool(configured) and secrets.compare_digest(submitted, configured)
 
 
 def _derive_clerk_frontend_api_url(publishable_key: str) -> Optional[str]:
@@ -78,22 +107,24 @@ def create_admin_access_session(
     admin_session_manager: AdminSessionManager = Depends(get_admin_session_manager),
     app_user_repository: AppUserRepository = Depends(get_app_user_repository),
 ) -> AdminAccessResponse:
-    client_key = request.client.host if request.client else "unknown"
-    attempts = _admin_attempt_cache.get(client_key) or 0
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    client_ip = forwarded_for.split(",", 1)[0].strip() or (request.client.host if request.client else "unknown")
+    attempt_cache = _get_admin_attempt_cache(settings.admin_access_lockout_seconds)
+    attempts = attempt_cache.get(client_ip) or 0
     if attempts >= settings.admin_access_max_attempts:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many invalid access code attempts. Try again later.",
         )
 
-    if payload.code.strip() != settings.admin_access_code.strip():
-        _admin_attempt_cache.set(client_key, attempts + 1)
+    if not verify_access_code(payload.code, settings.admin_access_code):
+        attempt_cache.set(client_ip, attempts + 1)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid access code.",
         )
 
-    _admin_attempt_cache.delete(client_key)
+    attempt_cache.delete(client_ip)
 
     auth_subject = "admin-access|local"
     provider = "admin_access"
@@ -121,17 +152,40 @@ def create_admin_access_session(
     session_token = admin_session_manager.create(auth_subject=user.auth_subject, provider=user.provider)
     return AdminAccessResponse(
         session_token=session_token,
-        user=AppUserResponse.model_validate(user, from_attributes=True),
+        user=_serialize_user(user, is_admin=True),
     )
 
 
 @router.get("/me", response_model=AppUserResponse)
 def get_current_user(
     authorization: Optional[str] = Header(default=None),
+    x_admin_session: Optional[str] = Header(default=None),
     db: Session = Depends(get_db),
     verifier: ClerkTokenVerifier = Depends(get_clerk_verifier),
+    admin_session_manager: AdminSessionManager = Depends(get_admin_session_manager),
     app_user_repository: AppUserRepository = Depends(get_app_user_repository),
 ) -> AppUserResponse:
+    if x_admin_session and admin_session_manager.enabled:
+        claims = admin_session_manager.verify(x_admin_session.strip())
+        auth_subject = str(claims.get("sub") or "").strip()
+        if not auth_subject:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid admin session.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        user = app_user_repository.get_by_subject(db, auth_subject=auth_subject)
+        if user is None:
+            user = app_user_repository.upsert_from_claims(
+                db,
+                auth_subject=auth_subject,
+                provider=str(claims.get("provider") or "admin_access"),
+                email=None,
+                name="Admin Access",
+                picture_url=None,
+            )
+        return _serialize_user(user, is_admin=True)
+
     token = extract_bearer_token(authorization)
     claims = verifier.verify(token)
     auth_subject = str(claims.get("sub") or "").strip()
@@ -149,4 +203,4 @@ def get_current_user(
         name=(claims.get("full_name") or claims.get("name") or claims.get("username") or None),
         picture_url=(claims.get("image_url") or claims.get("picture") or None),
     )
-    return AppUserResponse.model_validate(user, from_attributes=True)
+    return _serialize_user(user, is_admin=False)

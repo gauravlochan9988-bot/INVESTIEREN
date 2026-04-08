@@ -9,6 +9,7 @@ from app.api.deps import (
     get_request_user_context,
     require_full_access_user_context,
 )
+from app.core.config import get_settings
 from app.core.exceptions import ExternalServiceError
 from app.models.alert_event import AlertEvent
 from app.models.analysis_log import AnalysisLog
@@ -118,6 +119,28 @@ def test_search_endpoint_returns_global_symbol_results(client):
     symbols = [item["symbol"] for item in payload[:3]]
     assert "AAPL" in symbols
     assert "APD" in symbols
+
+
+def test_auth_config_accepts_clerk_alias_env_vars(client, monkeypatch):
+    monkeypatch.delenv("CLERK_PUBLISHABLE_KEY", raising=False)
+    monkeypatch.delenv("CLERK_FRONTEND_API_URL", raising=False)
+    monkeypatch.delenv("CLERK_FAPI", raising=False)
+    monkeypatch.delenv("CLERK_JWT_KEY", raising=False)
+    monkeypatch.setenv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "pk_test_placeholder")
+    monkeypatch.setenv("NEXT_PUBLIC_CLERK_FAPI", "https://example.clerk.accounts.dev")
+    monkeypatch.setenv("CLERK_PEM_PUBLIC_KEY", "-----BEGIN PUBLIC KEY-----\nMIIB\n-----END PUBLIC KEY-----")
+    get_settings.cache_clear()
+
+    response = client.get("/api/auth/config")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["enabled"] is True
+    assert payload["provider"] == "clerk"
+    assert payload["publishable_key"] == "pk_test_placeholder"
+    assert payload["frontend_api_url"] == "https://example.clerk.accounts.dev"
+
+    get_settings.cache_clear()
 
 
 def test_search_endpoint_matches_companies_outside_watchlist(client):
@@ -614,6 +637,8 @@ def test_access_code_session_grants_full_alerts_and_favorites_access(client, db_
     access_response = client.post("/api/auth/access-code", json={"code": "9988"})
     assert access_response.status_code == 200
     session_token = access_response.json()["session_token"]
+    assert access_response.json()["is_admin"] is True
+    assert access_response.json()["user"]["is_admin"] is True
 
     favorite_response = client.post(
         "/api/favorites",
@@ -637,10 +662,39 @@ def test_access_code_session_grants_full_alerts_and_favorites_access(client, db_
     assert any(row.symbol == "AAPL" and row.user_key == "admin-access|local" for row in saved)
 
 
+def test_admin_session_can_restore_current_user(client):
+    access_response = client.post("/api/auth/access-code", json={"code": "9988"})
+    session_token = access_response.json()["session_token"]
+
+    response = client.get("/api/auth/me", headers={"X-Admin-Session": session_token})
+
+    assert response.status_code == 200
+    assert response.json()["auth_subject"] == "admin-access|local"
+    assert response.json()["is_admin"] is True
+
+
 def test_access_code_rejects_invalid_attempts(client):
-    response = client.post("/api/auth/access-code", json={"code": "1111"})
+    response = client.post("/api/auth/access-code", json={"code": "1111"}, headers={"X-Forwarded-For": "198.51.100.10"})
     assert response.status_code == 401
     assert response.json()["detail"] == "Invalid access code."
+
+
+def test_access_code_rate_limits_after_repeated_invalid_attempts(client):
+    for _ in range(5):
+        response = client.post(
+            "/api/auth/access-code",
+            json={"code": "1111"},
+            headers={"X-Forwarded-For": "198.51.100.11"},
+        )
+        assert response.status_code == 401
+
+    locked_response = client.post(
+        "/api/auth/access-code",
+        json={"code": "1111"},
+        headers={"X-Forwarded-For": "198.51.100.11"},
+    )
+    assert locked_response.status_code == 429
+    assert locked_response.json()["detail"] == "Too many invalid access code attempts. Try again later."
 
 
 def test_billing_checkout_creates_checkout_session_for_authenticated_user(client, db_session):

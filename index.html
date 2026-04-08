@@ -13,7 +13,7 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://s3.tradingview.com https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; media-src 'self' https://v1.pinimg.com data: blob:; connect-src 'self' http://127.0.0.1:8000 http://localhost:8000 https://investieren-production.up.railway.app https://*.tradingview.com https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com; frame-src 'self' https://*.tradingview.com https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com; child-src 'self' https://*.tradingview.com https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com; font-src 'self' https: data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
     />
-    <title>Investieren AI</title>
+    <title>GQ Trading</title>
     <link rel="dns-prefetch" href="//investieren-production.up.railway.app" />
     <link rel="preconnect" href="https://investieren-production.up.railway.app" crossorigin />
     <link rel="preconnect" href="https://s3.tradingview.com" crossorigin />
@@ -49,77 +49,46 @@
             </div>
 
             <div class="space-y-3 auth-copy-text auth-copy-centered">
-              <h1 class="auth-panel-title">Get real trading signals. Not guesses.</h1>
+              <p class="auth-panel-eyebrow">Private Trading Access</p>
+              <h1 class="auth-panel-title">GQ Trading</h1>
+              <p class="auth-panel-copy">Simple access. Real market signals.</p>
             </div>
 
-            <div id="authManagedPanel" class="w-full max-w-md space-y-4 auth-form-panel">
-              <div class="auth-action-stack">
-                <button
-                  id="authGoogleButton"
-                  type="button"
-                  class="auth-primary-action rounded-2xl px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px]"
-                >
-                  Continue with Google
-                </button>
-                <button
-                  id="authAppleButton"
-                  type="button"
-                  class="auth-secondary-action rounded-2xl px-6 py-3 text-sm font-semibold transition hover:translate-y-[-1px]"
-                >
-                  Continue with Apple
-                </button>
-                <button
-                  id="authEmailButton"
-                  type="button"
-                  class="auth-secondary-action rounded-2xl px-6 py-3 text-sm font-semibold transition hover:translate-y-[-1px]"
-                >
-                  Email login
-                </button>
+            <form id="authForm" class="w-full max-w-md space-y-3 auth-form-panel auth-private-panel" novalidate>
+              <div class="auth-input-shell">
+                <input
+                  id="authPassword"
+                  name="password"
+                  type="password"
+                  placeholder="Enter access code"
+                  autocomplete="current-password"
+                  class="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base text-white outline-none transition focus:border-emerald-400/60 focus:bg-white/10 login-input"
+                />
               </div>
-              <div class="auth-divider" aria-hidden="true"></div>
-              <div class="auth-benefit-copy space-y-3">
-                <p class="auth-benefit-text">Unlock your private trading workspace.</p>
-                <ul class="auth-benefit-list">
-                  <li>AI-powered trade decisions</li>
-                  <li>Live BUY / SELL signals</li>
-                  <li>Alerts &amp; favorites</li>
-                </ul>
-              </div>
-              <div class="auth-divider" aria-hidden="true"></div>
-              <button
-                id="authAdminToggleButton"
-                type="button"
-                class="auth-admin-link text-xs font-medium text-slate-400 transition hover:text-slate-200"
-              >
-                (Admin only)
-              </button>
-              <div id="authClerkPanel" hidden>
-                <div
-                  id="authClerkMount"
-                  class="min-h-[520px] rounded-[24px] border border-white/10 bg-slate-950/30 p-2"
-                ></div>
-              </div>
-              <p id="authLoading" class="text-sm text-slate-400" hidden>Redirecting…</p>
-              <p id="authError" class="text-sm text-rose-400" hidden>Login unavailable.</p>
-            </div>
-
-            <form id="authForm" class="w-full max-w-md space-y-3 auth-form-panel auth-private-panel" novalidate hidden>
-              <input
-                id="authPassword"
-                name="password"
-                type="password"
-                placeholder="Enter access code"
-                autocomplete="current-password"
-                class="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base text-white outline-none transition focus:border-emerald-400/60 focus:bg-white/10 login-input"
-              />
 
               <button
                 type="submit"
                 class="auth-private-button rounded-2xl bg-gradient-to-r from-cyan-300 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px] login-button"
               >
-                Unlock dashboard
+                Unlock Dashboard
               </button>
+
+              <p id="authError" class="text-sm text-rose-400" hidden>Invalid access code</p>
+              <p class="auth-password-hint">Private access only. Enter your code to continue.</p>
             </form>
+
+            <div class="w-full max-w-md auth-form-panel auth-info-panel">
+              <div class="auth-divider" aria-hidden="true"></div>
+              <div class="auth-benefit-copy space-y-3">
+                <p class="auth-benefit-text">Inside your workspace</p>
+                <ul class="auth-benefit-list">
+                  <li>Live signals</li>
+                  <li>AI-based trade decisions</li>
+                  <li>Alerts in one workspace</li>
+                </ul>
+                <p class="auth-helper-copy">Frontend: Vercel • Backend: Railway • Database: Neon</p>
+              </div>
+            </div>
           </div>
         </div>
 

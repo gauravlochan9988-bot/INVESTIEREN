@@ -5,6 +5,7 @@ if (window.location.protocol === "file:") {
 const DEPLOYED_API_ORIGIN = "https://investieren-production.up.railway.app";
 const LOCAL_API_HOSTS = new Set(["127.0.0.1", "localhost"]);
 const AUTH_TOKEN_CACHE_MS = 45 * 1000;
+const SIMPLE_ACCESS_CODE = "9988";
 const DEFAULT_CLERK_PLAN = {
   slug: "pro",
   name: "Investieren Pro Monthly",
@@ -90,7 +91,7 @@ const state = {
     tokenFetchedAt: 0,
     currentUser: null,
     subscription: null,
-    adminSession: window.sessionStorage.getItem(STORAGE_KEYS.adminSession) || "",
+    adminSession: window.localStorage.getItem(STORAGE_KEYS.adminSession) || "",
   },
 };
 
@@ -230,13 +231,13 @@ function currentUserKey() {
 
 function renderAuthMode() {
   if (elements.authManagedPanel) {
-    elements.authManagedPanel.hidden = false;
+    elements.authManagedPanel.hidden = true;
   }
   if (elements.authClerkPanel) {
-    elements.authClerkPanel.hidden = !state.auth.enabled || !state.auth.showManagedAuth;
+    elements.authClerkPanel.hidden = true;
   }
   if (elements.authForm) {
-    elements.authForm.hidden = !state.auth.showAdminAccess;
+    elements.authForm.hidden = false;
   }
 }
 
@@ -329,6 +330,9 @@ function renderManagedAuthView(mode = "login") {
 
   const sharedOptions = {
     path: window.location.pathname,
+    signInUrl: window.location.pathname,
+    signUpUrl: window.location.pathname,
+    fallbackRedirectUrl: `${window.location.origin}${window.location.pathname}`,
     forceRedirectUrl: `${window.location.origin}${window.location.pathname}`,
   };
 
@@ -393,18 +397,18 @@ function renderSubscriptionButton() {
     return;
   }
 
-  if (hasActiveSubscription()) {
-    elements.subscribeButton.textContent = state.auth.subscription?.active ? "Pro Active" : "Full Access";
+  if (isAuthenticated()) {
+    elements.subscribeButton.textContent = "Full Access";
     elements.subscribeButton.disabled = true;
     elements.subscribeButton.className =
       "action-secondary rounded-2xl border border-emerald-400/25 bg-emerald-400/12 px-4 py-3 text-sm font-semibold text-emerald-200 opacity-90 xl:min-w-[132px]";
     return;
   }
 
-  elements.subscribeButton.disabled = !state.auth.enabled || !isAuthenticated();
-  elements.subscribeButton.textContent = "Unlock €4.99";
+  elements.subscribeButton.disabled = true;
+  elements.subscribeButton.textContent = "Locked";
   elements.subscribeButton.className =
-    "action-secondary rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/15 xl:min-w-[132px]";
+    "action-secondary rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-300 opacity-80 xl:min-w-[132px]";
 }
 
 function managedPlanConfig() {
@@ -419,16 +423,16 @@ function managedPlanConfig() {
 }
 
 function hasActiveSubscription() {
-  return Boolean(state.auth.subscription?.active || state.auth.adminSession);
+  return isAuthenticated();
 }
 
 function setAdminSessionToken(token = "") {
   state.auth.adminSession = String(token || "").trim();
   if (state.auth.adminSession) {
-    window.sessionStorage.setItem(STORAGE_KEYS.adminSession, state.auth.adminSession);
+    window.localStorage.setItem(STORAGE_KEYS.adminSession, state.auth.adminSession);
     return;
   }
-  window.sessionStorage.removeItem(STORAGE_KEYS.adminSession);
+  window.localStorage.removeItem(STORAGE_KEYS.adminSession);
 }
 
 function isPricingPage() {
@@ -462,17 +466,7 @@ function hidePaywall() {
 }
 
 function syncLimitedAccessBanner() {
-  const shouldShow = Boolean(state.auth.enabled && isAuthenticated() && !hasActiveSubscription());
   if (!elements.limitedAccessBanner) {
-    return;
-  }
-  if (shouldShow) {
-    elements.limitedAccessBanner.classList.remove("hidden");
-    elements.limitedAccessBanner.classList.add("flex");
-    elements.limitedAccessBanner.hidden = false;
-    if (elements.limitedAccessMessage) {
-      elements.limitedAccessMessage.textContent = "You can explore the dashboard. Unlock live signals and alerts for full access.";
-    }
     return;
   }
   elements.limitedAccessBanner.classList.add("hidden");
@@ -481,42 +475,27 @@ function syncLimitedAccessBanner() {
 }
 
 async function loadSubscriptionStatus() {
-  if (state.auth.adminSession && !state.auth.currentUser) {
-    state.auth.subscription = {
-      active: true,
-      status: "admin",
-      amount_cents: 0,
-      currency: "eur",
-      interval: "month",
-    };
-    renderSubscriptionButton();
-    syncLimitedAccessBanner();
-    return state.auth.subscription;
-  }
-  if (!state.auth.enabled || !isAuthenticated()) {
+  if (!isAuthenticated()) {
     state.auth.subscription = null;
     renderSubscriptionButton();
     syncLimitedAccessBanner();
     return null;
   }
 
-  try {
-    const subscription = await api("/api/billing/subscription", {
-      timeoutMs: 12000,
-      retryCount: 1,
-    });
-    state.auth.subscription = subscription;
-  } catch (error) {
-    console.error("[frontend] subscription status load failed", error);
-    state.auth.subscription = null;
-  }
+  state.auth.subscription = {
+    active: true,
+    status: "active",
+    amount_cents: 499,
+    currency: "eur",
+    interval: "month",
+  };
   renderSubscriptionButton();
   syncLimitedAccessBanner();
   return state.auth.subscription;
 }
 
 async function startCheckout() {
-  window.location.href = "/pricing.html";
+  renderSubscriptionButton();
 }
 
 async function handleBillingRedirectState() {
@@ -549,77 +528,46 @@ async function handleBillingRedirectState() {
   }
 }
 
-async function initializeManagedAuth() {
-  const config = await fetchAuthConfig();
-  if (!state.auth.enabled) {
-    state.auth.ready = true;
-    renderSubscriptionButton();
-    return false;
+async function restoreAdminSessionUser() {
+  if (!state.auth.adminSession || state.auth.currentUser) {
+    return null;
   }
 
-  if (!config.publishable_key || !config.frontend_api_url) {
-    state.auth.ready = true;
-    state.auth.enabled = false;
-    renderAuthMode();
-    setAuthError("Managed login is unavailable.");
-    return false;
-  }
-
-  const clerk = await ensureClerkFrontendLoaded(config);
-  if (!clerk?.load) {
-    throw new Error("Clerk SDK is unavailable.");
-  }
-  await clerk.load();
-  state.auth.client = clerk;
-
-  if (typeof state.auth.client.addListener === "function") {
-    state.auth.client.addListener(async ({ user, session }) => {
-      if (!user || !session) {
-        setAuthenticated(false);
-        state.auth.subscription = null;
-        renderSubscriptionButton();
-        if (state.auth.adminSession) {
-          showAppShell();
-          void bootDashboard();
-          return;
-        }
-        showLoginOverlay();
-        return;
-      }
-
-      try {
-        await syncAuthenticatedUser(true);
-        await loadSubscriptionStatus();
-        if (hasActiveSubscription()) {
-          showAppShell();
-          void bootDashboard();
-          return;
-        }
-        showPaywall("Subscribe to access live signals, alerts and watchlists.");
-      } catch (error) {
-        console.error("[frontend] clerk session sync failed", error);
-        setAuthError("Session sync failed.");
-      }
+  try {
+    const user = await api("/api/auth/me", {
+      timeoutMs: 12000,
+      retryCount: 0,
     });
+    state.auth.currentUser = user;
+    return user;
+  } catch (error) {
+    console.error("[frontend] admin session restore failed", error);
+    setAdminSessionToken("");
+    setAuthenticated(false);
+    state.auth.currentUser = null;
+    return null;
   }
+}
 
+async function initializeManagedAuth() {
+  state.auth.enabled = false;
+  state.auth.client = null;
   state.auth.showManagedAuth = false;
-  state.auth.showAdminAccess = false;
+  state.auth.showAdminAccess = true;
   renderAuthMode();
-
-  if (state.auth.client.user && state.auth.client.session) {
-    await syncAuthenticatedUser(true);
-    await loadSubscriptionStatus();
-  }
-
   state.auth.ready = true;
   renderSubscriptionButton();
-  return isAuthenticated();
+  return false;
 }
 
 async function loginWithManagedProvider(mode = "login") {
+  if (!state.auth.ready) {
+    setAuthLoading(true, "Loading login...");
+    return;
+  }
+
   if (!state.auth.enabled || !state.auth.client) {
-    setAuthError("Managed login is not configured.");
+    setAuthError("Login is unavailable.");
     return;
   }
 
@@ -633,8 +581,13 @@ async function loginWithManagedProvider(mode = "login") {
 }
 
 async function continueWithOAuth(strategy) {
+  if (!state.auth.ready) {
+    setAuthLoading(true, "Loading login...");
+    return;
+  }
+
   if (!state.auth.enabled || !state.auth.client) {
-    setAuthError("Managed login is not configured.");
+    setAuthError("Login is unavailable.");
     return;
   }
 
@@ -2262,27 +2215,19 @@ function closePortfolioSheet() {
 }
 
 function setAuthenticated(value) {
-  if (state.auth.enabled) {
-    if (!value) {
-      state.auth.currentUser = null;
-      state.auth.accessToken = "";
-      state.auth.tokenFetchedAt = 0;
-      setAdminSessionToken("");
-    }
-    return;
-  }
   if (value) {
-    window.sessionStorage.setItem(STORAGE_KEYS.authenticated, "1");
+    window.localStorage.setItem(STORAGE_KEYS.authenticated, "1");
     return;
   }
-  window.sessionStorage.removeItem(STORAGE_KEYS.authenticated);
+  window.localStorage.removeItem(STORAGE_KEYS.authenticated);
+  state.auth.currentUser = null;
+  state.auth.accessToken = "";
+  state.auth.tokenFetchedAt = 0;
+  setAdminSessionToken("");
 }
 
 function isAuthenticated() {
-  if (state.auth.enabled) {
-    return Boolean(state.auth.currentUser || state.auth.adminSession);
-  }
-  return window.sessionStorage.getItem(STORAGE_KEYS.authenticated) === "1";
+  return window.localStorage.getItem(STORAGE_KEYS.authenticated) === "1";
 }
 
 function persistSelectedSymbol(symbol) {
@@ -3808,21 +3753,30 @@ function bindAuth() {
 
   elements.authForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const code = elements.authPassword.value.trim();
+    if (code !== SIMPLE_ACCESS_CODE) {
+      setAuthError("Invalid access code");
+      elements.authPassword.select();
+      return;
+    }
+
     try {
       const result = await api("/api/auth/access-code", {
         method: "POST",
-        body: JSON.stringify({ code: elements.authPassword.value.trim() }),
+        body: JSON.stringify({ code }),
       });
       setAuthError("");
+      setAuthenticated(true);
       setAdminSessionToken(result.session_token || "");
       if (result.user) {
         state.auth.currentUser = result.user;
       }
-      showAppShell();
       await loadSubscriptionStatus();
+      showAppShell();
       await bootDashboard();
     } catch (error) {
-      setAuthError(error.message || "Wrong password");
+      setAuthenticated(false);
+      setAuthError(error.message || "Invalid access code.");
       elements.authPassword.select();
     }
   });
@@ -3862,12 +3816,6 @@ function bindApp() {
   };
 
   elements.logoutButton.addEventListener("click", async () => {
-    setAdminSessionToken("");
-    if (state.auth.enabled && state.auth.client) {
-      await state.auth.client.signOut();
-      window.location.replace(window.location.pathname);
-      return;
-    }
     setAuthenticated(false);
     showLoginOverlay();
   });
@@ -3885,12 +3833,6 @@ function bindApp() {
   });
 
   elements.paywallLogoutButton?.addEventListener("click", async () => {
-    setAdminSessionToken("");
-    if (state.auth.enabled && state.auth.client) {
-      await state.auth.client.signOut();
-      window.location.replace(window.location.pathname);
-      return;
-    }
     setAuthenticated(false);
     showLoginOverlay();
   });
@@ -4044,7 +3986,7 @@ function bindApp() {
 async function initializeApp() {
   try {
     await initializeManagedAuth();
-    await handleBillingRedirectState();
+    await restoreAdminSessionUser();
   } catch (error) {
     console.error("[frontend] auth init failed", error);
     state.auth.enabled = false;
@@ -4059,12 +4001,8 @@ async function initializeApp() {
 
   if (isAuthenticated()) {
     await loadSubscriptionStatus();
-    if (hasActiveSubscription()) {
-      showAppShell();
-      void bootDashboard();
-      return;
-    }
-    showPaywall("Subscribe to access live signals, alerts and watchlists.");
+    showAppShell();
+    void bootDashboard();
     return;
   }
 

@@ -28,6 +28,14 @@ DEFAULT_WATCHLIST: Dict[str, str] = {
 }
 
 
+def env_first(*names: str) -> str:
+    for name in names:
+        value = os.getenv(name, "").strip()
+        if value:
+            return value
+    return ""
+
+
 class Settings(BaseSettings):
     app_name: str = "Investieren MVP"
     app_env: str = "development"
@@ -53,9 +61,24 @@ class Settings(BaseSettings):
     finnhub_api_key: str = ""
     openai_api_key: str = ""
     openai_model: str = "gpt-5.4"
-    clerk_publishable_key: str = ""
-    clerk_frontend_api_url: str = ""
-    clerk_jwt_key: str = ""
+    clerk_publishable_key: str = Field(
+        default_factory=lambda: env_first(
+            "CLERK_PUBLISHABLE_KEY",
+            "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+            "VITE_CLERK_PUBLISHABLE_KEY",
+        )
+    )
+    clerk_frontend_api_url: str = Field(
+        default_factory=lambda: env_first(
+            "CLERK_FRONTEND_API_URL",
+            "CLERK_FAPI",
+            "NEXT_PUBLIC_CLERK_FAPI",
+            "VITE_CLERK_FAPI",
+        )
+    )
+    clerk_jwt_key: str = Field(
+        default_factory=lambda: env_first("CLERK_JWT_KEY", "CLERK_PEM_PUBLIC_KEY")
+    )
     clerk_plan_slug: str = "pro"
     clerk_plan_name: str = "Investieren Pro Monthly"
     frontend_origin: str = "https://gauravtrades.de"
