@@ -8,7 +8,7 @@ def test_root_serves_static_dashboard(client):
     assert "Get real trading signals. Not guesses." in response.text
     assert "Continue with Google" in response.text
     assert "Continue with Apple" in response.text
-    assert "Continue with Email" in response.text
+    assert "Email login" in response.text
     assert "Unlock your private trading workspace." in response.text
     assert "AI-powered trade decisions" in response.text
     assert "Live BUY / SELL signals" in response.text

@@ -229,12 +229,11 @@ function currentUserKey() {
 }
 
 function renderAuthMode() {
-  const managedEnabled = Boolean(state.auth.enabled);
   if (elements.authManagedPanel) {
-    elements.authManagedPanel.hidden = !managedEnabled;
+    elements.authManagedPanel.hidden = false;
   }
   if (elements.authClerkPanel) {
-    elements.authClerkPanel.hidden = !managedEnabled || !state.auth.showManagedAuth;
+    elements.authClerkPanel.hidden = !state.auth.enabled || !state.auth.showManagedAuth;
   }
   if (elements.authForm) {
     elements.authForm.hidden = !state.auth.showAdminAccess;

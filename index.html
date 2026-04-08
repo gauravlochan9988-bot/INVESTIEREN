@@ -41,96 +41,85 @@
       <section
         class="relative z-10 mx-4 grid w-full max-w-6xl grid-cols-1 gap-8 sm:mx-6 sm:gap-10 auth-overlay-content login-container"
       >
-        <div class="auth-desktop-shell">
-          <div class="auth-desktop-left">
-            <div class="auth-desktop-mark" aria-hidden="true">GQ</div>
-            <div class="auth-desktop-copy">
-              <h1 class="auth-desktop-title">Trade smarter</h1>
-              <p class="auth-desktop-subtext">Private workspace</p>
+        <div class="auth-shell-centered">
+          <div class="auth-bottom-card login-card auth-desktop-card auth-centered-card">
+            <div class="auth-brand-stack">
+              <div class="auth-brand-mark" aria-hidden="true">GQ</div>
+              <p class="auth-brand-name">GQ Trading</p>
             </div>
-          </div>
 
-          <div class="auth-desktop-right">
-            <div class="auth-bottom-card login-card auth-desktop-card">
-              <div class="space-y-3 auth-copy-text">
-                <h2 class="auth-panel-title">GQ Trading</h2>
-                <p class="auth-panel-copy">Get real trading signals. Not guesses.</p>
-              </div>
+            <div class="space-y-3 auth-copy-text auth-copy-centered">
+              <h1 class="auth-panel-title">Get real trading signals. Not guesses.</h1>
+            </div>
 
-              <div id="authManagedPanel" class="w-full max-w-md space-y-4 auth-form-panel" hidden>
-                <div class="auth-action-stack">
-                  <button
-                    id="authGoogleButton"
-                    type="button"
-                    class="auth-primary-action rounded-2xl px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px]"
-                  >
-                    Continue with Google
-                  </button>
-                  <button
-                    id="authAppleButton"
-                    type="button"
-                    class="auth-secondary-action rounded-2xl px-6 py-3 text-sm font-semibold transition hover:translate-y-[-1px]"
-                  >
-                    Continue with Apple
-                  </button>
-                  <button
-                    id="authEmailButton"
-                    type="button"
-                    class="auth-secondary-action rounded-2xl px-6 py-3 text-sm font-semibold transition hover:translate-y-[-1px]"
-                  >
-                    Continue with Email
-                  </button>
-                </div>
-                <div class="auth-divider" aria-hidden="true"></div>
-                <div class="auth-benefit-copy space-y-3">
-                  <p class="auth-benefit-text">Unlock your private trading workspace.</p>
-                  <ul class="auth-benefit-list">
-                    <li>AI-powered trade decisions</li>
-                    <li>Live BUY / SELL signals</li>
-                    <li>Alerts &amp; favorites</li>
-                  </ul>
-                </div>
-                <div class="auth-divider" aria-hidden="true"></div>
+            <div id="authManagedPanel" class="w-full max-w-md space-y-4 auth-form-panel">
+              <div class="auth-action-stack">
                 <button
-                  id="authAdminToggleButton"
+                  id="authGoogleButton"
                   type="button"
-                  class="auth-admin-link text-xs font-medium text-slate-400 transition hover:text-slate-200"
+                  class="auth-primary-action rounded-2xl px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px]"
                 >
-                  (Admin only)
+                  Continue with Google
                 </button>
-                <div id="authClerkPanel" hidden>
-                  <div
-                    id="authClerkMount"
-                    class="min-h-[520px] rounded-[24px] border border-white/10 bg-slate-950/30 p-2"
-                  ></div>
-                </div>
-                <p id="authLoading" class="text-sm text-slate-400" hidden>Redirecting…</p>
-                <p id="authError" class="text-sm text-rose-400" hidden>Login unavailable.</p>
-              </div>
-
-              <form id="authForm" class="w-full max-w-md space-y-4 auth-form-panel auth-private-panel" novalidate hidden>
-                <div class="space-y-2">
-                  <p class="text-xs font-semibold text-slate-400">(Admin only)</p>
-                </div>
-                <div class="space-y-2">
-                  <input
-                    id="authPassword"
-                    name="password"
-                    type="password"
-                    placeholder="Enter access code"
-                    autocomplete="current-password"
-                    class="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base text-white outline-none transition focus:border-emerald-400/60 focus:bg-white/10 login-input"
-                  />
-                </div>
-
                 <button
-                  type="submit"
-                  class="auth-private-button rounded-2xl bg-gradient-to-r from-cyan-300 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px] login-button"
+                  id="authAppleButton"
+                  type="button"
+                  class="auth-secondary-action rounded-2xl px-6 py-3 text-sm font-semibold transition hover:translate-y-[-1px]"
                 >
-                  Unlock Dashboard
+                  Continue with Apple
                 </button>
-              </form>
+                <button
+                  id="authEmailButton"
+                  type="button"
+                  class="auth-secondary-action rounded-2xl px-6 py-3 text-sm font-semibold transition hover:translate-y-[-1px]"
+                >
+                  Email login
+                </button>
+              </div>
+              <div class="auth-divider" aria-hidden="true"></div>
+              <div class="auth-benefit-copy space-y-3">
+                <p class="auth-benefit-text">Unlock your private trading workspace.</p>
+                <ul class="auth-benefit-list">
+                  <li>AI-powered trade decisions</li>
+                  <li>Live BUY / SELL signals</li>
+                  <li>Alerts &amp; favorites</li>
+                </ul>
+              </div>
+              <div class="auth-divider" aria-hidden="true"></div>
+              <button
+                id="authAdminToggleButton"
+                type="button"
+                class="auth-admin-link text-xs font-medium text-slate-400 transition hover:text-slate-200"
+              >
+                (Admin only)
+              </button>
+              <div id="authClerkPanel" hidden>
+                <div
+                  id="authClerkMount"
+                  class="min-h-[520px] rounded-[24px] border border-white/10 bg-slate-950/30 p-2"
+                ></div>
+              </div>
+              <p id="authLoading" class="text-sm text-slate-400" hidden>Redirecting…</p>
+              <p id="authError" class="text-sm text-rose-400" hidden>Login unavailable.</p>
             </div>
+
+            <form id="authForm" class="w-full max-w-md space-y-3 auth-form-panel auth-private-panel" novalidate hidden>
+              <input
+                id="authPassword"
+                name="password"
+                type="password"
+                placeholder="Enter access code"
+                autocomplete="current-password"
+                class="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base text-white outline-none transition focus:border-emerald-400/60 focus:bg-white/10 login-input"
+              />
+
+              <button
+                type="submit"
+                class="auth-private-button rounded-2xl bg-gradient-to-r from-cyan-300 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px] login-button"
+              >
+                Unlock dashboard
+              </button>
+            </form>
           </div>
         </div>
 
