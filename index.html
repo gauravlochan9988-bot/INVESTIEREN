@@ -53,39 +53,53 @@
           <div class="auth-desktop-right">
             <div class="auth-bottom-card login-card auth-desktop-card">
               <div class="space-y-3 auth-copy-text">
-                <h2 class="auth-panel-title">Access dashboard</h2>
-                <p class="auth-panel-copy">Use secure sign in.</p>
+                <h2 class="auth-panel-title">Welcome to GQ Trading</h2>
               </div>
 
               <div id="authManagedPanel" class="w-full max-w-md space-y-4 auth-form-panel" hidden>
                 <div class="auth-action-stack">
                   <button
-                    id="authCreateAccountButton"
+                    id="authGoogleButton"
                     type="button"
                     class="auth-primary-action rounded-2xl px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px]"
                   >
-                    Create Account
+                    Continue with Google
                   </button>
                   <button
-                    id="authLoginButton"
+                    id="authAppleButton"
                     type="button"
                     class="auth-secondary-action rounded-2xl px-6 py-3 text-sm font-semibold transition hover:translate-y-[-1px]"
                   >
-                    Login
+                    Continue with Apple
+                  </button>
+                  <button
+                    id="authEmailButton"
+                    type="button"
+                    class="auth-secondary-action rounded-2xl px-6 py-3 text-sm font-semibold transition hover:translate-y-[-1px]"
+                  >
+                    Email Login
                   </button>
                 </div>
-                <div
-                  id="authClerkMount"
-                  class="min-h-[520px] rounded-[24px] border border-white/10 bg-slate-950/30 p-2"
-                ></div>
-                <p class="text-xs text-slate-400">Email, Google and Apple are managed securely by Clerk.</p>
+                <button
+                  id="authAdminToggleButton"
+                  type="button"
+                  class="auth-admin-link text-xs font-medium text-slate-400 transition hover:text-slate-200"
+                >
+                  Admin access
+                </button>
+                <div id="authClerkPanel" hidden>
+                  <div
+                    id="authClerkMount"
+                    class="min-h-[520px] rounded-[24px] border border-white/10 bg-slate-950/30 p-2"
+                  ></div>
+                </div>
                 <p id="authLoading" class="text-sm text-slate-400" hidden>Redirecting…</p>
                 <p id="authError" class="text-sm text-rose-400" hidden>Login unavailable.</p>
               </div>
 
               <form id="authForm" class="w-full max-w-md space-y-4 auth-form-panel auth-private-panel" novalidate hidden>
                 <div class="space-y-2">
-                  <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">Access code</p>
+                  <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">Admin access</p>
                   <p class="text-sm text-slate-400">Use your private code for full access.</p>
                 </div>
                 <div class="space-y-2">

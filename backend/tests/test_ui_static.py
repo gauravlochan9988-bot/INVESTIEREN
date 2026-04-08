@@ -4,10 +4,11 @@ def test_root_serves_static_dashboard(client):
     assert response.status_code == 200
     assert "Investieren AI" in response.text
     assert 'id="authOverlay"' in response.text
-    assert "Access dashboard" in response.text
-    assert "Email, Google and Apple are managed securely by Clerk." in response.text
-    assert "Create Account" in response.text
-    assert "Login" in response.text
+    assert "Welcome to GQ Trading" in response.text
+    assert "Continue with Google" in response.text
+    assert "Continue with Apple" in response.text
+    assert "Email Login" in response.text
+    assert "Admin access" in response.text
     assert 'id="authManagedPanel"' in response.text
     assert 'id="authClerkMount"' in response.text
     assert 'id="paywallOverlay"' in response.text

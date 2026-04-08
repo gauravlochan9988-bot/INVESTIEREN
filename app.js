@@ -84,6 +84,8 @@ const state = {
     config: null,
     client: null,
     view: "login",
+    showManagedAuth: false,
+    showAdminAccess: false,
     accessToken: "",
     tokenFetchedAt: 0,
     currentUser: null,
@@ -99,10 +101,13 @@ const elements = {
   paywallLogoutButton: document.getElementById("paywallLogoutButton"),
   paywallMessage: document.getElementById("paywallMessage"),
   authManagedPanel: document.getElementById("authManagedPanel"),
+  authClerkPanel: document.getElementById("authClerkPanel"),
   authClerkMount: document.getElementById("authClerkMount"),
   authForm: document.getElementById("authForm"),
-  authCreateAccountButton: document.getElementById("authCreateAccountButton"),
-  authLoginButton: document.getElementById("authLoginButton"),
+  authGoogleButton: document.getElementById("authGoogleButton"),
+  authAppleButton: document.getElementById("authAppleButton"),
+  authEmailButton: document.getElementById("authEmailButton"),
+  authAdminToggleButton: document.getElementById("authAdminToggleButton"),
   authLoading: document.getElementById("authLoading"),
   authPassword: document.getElementById("authPassword"),
   authError: document.getElementById("authError"),
@@ -228,8 +233,11 @@ function renderAuthMode() {
   if (elements.authManagedPanel) {
     elements.authManagedPanel.hidden = !managedEnabled;
   }
+  if (elements.authClerkPanel) {
+    elements.authClerkPanel.hidden = !managedEnabled || !state.auth.showManagedAuth;
+  }
   if (elements.authForm) {
-    elements.authForm.hidden = false;
+    elements.authForm.hidden = !state.auth.showAdminAccess;
   }
 }
 
@@ -302,25 +310,15 @@ async function ensureClerkFrontendLoaded(config) {
   return window.Clerk;
 }
 
-function syncAuthModeButtons() {
-  const loginActive = state.auth.view !== "signup";
-  if (elements.authLoginButton) {
-    elements.authLoginButton.classList.toggle("auth-primary-action", loginActive);
-    elements.authLoginButton.classList.toggle("auth-secondary-action", !loginActive);
-  }
-  if (elements.authCreateAccountButton) {
-    elements.authCreateAccountButton.classList.toggle("auth-primary-action", !loginActive);
-    elements.authCreateAccountButton.classList.toggle("auth-secondary-action", loginActive);
-  }
-}
-
 function renderManagedAuthView(mode = "login") {
   if (!state.auth.enabled || !state.auth.client || !elements.authClerkMount) {
     return;
   }
 
   state.auth.view = mode === "signup" ? "signup" : "login";
-  syncAuthModeButtons();
+  state.auth.showManagedAuth = true;
+  state.auth.showAdminAccess = false;
+  renderAuthMode();
 
   try {
     state.auth.client.unmountSignIn?.(elements.authClerkMount);
@@ -606,7 +604,9 @@ async function initializeManagedAuth() {
     });
   }
 
-  renderManagedAuthView("login");
+  state.auth.showManagedAuth = false;
+  state.auth.showAdminAccess = false;
+  renderAuthMode();
 
   if (state.auth.client.user && state.auth.client.session) {
     await syncAuthenticatedUser(true);
@@ -631,6 +631,42 @@ async function loginWithManagedProvider(mode = "login") {
     console.error("[frontend] auth view switch failed", error);
     setAuthError("Login failed. Try again.");
   }
+}
+
+async function continueWithOAuth(strategy) {
+  if (!state.auth.enabled || !state.auth.client) {
+    setAuthError("Managed login is not configured.");
+    return;
+  }
+
+  setAuthError("");
+  setAuthLoading(true);
+
+  try {
+    const redirectUrl = `${window.location.origin}${window.location.pathname}`;
+    const signIn = state.auth.client.client?.signIn;
+
+    if (signIn?.authenticateWithRedirect) {
+      await signIn.authenticateWithRedirect({
+        strategy,
+        redirectUrl,
+        redirectUrlComplete: redirectUrl,
+      });
+      return;
+    }
+
+    if (typeof state.auth.client.redirectToSignIn === "function") {
+      await state.auth.client.redirectToSignIn({
+        forceRedirectUrl: redirectUrl,
+      });
+      return;
+    }
+  } catch (error) {
+    console.error("[frontend] oauth redirect failed", error);
+  }
+
+  setAuthLoading(false);
+  await loginWithManagedProvider("login");
 }
 
 function scheduleLowPriorityTask(task, delayMs = 0) {
@@ -2626,8 +2662,11 @@ function showLoginOverlay() {
   closePortfolioSheet();
   elements.authError.hidden = true;
   elements.authForm?.reset();
+  state.auth.showManagedAuth = false;
+  state.auth.showAdminAccess = false;
+  renderAuthMode();
   if (state.auth.enabled) {
-    renderManagedAuthView(state.auth.view || "login");
+    setAuthLoading(false);
   }
 }
 
@@ -3740,21 +3779,29 @@ async function bootDashboard(forceRefresh = false) {
 }
 
 function bindAuth() {
-  elements.authCreateAccountButton?.addEventListener("click", () => {
-    void loginWithManagedProvider("signup");
+  elements.authGoogleButton?.addEventListener("click", () => {
+    void continueWithOAuth("oauth_google");
   });
 
-  elements.authLoginButton?.addEventListener("click", () => {
+  elements.authAppleButton?.addEventListener("click", () => {
+    void continueWithOAuth("oauth_apple");
+  });
+
+  elements.authEmailButton?.addEventListener("click", () => {
     void loginWithManagedProvider("login");
   });
 
-  if (elements.authCancelButton) {
-    elements.authCancelButton.addEventListener("click", () => {
-      elements.authForm.reset();
+  elements.authAdminToggleButton?.addEventListener("click", () => {
+    state.auth.showAdminAccess = !state.auth.showAdminAccess;
+    if (state.auth.showAdminAccess) {
+      state.auth.showManagedAuth = false;
       setAuthError("");
-      elements.authPassword?.focus();
-    });
-  }
+      renderAuthMode();
+      window.setTimeout(() => elements.authPassword?.focus(), 0);
+      return;
+    }
+    renderAuthMode();
+  });
 
   elements.authPassword?.addEventListener("input", () => {
     setAuthError("");
