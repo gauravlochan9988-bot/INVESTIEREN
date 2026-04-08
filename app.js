@@ -920,6 +920,33 @@ function opportunityMetricLabel(entry) {
   return `${entry.symbol} · ${entry.recommendation} · ${Math.round(entry.confidence)}%`;
 }
 
+function opportunityStrength(entry) {
+  const recommendationBoost =
+    entry.recommendation === "BUY" || entry.recommendation === "SELL"
+      ? 1.15
+      : entry.score !== 0
+        ? 0.55
+        : 0.15;
+  const directionalWeight = Math.abs(entry.score) * 1.35;
+  return directionalWeight + entry.confidence / 100 + recommendationBoost;
+}
+
+function sortOpportunityDirection(entries, direction) {
+  const sign = direction === "BUY" ? 1 : -1;
+  return [...entries].sort((left, right) => {
+    const leftExplicit = left.recommendation === direction ? 1 : 0;
+    const rightExplicit = right.recommendation === direction ? 1 : 0;
+    const leftDirectional = (left.score || 0) * sign;
+    const rightDirectional = (right.score || 0) * sign;
+    return (
+      rightExplicit - leftExplicit ||
+      rightDirectional - leftDirectional ||
+      opportunityStrength(right) - opportunityStrength(left) ||
+      right.confidence - left.confidence
+    );
+  });
+}
+
 function renderOpportunityLoading() {
   if (!elements.opportunityList || !elements.opportunityMeta) {
     return;
@@ -960,17 +987,17 @@ function buildOpportunitySection(title, tone, entries, emptyMessage) {
       <div class="space-y-2.5">
         ${entries
           .map(
-            (entry) => `
+            (entry, index) => `
               <button
                 type="button"
-                class="opportunity-card ${opportunityToneClass(entry.recommendation)} ${entry.symbol === state.selectedSymbol ? "opportunity-card-current" : ""}"
+                class="opportunity-card ${opportunityToneClass(entry.recommendation)} ${entry.symbol === state.selectedSymbol ? "opportunity-card-current" : ""} ${index === 0 ? "opportunity-card-strongest" : ""}"
                 data-symbol="${entry.symbol}"
                 aria-pressed="${entry.symbol === state.selectedSymbol ? "true" : "false"}"
               >
                 <div class="min-w-0">
                   <div class="flex items-center justify-between gap-3">
                     <p class="truncate text-sm font-semibold text-white">${entry.symbol}</p>
-                    <span class="opportunity-pill">${entry.recommendation}</span>
+                    <span class="opportunity-pill">${index === 0 ? `Top ${entry.recommendation}` : entry.recommendation}</span>
                   </div>
                   <p class="mt-1 truncate text-xs text-slate-400">${entry.name}</p>
                 </div>
@@ -999,47 +1026,35 @@ function uniqueOpportunityEntries(entries) {
 }
 
 function opportunityBuyCandidates(entries) {
-  return uniqueOpportunityEntries(
-    [...entries]
-      .filter((entry) => entry.recommendation === "BUY" || entry.score > 0 || entry.confidence >= 45)
-      .sort((left, right) => {
-        const leftBoost = left.recommendation === "BUY" ? 1 : 0;
-        const rightBoost = right.recommendation === "BUY" ? 1 : 0;
-        return (
-          rightBoost - leftBoost ||
-          right.rank - left.rank ||
-          right.score - left.score ||
-          right.confidence - left.confidence
-        );
-      }),
-  ).slice(0, OPPORTUNITY_LIMIT);
+  const directional = entries.filter(
+    (entry) => entry.recommendation === "BUY" || entry.score > 0 || entry.rank > 0.35 || entry.confidence >= 38,
+  );
+  const fallback = sortOpportunityDirection(entries, "BUY");
+  return uniqueOpportunityEntries(sortOpportunityDirection(directional.length ? directional : fallback, "BUY")).slice(
+    0,
+    OPPORTUNITY_LIMIT,
+  );
 }
 
 function opportunitySellCandidates(entries) {
-  return uniqueOpportunityEntries(
-    [...entries]
-      .filter((entry) => entry.recommendation === "SELL" || entry.score < 0 || entry.confidence >= 45)
-      .sort((left, right) => {
-        const leftBoost = left.recommendation === "SELL" ? 1 : 0;
-        const rightBoost = right.recommendation === "SELL" ? 1 : 0;
-        return (
-          rightBoost - leftBoost ||
-          left.rank - right.rank ||
-          left.score - right.score ||
-          right.confidence - left.confidence
-        );
-      }),
-  ).slice(0, OPPORTUNITY_LIMIT);
+  const directional = entries.filter(
+    (entry) => entry.recommendation === "SELL" || entry.score < 0 || entry.rank < -0.35 || entry.confidence >= 38,
+  );
+  const fallback = sortOpportunityDirection(entries, "SELL");
+  return uniqueOpportunityEntries(sortOpportunityDirection(directional.length ? directional : fallback, "SELL")).slice(
+    0,
+    OPPORTUNITY_LIMIT,
+  );
 }
 
 function opportunityConfidenceCandidates(entries, excludedSymbols = new Set()) {
   const primary = entries
     .filter((entry) => !excludedSymbols.has(entry.symbol) && entry.confidence >= 60)
-    .sort((left, right) => right.confidence - left.confidence || Math.abs(right.score) - Math.abs(left.score));
+    .sort((left, right) => opportunityStrength(right) - opportunityStrength(left) || right.confidence - left.confidence);
 
   const fallback = entries
     .filter((entry) => !excludedSymbols.has(entry.symbol))
-    .sort((left, right) => right.confidence - left.confidence || Math.abs(right.score) - Math.abs(left.score));
+    .sort((left, right) => opportunityStrength(right) - opportunityStrength(left) || right.confidence - left.confidence);
 
   return uniqueOpportunityEntries(primary.length ? primary : fallback).slice(0, OPPORTUNITY_LIMIT);
 }
@@ -1052,8 +1067,24 @@ function renderOpportunityPanel(entries) {
   const fullCount = entries.filter((entry) => entry.dataQuality === "FULL").length;
   elements.opportunityMeta.textContent = `${entries.length} ranked · ${fullCount} full data`;
 
-  const topBuy = opportunityBuyCandidates(entries);
-  const topSell = opportunitySellCandidates(entries);
+  let topBuy = opportunityBuyCandidates(entries);
+  let topSell = opportunitySellCandidates(entries);
+  if (!topBuy.length && entries.length) {
+    topBuy = [sortOpportunityDirection(entries, "BUY")[0]].filter(Boolean);
+  }
+  if (!topSell.length && entries.length) {
+    topSell = [sortOpportunityDirection(entries, "SELL")[0]].filter(Boolean);
+  }
+  if (!topBuy.length && !topSell.length && entries.length) {
+    const best = [...entries].sort((left, right) => opportunityStrength(right) - opportunityStrength(left))[0];
+    if (best) {
+      if ((best.score || 0) >= 0) {
+        topBuy = [best];
+      } else {
+        topSell = [best];
+      }
+    }
+  }
   const excludedSymbols = new Set([...topBuy, ...topSell].map((entry) => entry.symbol));
   const highConfidence = opportunityConfidenceCandidates(entries, excludedSymbols);
 
@@ -1148,7 +1179,7 @@ async function loadOpportunities(forceRefresh = false) {
         scoreLabel: score >= 0 ? `+${score}` : `${score}`,
         confidence,
         dataQuality,
-        rank: score + directionalBias + confidence / 100,
+        rank: score + directionalBias + confidence / 115,
       };
     })
     .filter((entry) => entry.dataQuality === "FULL" || entry.dataQuality === "PARTIAL");
