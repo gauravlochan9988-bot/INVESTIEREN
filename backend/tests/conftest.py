@@ -15,6 +15,7 @@ from app.api.deps import (
     get_market_data_service,
     get_portfolio_service,
     get_stock_search_service,
+    get_trade_history_service,
 )
 from app.core.database import get_db
 from app.models import Base
@@ -33,6 +34,7 @@ from app.services.news import NewsSentimentService
 from app.services.portfolio import PortfolioService
 from app.services.search import StockSearchService
 from app.services.strategy_learning import StrategyLearningService
+from app.services.trade_history import TradeHistoryService
 from app.main import create_app
 from tests.helpers import FakeMarketDataProvider, FakeNewsProvider, FakeSearchProvider, FakeSummaryService
 
@@ -145,6 +147,10 @@ def client(
         favorite_repository=FavoriteSymbolRepository(),
         default_symbols=tuple(market_data_service.allowed_symbols.keys()),
     )
+    trade_history_service = TradeHistoryService(
+        market_data_service=market_data_service,
+        trade_performance_repository=TradePerformanceRepository(),
+    )
 
     def override_db():
         yield db_session
@@ -156,6 +162,7 @@ def client(
     app.dependency_overrides[get_alert_service] = lambda: alert_service
     app.dependency_overrides[get_portfolio_service] = lambda: portfolio_service
     app.dependency_overrides[get_stock_search_service] = lambda: stock_search_service
+    app.dependency_overrides[get_trade_history_service] = lambda: trade_history_service
 
     with TestClient(app) as test_client:
         yield test_client

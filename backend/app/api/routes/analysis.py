@@ -7,6 +7,7 @@ from app.api.deps import (
     get_analysis_log_repository,
     get_analysis_service,
     get_strategy_learning_service,
+    get_trade_history_service,
 )
 from app.core.database import get_db
 from app.schemas.analysis import (
@@ -23,6 +24,7 @@ from app.services.alerts import AlertService
 from app.services.analysis_calibration import AnalysisCalibrationService
 from app.services.analysis import AnalysisService
 from app.services.strategy_learning import StrategyLearningService
+from app.services.trade_history import TradeHistoryService
 
 router = APIRouter(tags=["analysis"])
 
@@ -52,6 +54,7 @@ def get_analysis(
     analysis_service: AnalysisService = Depends(get_analysis_service),
     analysis_log_repository: AnalysisLogRepository = Depends(get_analysis_log_repository),
     calibration_service: AnalysisCalibrationService = Depends(get_analysis_calibration_service),
+    trade_history_service: TradeHistoryService = Depends(get_trade_history_service),
 ) -> AnalysisResponse:
     result = analysis_service.analyze_symbol(
         symbol,
@@ -68,6 +71,7 @@ def get_analysis(
         data_quality=result.data_quality,
         confidence=float(result.confidence or 0.0),
     )
+    trade_history_service.sync_from_analysis(db, result)
     calibration_service.recalibrate_strategy(db, result.strategy)
     return result
 
@@ -133,6 +137,7 @@ def analyze_symbol(
     analysis_service: AnalysisService = Depends(get_analysis_service),
     analysis_log_repository: AnalysisLogRepository = Depends(get_analysis_log_repository),
     calibration_service: AnalysisCalibrationService = Depends(get_analysis_calibration_service),
+    trade_history_service: TradeHistoryService = Depends(get_trade_history_service),
 ) -> AnalysisResponse:
     result = analysis_service.analyze_symbol(
         payload.symbol,
@@ -149,5 +154,6 @@ def analyze_symbol(
         data_quality=result.data_quality,
         confidence=float(result.confidence or 0.0),
     )
+    trade_history_service.sync_from_analysis(db, result)
     calibration_service.recalibrate_strategy(db, result.strategy)
     return result

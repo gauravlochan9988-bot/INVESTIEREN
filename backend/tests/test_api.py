@@ -9,6 +9,7 @@ from app.models.analysis_log import AnalysisLog
 from app.models.trade_performance_log import TradePerformanceLog
 from app.repositories.analysis_log import AnalysisLogRepository
 from app.repositories.analysis_threshold import AnalysisThresholdRepository
+from app.schemas.analysis import AnalysisResponse
 from app.services.analysis import AnalysisService
 from app.services.analysis_calibration import AnalysisCalibrationService
 from app.services.macro import MacroContextService
@@ -34,6 +35,14 @@ class ShortHistoryMarketDataProvider:
         from tests.helpers import build_history
 
         return build_history(start=100.0, drift=0.4)[:40]
+
+
+class StubAnalysisService:
+    def __init__(self, responses):
+        self.responses = list(responses)
+
+    def analyze_symbol(self, symbol, force_refresh=False, strategy="hedgefund", db=None):
+        return self.responses.pop(0)
 
 
 def test_stocks_endpoint_returns_watchlist(client):
@@ -453,6 +462,102 @@ def test_favorites_can_be_listed_and_deleted(client):
     final_list = client.get("/api/favorites", params={"user_key": "desk"})
     assert final_list.status_code == 200
     assert final_list.json() == []
+
+
+def test_buy_sell_decisions_are_saved_and_hold_closes_trade(client, db_session):
+    base = datetime(2025, 4, 1, tzinfo=timezone.utc)
+    stub_service = StubAnalysisService(
+        [
+            AnalysisResponse(
+                symbol="AAPL",
+                strategy="simple",
+                no_data=False,
+                recommendation="BUY",
+                signal_quality="FULL",
+                score=3,
+                probability_up=0.72,
+                probability_down=0.28,
+                confidence=71.0,
+                risk_level="LOW",
+                data_quality="FULL",
+                data_quality_reason="Full data quality.",
+                macro=None,
+                no_trade=False,
+                no_trade_reason="Trade evaluation available.",
+                entry_signal=True,
+                entry_reason="Entry confirmed.",
+                exit_signal=False,
+                exit_reason="No exit.",
+                stop_loss_level=150.0,
+                stop_loss_reason="Use support.",
+                position_size_percent=12.0,
+                position_size_reason="Measured size.",
+                timeframe="mid_term",
+                warnings=[],
+                summary="BUY because trend is aligned.",
+                generated_at=base,
+                signals=None,
+                learning=None,
+            ),
+            AnalysisResponse(
+                symbol="AAPL",
+                strategy="simple",
+                no_data=False,
+                recommendation="HOLD",
+                signal_quality="FULL",
+                score=1,
+                probability_up=0.52,
+                probability_down=0.48,
+                confidence=42.0,
+                risk_level="HIGH",
+                data_quality="FULL",
+                data_quality_reason="Full data quality.",
+                macro=None,
+                no_trade=True,
+                no_trade_reason="Strong uncertainty keeps the setup on HOLD.",
+                entry_signal=False,
+                entry_reason="No entry.",
+                exit_signal=True,
+                exit_reason="Exit on uncertainty.",
+                stop_loss_level=150.0,
+                stop_loss_reason="Use support.",
+                position_size_percent=0.0,
+                position_size_reason="No size.",
+                timeframe="mid_term",
+                warnings=["Mixed Signals"],
+                summary="HOLD because uncertainty is elevated.",
+                generated_at=base.replace(hour=1),
+                signals=None,
+                learning=None,
+            ),
+        ]
+    )
+    client.app.dependency_overrides[get_analysis_service] = lambda: stub_service
+
+    buy_response = client.get("/api/analysis/AAPL", params={"strategy": "simple"})
+    assert buy_response.status_code == 200
+
+    rows_after_buy = list(db_session.scalars(select(TradePerformanceLog)).all())
+    assert len(rows_after_buy) == 1
+    assert rows_after_buy[0].recommendation == "BUY"
+    assert rows_after_buy[0].profit_loss is None
+    assert rows_after_buy[0].exit_price is None
+
+    hold_response = client.get("/api/analysis/AAPL", params={"strategy": "simple"})
+    assert hold_response.status_code == 200
+
+    rows_after_hold = list(db_session.scalars(select(TradePerformanceLog)).all())
+    assert len(rows_after_hold) == 1
+    assert rows_after_hold[0].recommendation == "BUY"
+    assert rows_after_hold[0].profit_loss is not None
+    assert rows_after_hold[0].exit_price is not None
+
+    trade_history = client.get("/api/portfolio/trades").json()
+    assert len(trade_history) == 1
+    assert trade_history[0]["recommendation"] == "BUY"
+    assert trade_history[0]["profit_loss"] is not None
+
+    client.app.dependency_overrides.pop(get_analysis_service, None)
 
 
 def test_portfolio_crud_flow(client, sample_position_payload):

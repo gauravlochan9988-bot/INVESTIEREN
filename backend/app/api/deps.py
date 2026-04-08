@@ -24,6 +24,7 @@ from app.services.portfolio import PortfolioService
 from app.services.search import StockSearchService, build_stock_search_service
 from app.services.strategy_learning import StrategyLearningService
 from app.services.summary import SummaryService
+from app.services.trade_history import TradeHistoryService
 
 FIXED_STRATEGY_THRESHOLDS: dict[str, tuple[float, float]] = {
     "simple": (3.0, -3.0),
@@ -249,3 +250,15 @@ def get_alert_service_instance() -> AlertService:
 
 def get_alert_service() -> AlertService:
     return get_alert_service_instance()
+
+
+@lru_cache
+def get_trade_history_service_instance() -> TradeHistoryService:
+    return TradeHistoryService(
+        market_data_service=get_market_data_service_instance(),
+        trade_performance_repository=get_trade_performance_repository_instance(),
+    )
+
+
+def get_trade_history_service() -> TradeHistoryService:
+    return get_trade_history_service_instance()
