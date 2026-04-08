@@ -3182,3 +3182,193 @@ body {
     margin-top: 0 !important;
   }
 }
+
+/* Responsive layout refactor */
+#appShell > div {
+  width: min(100%, 1720px);
+  margin-inline: auto;
+}
+
+.dashboard-topbar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(0.65rem, 2vw, 1rem);
+  align-items: center;
+}
+
+#searchForm {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+#dashboardWorkspace {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(0.75rem, 2vw, 1.15rem);
+  align-items: start;
+  min-width: 0;
+}
+
+#analysisCenterColumn,
+#decisionRail {
+  min-width: 0;
+}
+
+#analysisCenterColumn {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.75rem, 2vw, 1rem);
+}
+
+#signalsOverviewRow {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(0.75rem, 2vw, 1rem);
+  align-items: stretch;
+}
+
+#analysisCenterColumn {
+  order: 1;
+}
+
+#watchlistSection {
+  order: 2;
+}
+
+#decisionRail {
+  order: 3;
+}
+
+#selectedSymbolSection {
+  display: none !important;
+}
+
+#tradeDecisionSection {
+  order: 1;
+}
+
+#chartSection {
+  order: 2;
+}
+
+#signalsOverviewRow {
+  order: 3;
+}
+
+#opportunitySection {
+  order: 1;
+}
+
+#alertsSection {
+  order: 2;
+}
+
+#decisionRail,
+#companySection,
+#learningSection {
+  display: none !important;
+}
+
+@media (min-width: 768px) {
+  .dashboard-topbar {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .dashboard-topbar > div:last-child {
+    grid-column: 1 / -1;
+  }
+
+  #dashboardWorkspace {
+    grid-template-columns: minmax(0, 1fr) minmax(15rem, 30vw);
+  }
+
+  #analysisCenterColumn {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  #watchlistSection {
+    grid-column: 2;
+    grid-row: 1;
+    display: block !important;
+    position: static !important;
+    width: auto !important;
+  }
+
+  #decisionRail {
+    grid-column: 2;
+    grid-row: 2;
+    display: flex !important;
+    flex-direction: column;
+    gap: clamp(0.75rem, 2vw, 1rem);
+  }
+
+  #selectedSymbolSection {
+    display: block !important;
+    order: 1;
+  }
+
+  #tradeDecisionSection {
+    order: 2;
+  }
+
+  #chartSection {
+    order: 3;
+  }
+
+  #signalsOverviewRow {
+    order: 4;
+  }
+
+  #companySection {
+    display: block !important;
+    margin-top: 0 !important;
+  }
+
+  #learningSection {
+    display: block !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .dashboard-topbar {
+    grid-template-columns: auto minmax(18rem, 34rem) auto;
+  }
+
+  .dashboard-topbar > div:last-child {
+    grid-column: auto;
+  }
+
+  #dashboardWorkspace {
+    grid-template-columns:
+      minmax(15rem, 20vw)
+      minmax(0, 1fr)
+      minmax(17rem, 24vw);
+  }
+
+  #watchlistSection {
+    grid-column: 1;
+    grid-row: 1;
+    position: sticky !important;
+    top: 1rem !important;
+    align-self: start;
+  }
+
+  #analysisCenterColumn {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  #decisionRail {
+    grid-column: 3;
+    grid-row: 1;
+    position: sticky !important;
+    top: 1rem !important;
+    align-self: start;
+  }
+
+  #signalsOverviewRow {
+    grid-template-columns: minmax(0, 1.25fr) minmax(18rem, 0.75fr);
+  }
+}
