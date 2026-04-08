@@ -235,6 +235,13 @@ function compactNumber(value) {
   }).format(Number(value));
 }
 
+function formatMarketCap(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return "--";
+  }
+  return `${compactNumber(value)} B`;
+}
+
 function percent(value) {
   const numeric = Number(value || 0);
   return `${numeric >= 0 ? "+" : ""}${numeric.toFixed(2)}%`;
@@ -2215,7 +2222,7 @@ function renderCompanyDetails(overview) {
     ["Exchange", overview.exchange || "--"],
     ["Industry", overview.finnhub_industry || "--"],
     ["IPO", overview.ipo || "--"],
-    ["Market Cap", overview.market_capitalization ? `${compactNumber(overview.market_capitalization)} B` : "--"],
+    ["Market Cap", formatMarketCap(overview.market_capitalization)],
     ["Shares Out", overview.share_outstanding ? compactNumber(overview.share_outstanding) : "--"],
   ];
 
