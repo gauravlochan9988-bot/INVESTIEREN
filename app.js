@@ -3290,96 +3290,9 @@ function bindApp() {
 
   elements.strategyButtons.forEach((button) => {
     button.addEventListener("click", async () => {
-      if (state.suppressStrategyClick) {
-        state.suppressStrategyClick = false;
-        return;
-      }
       await applyStrategy(button.dataset.strategy);
     });
   });
-
-  if (elements.strategyToggle && elements.strategyToggleThumb && elements.strategyButtons.length) {
-    const dragState = {
-      pointerId: null,
-      step: 0,
-      startX: 0,
-      startOffset: 0,
-      moved: false,
-      startStrategy: null,
-    };
-
-    const resetThumb = () => {
-      elements.strategyToggleThumb.style.transform = "";
-      elements.strategyToggle.classList.remove("is-dragging");
-      renderStrategyButtons();
-    };
-
-    elements.strategyToggle.addEventListener("pointerdown", (event) => {
-      if (event.pointerType === "mouse" && event.button !== 0) {
-        return;
-      }
-      dragState.startStrategy = event.target.closest(".strategy-button")?.dataset.strategy || null;
-      const rect = elements.strategyToggle.getBoundingClientRect();
-      const gap = parseFloat(getComputedStyle(elements.strategyToggle).getPropertyValue("--toggle-gap")) || 4;
-      const thumbWidth = (rect.width - gap * 4) / 3;
-      dragState.step = thumbWidth + gap;
-      dragState.pointerId = event.pointerId;
-      dragState.startX = event.clientX;
-      dragState.startOffset =
-        Math.max(
-          0,
-          elements.strategyButtons.findIndex((button) => button.dataset.strategy === state.selectedStrategy),
-        ) * dragState.step;
-      dragState.moved = false;
-      elements.strategyToggle.classList.add("is-dragging");
-      elements.strategyToggle.setPointerCapture(event.pointerId);
-    });
-
-    elements.strategyToggle.addEventListener("pointermove", (event) => {
-      if (dragState.pointerId !== event.pointerId) {
-        return;
-      }
-      const delta = event.clientX - dragState.startX;
-      if (Math.abs(delta) > 6) {
-        dragState.moved = true;
-      }
-      const maxOffset = dragState.step * (elements.strategyButtons.length - 1);
-      const nextOffset = Math.min(maxOffset, Math.max(0, dragState.startOffset + delta));
-      if (dragState.moved) {
-        elements.strategyToggleThumb.style.transform = `translateX(${nextOffset}px)`;
-      }
-    });
-
-    const finishDrag = async (event) => {
-      if (dragState.pointerId !== event.pointerId) {
-        return;
-      }
-      const delta = event.clientX - dragState.startX;
-      const maxIndex = elements.strategyButtons.length - 1;
-      const unclampedIndex = Math.round((dragState.startOffset + delta) / Math.max(dragState.step, 1));
-      const nextIndex = Math.min(maxIndex, Math.max(0, unclampedIndex));
-      const nextStrategy = elements.strategyButtons[nextIndex]?.dataset.strategy;
-      dragState.pointerId = null;
-      elements.strategyToggle.releasePointerCapture(event.pointerId);
-      resetThumb();
-      if (dragState.moved && nextStrategy) {
-        state.suppressStrategyClick = true;
-        await applyStrategy(nextStrategy);
-      }
-      dragState.startStrategy = null;
-    };
-
-    elements.strategyToggle.addEventListener("pointerup", finishDrag);
-    elements.strategyToggle.addEventListener("pointercancel", (event) => {
-      if (dragState.pointerId !== event.pointerId) {
-        return;
-      }
-      dragState.pointerId = null;
-      elements.strategyToggle.releasePointerCapture(event.pointerId);
-      resetThumb();
-      dragState.startStrategy = null;
-    });
-  }
 
   elements.searchForm.addEventListener("submit", async (event) => {
     event.preventDefault();

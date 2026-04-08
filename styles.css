@@ -693,7 +693,6 @@ body {
   padding: var(--toggle-gap) !important;
   isolation: isolate;
   overflow: hidden;
-  touch-action: pan-y;
 }
 
 #strategyToggleThumb {
@@ -715,15 +714,6 @@ body {
     background-color 200ms ease;
   pointer-events: none;
   z-index: 0;
-}
-
-#strategyToggle {
-  cursor: grab;
-}
-
-#strategyToggle.is-dragging #strategyToggleThumb {
-  cursor: grabbing;
-  transition: none;
 }
 
 .signal-buy-card {
