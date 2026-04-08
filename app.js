@@ -1072,6 +1072,32 @@ function opportunityConfidenceCandidates(entries, excludedSymbols = new Set()) {
   return uniqueOpportunityEntries(primary.length ? primary : fallback).slice(0, OPPORTUNITY_LIMIT);
 }
 
+function buildFallbackOpportunityEntries(symbols, watchlistMap) {
+  return symbols
+    .map((symbol, index) => {
+      const item = watchlistMap.get(symbol);
+      if (!item) {
+        return null;
+      }
+      const change = Number(item.change_percent);
+      const score = Number.isFinite(change) ? Math.max(-1, Math.min(1, change / 2)) : 0;
+      const confidence = Number.isFinite(change) ? Math.max(28, Math.min(62, Math.abs(change) * 8 + 28)) : 32;
+      const recommendation = score > 0 ? "BUY" : score < 0 ? "SELL" : index === 0 ? "BUY" : "HOLD";
+      return {
+        symbol,
+        name: item.name || symbol,
+        recommendation,
+        score,
+        scoreLabel: score > 0 ? "+1" : score < 0 ? "-1" : "0",
+        confidence,
+        dataQuality: item.no_data ? "NO_DATA" : item.stale ? "PARTIAL" : "FULL",
+        rank: score + confidence / 115,
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => opportunityStrength(right) - opportunityStrength(left));
+}
+
 function renderOpportunityPanel(entries) {
   if (!elements.opportunityList || !elements.opportunityMeta) {
     return;
@@ -1079,6 +1105,7 @@ function renderOpportunityPanel(entries) {
   state.opportunities = entries;
   const fullCount = entries.filter((entry) => entry.dataQuality === "FULL").length;
   elements.opportunityMeta.textContent = `${entries.length} ranked · ${fullCount} full data`;
+  const strongest = [...entries].sort((left, right) => opportunityStrength(right) - opportunityStrength(left))[0] || null;
 
   let topBuy = opportunityBuyCandidates(entries);
   let topSell = opportunitySellCandidates(entries);
@@ -1099,7 +1126,17 @@ function renderOpportunityPanel(entries) {
     }
   }
   const excludedSymbols = new Set([...topBuy, ...topSell].map((entry) => entry.symbol));
-  const highConfidence = opportunityConfidenceCandidates(entries, excludedSymbols);
+  let highConfidence = opportunityConfidenceCandidates(entries, excludedSymbols);
+
+  if (!topBuy.length && strongest) {
+    topBuy = [strongest];
+  }
+  if (!topSell.length && strongest) {
+    topSell = [strongest];
+  }
+  if (!highConfidence.length && strongest) {
+    highConfidence = [strongest];
+  }
 
   elements.opportunityList.innerHTML = [
     buildOpportunitySection("📈 Top BUY", "BUY", topBuy, "Best long."),
@@ -1164,7 +1201,7 @@ async function loadOpportunities(forceRefresh = false) {
   );
 
   const watchlistMap = new Map(state.watchlist.map((item) => [normalizeTickerSymbol(item.symbol), item]));
-  const entries = responses
+  let entries = responses
     .filter((result) => result.status === "fulfilled")
     .map((result) => result.value)
     .filter(({ analysis }) => analysis && !analysis.no_data)
@@ -1198,8 +1235,19 @@ async function loadOpportunities(forceRefresh = false) {
     .filter((entry) => entry.dataQuality === "FULL" || entry.dataQuality === "PARTIAL");
 
   if (!entries.length) {
-    renderOpportunityWarning("No ranked opportunities yet");
-    return [];
+    entries = buildFallbackOpportunityEntries(symbols, watchlistMap)
+      .filter((entry) => entry.dataQuality === "FULL" || entry.dataQuality === "PARTIAL")
+      .slice(0, OPPORTUNITY_LIMIT);
+  }
+
+  if (!entries.length) {
+    const strongestFallback = buildFallbackOpportunityEntries(symbols, watchlistMap).slice(0, 1);
+    if (strongestFallback.length) {
+      entries = strongestFallback;
+    } else {
+      renderOpportunityWarning("No ranked opportunities yet");
+      return [];
+    }
   }
 
   renderOpportunityPanel(entries);
