@@ -225,6 +225,15 @@ function currency(value) {
   }).format(Number(value || 0));
 }
 
+function isValidMarketPrice(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0;
+}
+
+function displayMarketPrice(value) {
+  return isValidMarketPrice(value) ? currency(value) : "No Data";
+}
+
 function compactNumber(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return "--";
@@ -2210,7 +2219,7 @@ function renderLoadingWatchlist() {
 
 function safeWatchlistPrice(value) {
   const numeric = Number(value);
-  return Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
 }
 
 function safeWatchlistChange(value) {
@@ -2237,7 +2246,7 @@ function renderWatchlist(items) {
             </div>
             <div class="mt-1 flex items-center justify-between gap-3">
               <p class="truncate text-[11px] text-slate-400">Market data syncing</p>
-              <p class="text-sm font-semibold text-white">${currency(0)}</p>
+              <p class="text-sm font-semibold text-white">No Data</p>
             </div>
           </div>
         </div>
@@ -2276,11 +2285,11 @@ function renderWatchlist(items) {
             <p class="watchlist-symbol truncate text-sm font-semibold tracking-tight text-white">${item.symbol}</p>
             <p class="watchlist-change text-xs font-medium ${tone}">${percent(changeValue)}</p>
           </div>
-          <div class="mt-1 flex items-center justify-between gap-3">
-            <p class="watchlist-name truncate text-[11px] text-slate-400">${item.name}</p>
-            <div class="flex items-center gap-2">
+            <div class="mt-1 flex items-center justify-between gap-3">
+              <p class="watchlist-name truncate text-[11px] text-slate-400">${item.name}</p>
+              <div class="flex items-center gap-2">
               ${stale ? '<span class="text-[10px] font-medium text-amber-300" title="Last known price">⚠️</span>' : ""}
-              <p class="watchlist-price text-sm font-semibold text-white">${currency(priceValue)}</p>
+              <p class="watchlist-price text-sm font-semibold text-white">${displayMarketPrice(priceValue)}</p>
             </div>
           </div>
         </div>
@@ -2509,17 +2518,24 @@ function renderOverview(overview) {
   }
   elements.selectedSymbolName.textContent = overview.symbol;
   elements.selectedCompanyName.textContent = overview.name;
-  elements.metricPrice.textContent = currency(overview.price);
-  elements.metricHigh.textContent = currency(overview.high);
-  elements.metricLow.textContent = currency(overview.low);
-  elements.metricOpen.textContent = currency(overview.open);
-  elements.metricPrevClose.textContent = currency(overview.previous_close);
+  elements.metricPrice.textContent = displayMarketPrice(overview.price);
+  elements.metricHigh.textContent = displayMarketPrice(overview.high);
+  elements.metricLow.textContent = displayMarketPrice(overview.low);
+  elements.metricOpen.textContent = displayMarketPrice(overview.open);
+  elements.metricPrevClose.textContent = displayMarketPrice(overview.previous_close);
 
-  const positive = overview.change_percent >= 0;
-  elements.changeBadge.textContent = percent(overview.change_percent);
+  const hasPrice = isValidMarketPrice(overview.price);
+  const positive = Number(overview.change_percent || 0) >= 0;
+  elements.changeBadge.textContent = hasPrice
+    ? `${overview.stale ? "⚠️ " : ""}${percent(overview.change_percent)}`
+    : "No Data";
   elements.changeBadge.className = [
     "inline-flex w-fit rounded-full px-4 py-2 text-sm font-semibold",
-    positive ? "bg-emerald-500/15 text-emerald-300" : "bg-rose-500/15 text-rose-300",
+    hasPrice
+      ? positive
+        ? "bg-emerald-500/15 text-emerald-300"
+        : "bg-rose-500/15 text-rose-300"
+      : "bg-white/5 text-slate-300",
   ].join(" ");
 
   elements.companyHeadline.textContent = overview.name;
@@ -2545,14 +2561,14 @@ function renderOverview(overview) {
 function renderOverviewFallback(symbol) {
   elements.selectedSymbolName.textContent = symbol;
   elements.selectedCompanyName.textContent = "Live overview unavailable";
-  elements.changeBadge.textContent = "--";
+  elements.changeBadge.textContent = "No Data";
   elements.changeBadge.className =
     "inline-flex w-fit rounded-full bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300";
-  elements.metricPrice.textContent = "$--";
-  elements.metricHigh.textContent = "$--";
-  elements.metricLow.textContent = "$--";
-  elements.metricOpen.textContent = "$--";
-  elements.metricPrevClose.textContent = "$--";
+  elements.metricPrice.textContent = "No Data";
+  elements.metricHigh.textContent = "No Data";
+  elements.metricLow.textContent = "No Data";
+  elements.metricOpen.textContent = "No Data";
+  elements.metricPrevClose.textContent = "No Data";
   elements.companyHeadline.textContent = symbol;
   elements.companyExchange.textContent = "Exchange unavailable";
   elements.companyLogo.classList.add("hidden");
