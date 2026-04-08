@@ -2,15 +2,24 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import (
+    get_alert_service,
     get_analysis_calibration_service,
     get_analysis_log_repository,
     get_analysis_service,
     get_strategy_learning_service,
 )
 from app.core.database import get_db
-from app.schemas.analysis import AnalysisAlert, AnalysisResponse, AnalyzeRequest, Strategy
+from app.schemas.analysis import (
+    AnalysisAlert,
+    AnalysisResponse,
+    AnalyzeRequest,
+    FavoriteSymbolCreate,
+    FavoriteSymbolResponse,
+    Strategy,
+)
 from app.schemas.analysis_tracking import AnalysisDistributionStats, StrategyLearningStatsResponse
 from app.repositories.analysis_log import AnalysisLogRepository
+from app.services.alerts import AlertService
 from app.services.analysis_calibration import AnalysisCalibrationService
 from app.services.analysis import AnalysisService
 from app.services.strategy_learning import StrategyLearningService
@@ -68,13 +77,52 @@ def get_alerts(
     refresh: bool = Query(default=False),
     strategy: Strategy = Query(default="hedgefund"),
     limit: int = Query(default=6, ge=1, le=12),
-    analysis_service: AnalysisService = Depends(get_analysis_service),
+    user_key: str = Query(default="default", min_length=1, max_length=64),
+    favorites_only: bool = Query(default=False),
+    db: Session = Depends(get_db),
+    alert_service: AlertService = Depends(get_alert_service),
 ) -> list[AnalysisAlert]:
-    return analysis_service.scan_alerts(
+    return alert_service.sync_alerts(
+        db,
         strategy=strategy,
         force_refresh=refresh,
         limit=limit,
+        user_key=user_key,
+        favorites_only=favorites_only,
     )
+
+
+@router.get("/favorites", response_model=list[FavoriteSymbolResponse])
+def get_favorites(
+    user_key: str = Query(default="default", min_length=1, max_length=64),
+    db: Session = Depends(get_db),
+    alert_service: AlertService = Depends(get_alert_service),
+) -> list[FavoriteSymbolResponse]:
+    return [
+        FavoriteSymbolResponse(symbol=symbol, user_key=user_key)
+        for symbol in alert_service.list_favorites(db, user_key=user_key)
+    ]
+
+
+@router.post("/favorites", response_model=FavoriteSymbolResponse)
+def add_favorite(
+    payload: FavoriteSymbolCreate,
+    db: Session = Depends(get_db),
+    alert_service: AlertService = Depends(get_alert_service),
+) -> FavoriteSymbolResponse:
+    symbol = alert_service.add_favorite(db, user_key=payload.user_key, symbol=payload.symbol)
+    return FavoriteSymbolResponse(symbol=symbol, user_key=payload.user_key)
+
+
+@router.delete("/favorites/{symbol}", response_model=FavoriteSymbolResponse)
+def delete_favorite(
+    symbol: str,
+    user_key: str = Query(default="default", min_length=1, max_length=64),
+    db: Session = Depends(get_db),
+    alert_service: AlertService = Depends(get_alert_service),
+) -> FavoriteSymbolResponse:
+    alert_service.remove_favorite(db, user_key=user_key, symbol=symbol)
+    return FavoriteSymbolResponse(symbol=symbol.strip().upper(), user_key=user_key)
 
 
 @router.post("/analyze", response_model=AnalysisResponse)

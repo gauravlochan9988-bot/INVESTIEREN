@@ -2,10 +2,13 @@ from functools import lru_cache
 
 from app.core.config import get_settings
 from app.core.database import get_session_factory
+from app.repositories.alert_repository import AlertRepository
 from app.repositories.analysis_log import AnalysisLogRepository
 from app.repositories.analysis_threshold import AnalysisThresholdRepository
+from app.repositories.favorite_symbol import FavoriteSymbolRepository
 from app.repositories.portfolio import PortfolioRepository
 from app.repositories.trade_performance import TradePerformanceRepository
+from app.services.alerts import AlertService
 from app.services.analysis_calibration import AnalysisCalibrationService
 from app.services.analysis import AnalysisService
 from app.services.finnhub_dashboard import FinnhubDashboardService
@@ -128,6 +131,16 @@ def get_analysis_threshold_repository_instance() -> AnalysisThresholdRepository:
 
 
 @lru_cache
+def get_alert_repository_instance() -> AlertRepository:
+    return AlertRepository()
+
+
+@lru_cache
+def get_favorite_symbol_repository_instance() -> FavoriteSymbolRepository:
+    return FavoriteSymbolRepository()
+
+
+@lru_cache
 def get_trade_performance_repository_instance() -> TradePerformanceRepository:
     return TradePerformanceRepository()
 
@@ -213,3 +226,26 @@ def get_stock_search_service_instance() -> StockSearchService:
 
 def get_stock_search_service() -> StockSearchService:
     return get_stock_search_service_instance()
+
+
+def get_alert_repository() -> AlertRepository:
+    return get_alert_repository_instance()
+
+
+def get_favorite_symbol_repository() -> FavoriteSymbolRepository:
+    return get_favorite_symbol_repository_instance()
+
+
+def get_alert_service_instance() -> AlertService:
+    settings = get_settings()
+    return AlertService(
+        analysis_service=get_analysis_service_instance(),
+        market_data_service=get_market_data_service_instance(),
+        alert_repository=get_alert_repository_instance(),
+        favorite_repository=get_favorite_symbol_repository_instance(),
+        default_symbols=tuple(settings.watchlist.keys()),
+    )
+
+
+def get_alert_service() -> AlertService:
+    return get_alert_service_instance()

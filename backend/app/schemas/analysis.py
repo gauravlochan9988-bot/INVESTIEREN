@@ -17,7 +17,7 @@ InterestRateEffect = Literal["positive", "neutral", "negative"]
 UsdStrength = Literal["weak", "neutral", "strong"]
 Strategy = Literal["simple", "ai", "hedgefund"]
 AlertTone = Literal["bullish", "bearish", "neutral"]
-AlertKind = Literal["recommendation", "rsi", "entry", "exit"]
+AlertKind = Literal["recommendation", "signal", "price", "rsi", "entry", "exit"]
 
 
 class AnalyzeRequest(BaseModel):
@@ -33,6 +33,22 @@ class AnalysisAlert(BaseModel):
     title: str
     message: str
     priority: int
+    recommendation: Optional[Recommendation] = None
+    data_quality: Optional[DataQuality] = None
+    price: Optional[float] = None
+    change_percent: Optional[float] = None
+    is_favorite: bool = False
+    created_at: Optional[datetime] = None
+
+
+class FavoriteSymbolCreate(BaseModel):
+    symbol: str
+    user_key: str = "default"
+
+
+class FavoriteSymbolResponse(BaseModel):
+    symbol: str
+    user_key: str
 
 
 class SignalResult(BaseModel):
