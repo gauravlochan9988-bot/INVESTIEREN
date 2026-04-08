@@ -3,6 +3,7 @@ from functools import lru_cache
 from typing import Optional
 
 from fastapi import Depends, Header
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.auth import ClerkTokenVerifier
@@ -296,6 +297,17 @@ def get_request_user_context(
         app_user_id=user.id,
         is_authenticated=True,
     )
+
+
+def require_authenticated_user_context(
+    user_context: RequestUserContext = Depends(get_request_user_context),
+) -> RequestUserContext:
+    if not user_context.is_authenticated or not user_context.app_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required.",
+        )
+    return user_context
 
 
 def get_analysis_calibration_service() -> AnalysisCalibrationService:

@@ -457,80 +457,90 @@ def test_healthcheck_exposes_active_database_status(client):
 def test_alerts_endpoint_returns_live_signal_events(client):
     response = client.get("/api/alerts", params={"strategy": "simple", "limit": 6})
 
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload
-    assert any(item["title"] == "AAPL is now BUY" for item in payload)
-    assert any(item["kind"] == "rsi" for item in payload)
-    assert all(item["strategy"] == "simple" for item in payload)
+    assert response.status_code == 401
 
 
 def test_alerts_are_persisted_and_can_be_filtered_to_favorites(client, db_session):
-    favorite_response = client.post(
-        "/api/favorites",
-        json={"symbol": "AAPL", "user_key": "desk"},
+    client.app.dependency_overrides[get_request_user_context] = lambda: RequestUserContext(
+        user_key="clerk|desk",
+        app_user_id=5,
+        is_authenticated=True,
     )
-    assert favorite_response.status_code == 200
-    assert favorite_response.json() == {"symbol": "AAPL", "user_key": "desk"}
+    try:
+        favorite_response = client.post(
+            "/api/favorites",
+            json={"symbol": "AAPL", "user_key": "desk"},
+        )
+        assert favorite_response.status_code == 200
+        assert favorite_response.json() == {"symbol": "AAPL", "user_key": "clerk|desk"}
 
-    alerts_response = client.get(
-        "/api/alerts",
-        params={
-            "strategy": "simple",
-            "user_key": "desk",
-            "favorites_only": True,
-            "limit": 6,
-        },
-    )
+        alerts_response = client.get(
+            "/api/alerts",
+            params={
+                "strategy": "simple",
+                "favorites_only": True,
+                "limit": 6,
+            },
+        )
 
-    assert alerts_response.status_code == 200
-    payload = alerts_response.json()
-    assert payload
-    assert all(item["symbol"] == "AAPL" for item in payload)
-    assert all(item["is_favorite"] is True for item in payload)
+        assert alerts_response.status_code == 200
+        payload = alerts_response.json()
+        assert payload
+        assert all(item["symbol"] == "AAPL" for item in payload)
+        assert all(item["is_favorite"] is True for item in payload)
 
-    saved = list(db_session.scalars(select(AlertEvent)).all())
-    assert saved
-    assert any(row.symbol == "AAPL" and row.user_key == "desk" for row in saved)
+        saved = list(db_session.scalars(select(AlertEvent)).all())
+        assert saved
+        assert any(row.symbol == "AAPL" and row.user_key == "clerk|desk" for row in saved)
+    finally:
+        client.app.dependency_overrides.pop(get_request_user_context, None)
 
 
 def test_favorites_can_be_listed_and_deleted(client):
-    client.post("/api/favorites", json={"symbol": "AAPL", "user_key": "desk"})
+    client.app.dependency_overrides[get_request_user_context] = lambda: RequestUserContext(
+        user_key="clerk|favorites-1",
+        app_user_id=11,
+        is_authenticated=True,
+    )
+    try:
+        client.post("/api/favorites", json={"symbol": "AAPL", "user_key": "desk"})
 
-    list_response = client.get("/api/favorites", params={"user_key": "desk"})
-    assert list_response.status_code == 200
-    assert list_response.json() == [{"symbol": "AAPL", "user_key": "desk"}]
+        list_response = client.get("/api/favorites")
+        assert list_response.status_code == 200
+        assert list_response.json() == [{"symbol": "AAPL", "user_key": "clerk|favorites-1"}]
 
-    delete_response = client.delete("/api/favorites/AAPL", params={"user_key": "desk"})
-    assert delete_response.status_code == 200
-    assert delete_response.json() == {"symbol": "AAPL", "user_key": "desk"}
+        delete_response = client.delete("/api/favorites/AAPL")
+        assert delete_response.status_code == 200
+        assert delete_response.json() == {"symbol": "AAPL", "user_key": "clerk|favorites-1"}
 
-    final_list = client.get("/api/favorites", params={"user_key": "desk"})
-    assert final_list.status_code == 200
-    assert final_list.json() == []
+        final_list = client.get("/api/favorites")
+        assert final_list.status_code == 200
+        assert final_list.json() == []
+    finally:
+        client.app.dependency_overrides.pop(get_request_user_context, None)
 
 
 def test_authenticated_user_context_overrides_favorite_user_key(client):
     client.app.dependency_overrides[get_request_user_context] = lambda: RequestUserContext(
-        user_key="auth0|user-123",
+        user_key="clerk|user-123",
         app_user_id=7,
         is_authenticated=True,
     )
     try:
         create_response = client.post("/api/favorites", json={"symbol": "AAPL", "user_key": "desk"})
         assert create_response.status_code == 200
-        assert create_response.json() == {"symbol": "AAPL", "user_key": "auth0|user-123"}
+        assert create_response.json() == {"symbol": "AAPL", "user_key": "clerk|user-123"}
 
-        list_response = client.get("/api/favorites", params={"user_key": "desk"})
+        list_response = client.get("/api/favorites")
         assert list_response.status_code == 200
-        assert list_response.json() == [{"symbol": "AAPL", "user_key": "auth0|user-123"}]
+        assert list_response.json() == [{"symbol": "AAPL", "user_key": "clerk|user-123"}]
     finally:
         client.app.dependency_overrides.pop(get_request_user_context, None)
 
 
 def test_authenticated_user_context_isolates_alerts(client, db_session):
     client.app.dependency_overrides[get_request_user_context] = lambda: RequestUserContext(
-        user_key="auth0|alerts-1",
+        user_key="clerk|alerts-1",
         app_user_id=9,
         is_authenticated=True,
     )
@@ -540,11 +550,11 @@ def test_authenticated_user_context_isolates_alerts(client, db_session):
             json={"symbol": "AAPL", "user_key": "desk"},
         )
         assert favorite_response.status_code == 200
-        assert favorite_response.json() == {"symbol": "AAPL", "user_key": "auth0|alerts-1"}
+        assert favorite_response.json() == {"symbol": "AAPL", "user_key": "clerk|alerts-1"}
 
         alerts_response = client.get(
             "/api/alerts",
-            params={"strategy": "simple", "user_key": "desk", "favorites_only": True, "limit": 6},
+            params={"strategy": "simple", "favorites_only": True, "limit": 6},
         )
         assert alerts_response.status_code == 200
         payload = alerts_response.json()
@@ -552,7 +562,7 @@ def test_authenticated_user_context_isolates_alerts(client, db_session):
         assert all(item["symbol"] == "AAPL" for item in payload)
 
         saved = list(db_session.scalars(select(AlertEvent)).all())
-        assert any(row.symbol == "AAPL" and row.user_key == "auth0|alerts-1" for row in saved)
+        assert any(row.symbol == "AAPL" and row.user_key == "clerk|alerts-1" for row in saved)
         assert not any(row.user_key == "desk" for row in saved)
     finally:
         client.app.dependency_overrides.pop(get_request_user_context, None)
