@@ -28,6 +28,16 @@ TICKER_ALIASES: Dict[str, str] = {
 }
 
 
+def _valid_market_price(value: object) -> float | None:
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return None
+    if numeric <= 0:
+        return None
+    return round(numeric, 2)
+
+
 @dataclass
 class QuoteSnapshot:
     symbol: str
@@ -90,8 +100,10 @@ class YFinanceProvider:
                     if len(symbols_list) == 1:
                         raise NotFoundError(f"No market data found for symbol {symbol}.")
                     raise ValueError("not enough close prices")
-                current = float(frame["Close"].iloc[-1])
-                previous = float(frame["Close"].iloc[-2])
+                current = _valid_market_price(frame["Close"].iloc[-1])
+                previous = _valid_market_price(frame["Close"].iloc[-2])
+                if current is None or previous is None:
+                    raise ValueError("invalid price")
                 volume = int(frame["Volume"].iloc[-1] or 0)
             except NotFoundError:
                 raise
@@ -105,7 +117,7 @@ class YFinanceProvider:
                 QuoteSnapshot(
                     symbol=symbol,
                     name=names[symbol],
-                    price=round(current, 2),
+                    price=current,
                     change_percent=round(change_percent, 2),
                     volume=volume,
                     updated_at=updated_at,
@@ -192,7 +204,8 @@ class FinnhubQuoteProvider:
                     response.raise_for_status()
                     payload = response.json()
                     current = float(payload.get("c") or 0)
-                    if current <= 0:
+                    current = _valid_market_price(current)
+                    if current is None:
                         if len(symbols_list) == 1:
                             raise ExternalServiceError(f"No Finnhub quote data available for {symbol}.")
                         continue
@@ -200,7 +213,7 @@ class FinnhubQuoteProvider:
                         QuoteSnapshot(
                             symbol=symbol,
                             name=names.get(symbol, symbol),
-                            price=round(current, 2),
+                            price=current,
                             change_percent=round(float(payload.get("dp") or 0), 2),
                             volume=0,
                             updated_at=updated_at,
@@ -432,10 +445,13 @@ class MarketDataService:
                 snapshots = self.provider.fetch_quotes([normalized], {normalized: normalized})
                 if not snapshots:
                     raise ExternalServiceError(f"Quote for {normalized} could not be loaded.")
+                valid_price = _valid_market_price(snapshots[0].price)
+                if valid_price is None:
+                    raise ExternalServiceError(f"Quote for {normalized} could not be loaded.")
                 quote = StockQuote(
                     symbol=snapshots[0].symbol,
                     name=snapshots[0].name,
-                    price=snapshots[0].price,
+                    price=valid_price,
                     change_percent=snapshots[0].change_percent,
                     volume=snapshots[0].volume,
                     updated_at=snapshots[0].updated_at,

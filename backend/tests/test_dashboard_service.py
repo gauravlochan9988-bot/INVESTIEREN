@@ -137,3 +137,44 @@ def test_watchlist_item_uses_last_known_price_when_live_sources_fail(monkeypatch
     assert len(items) == 1
     assert items[0].symbol == "GOOGL"
     assert items[0].price == 188.2
+    assert items[0].stale is True
+
+
+def test_watchlist_item_returns_no_data_when_no_valid_price_exists(monkeypatch):
+    service = FinnhubDashboardService(api_key="demo", watchlist=("AMD",))
+
+    def fail_quote(symbol: str):
+        raise ExternalServiceError("quote failed")
+
+    def fail_fallback(symbol: str):
+        raise ExternalServiceError("fallback failed")
+
+    monkeypatch.setattr(service, "_fetch_quote", fail_quote)
+    monkeypatch.setattr(service, "_fallback_watchlist_item", fail_fallback)
+
+    items = service.get_watchlist(force_refresh=True)
+
+    assert len(items) == 1
+    assert items[0].symbol == "AMD"
+    assert items[0].price is None
+    assert items[0].no_data is True
+
+
+def test_symbol_overview_returns_no_data_when_no_valid_price_exists(monkeypatch):
+    service = FinnhubDashboardService(api_key="demo", watchlist=("SPY",))
+
+    def fail_quote(symbol: str):
+        raise ExternalServiceError("quote failed")
+
+    def fail_fallback(symbol: str):
+        raise ExternalServiceError("fallback failed")
+
+    monkeypatch.setattr(service, "_fetch_quote", fail_quote)
+    monkeypatch.setattr(service, "_fallback_symbol_overview", fail_fallback)
+
+    overview = service.get_symbol_overview("SPY", force_refresh=True)
+
+    assert overview.symbol == "SPY"
+    assert overview.price is None
+    assert overview.no_data is True
+    assert overview.data_quality == "NO_DATA"

@@ -223,3 +223,57 @@ def test_composite_market_data_provider_falls_back_to_secondary_for_quotes():
     assert quote.symbol == "AMD"
     assert quote.price == 166.45
     assert quote.stale is False
+
+
+def test_composite_market_data_provider_rejects_zero_price_and_uses_secondary():
+    from app.services.market_data import (
+        CompositeMarketDataProvider,
+        MarketDataService,
+        QuoteSnapshot,
+    )
+
+    class PrimaryInvalidProvider:
+        def fetch_quotes(self, symbols, names):
+            return [
+                QuoteSnapshot(
+                    symbol="SPY",
+                    name=names["SPY"],
+                    price=0.0,
+                    change_percent=0.0,
+                    volume=0,
+                    updated_at=datetime.now(timezone.utc),
+                )
+            ]
+
+        def fetch_history(self, symbol, period):
+            raise ExternalServiceError("history not needed")
+
+    class SecondaryWorkingProvider:
+        def fetch_quotes(self, symbols, names):
+            return [
+                QuoteSnapshot(
+                    symbol="SPY",
+                    name=names["SPY"],
+                    price=503.18,
+                    change_percent=0.42,
+                    volume=123456,
+                    updated_at=datetime.now(timezone.utc),
+                )
+            ]
+
+        def fetch_history(self, symbol, period):
+            raise ExternalServiceError("history not needed")
+
+    service = MarketDataService(
+        provider=CompositeMarketDataProvider(
+            [PrimaryInvalidProvider(), SecondaryWorkingProvider()],
+            timeout_seconds=2.0,
+        ),
+        allowed_symbols={"SPY": "SPDR S&P 500 ETF"},
+        ttl_seconds=3600,
+    )
+
+    quote = service.get_latest_quote("SPY", force_refresh=True)
+
+    assert quote.symbol == "SPY"
+    assert quote.price == 503.18

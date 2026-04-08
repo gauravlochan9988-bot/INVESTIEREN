@@ -90,7 +90,7 @@ class FinnhubDashboardService:
 
     def _fetch_quote(self, symbol: str) -> dict:
         payload = self._request("/quote", symbol=self._normalize_market_symbol(symbol))
-        if not isinstance(payload, dict) or payload.get("c") in (None, 0):
+        if not isinstance(payload, dict) or self._valid_price(payload.get("c")) is None:
             raise ExternalServiceError(f"No Finnhub quote data available for {symbol}.")
         return payload
 
@@ -102,6 +102,9 @@ class FinnhubDashboardService:
 
     def _partial_symbol_overview(self, symbol: str, quote: dict, profile: dict | None = None) -> DashboardSymbolOverview:
         profile = profile or {}
+        price = self._valid_price(quote.get("c"))
+        if price is None:
+            raise ExternalServiceError(f"No live market data available for {symbol}.")
         return DashboardSymbolOverview(
             symbol=symbol,
             name=profile.get("name") or self.watchlist_names.get(symbol) or symbol,
@@ -113,12 +116,12 @@ class FinnhubDashboardService:
             weburl=profile.get("weburl"),
             market_capitalization=profile.get("marketCapitalization"),
             share_outstanding=profile.get("shareOutstanding"),
-            price=float(quote.get("c") or 0),
-            change_percent=float(quote.get("dp") or 0),
-            high=float(quote.get("h") or 0),
-            low=float(quote.get("l") or 0),
-            open=float(quote.get("o") or 0),
-            previous_close=float(quote.get("pc") or 0),
+            price=price,
+            change_percent=self._quote_number(quote.get("dp"), 0.0),
+            high=self._quote_number(quote.get("h"), price),
+            low=self._quote_number(quote.get("l"), price),
+            open=self._quote_number(quote.get("o"), price),
+            previous_close=self._quote_number(quote.get("pc"), price),
             stale=False,
         )
 
@@ -136,6 +139,56 @@ class FinnhubDashboardService:
         if not math.isfinite(numeric):
             return None if allow_none else default
         return numeric
+
+    def _valid_price(self, value: object) -> float | None:
+        numeric = self._safe_float(value, allow_none=True)
+        if numeric is None or numeric <= 0:
+            return None
+        return round(numeric, 2)
+
+    def _quote_number(self, value: object, fallback: float | None = None) -> float | None:
+        numeric = self._safe_float(value, allow_none=True)
+        if numeric is None:
+            return fallback
+        return round(numeric, 2)
+
+    def _last_known_symbol_overview(self, symbol: str) -> DashboardSymbolOverview | None:
+        cache_key = f"symbol:{symbol}"
+        active = self.symbol_cache.get(cache_key)
+        stale = self.symbol_cache.get_stale(cache_key)
+        for item in (active, stale):
+            if item is not None and self._valid_price(item.price) is not None:
+                return item.model_copy(update={"stale": True})
+        return None
+
+    def _no_data_symbol_overview(self, symbol: str) -> DashboardSymbolOverview:
+        return DashboardSymbolOverview(
+            symbol=symbol,
+            name=self.watchlist_names.get(symbol) or symbol,
+            data_quality="NO_DATA",
+            price=None,
+            change_percent=None,
+            high=None,
+            low=None,
+            open=None,
+            previous_close=None,
+            stale=False,
+            no_data=True,
+        )
+
+    def _no_data_watchlist_item(self, symbol: str) -> DashboardWatchlistItem:
+        return DashboardWatchlistItem(
+            symbol=symbol,
+            name=self.watchlist_names.get(symbol) or symbol,
+            price=None,
+            change_percent=None,
+            high=None,
+            low=None,
+            open=None,
+            previous_close=None,
+            stale=False,
+            no_data=True,
+        )
 
     def _fallback_symbol_overview(self, symbol: str) -> DashboardSymbolOverview:
         lookup_symbol = self._normalize_market_symbol(symbol)
@@ -167,8 +220,10 @@ class FinnhubDashboardService:
 
         current_row = history.iloc[-1]
         previous_row = history.iloc[-2] if len(history.index) > 1 else current_row
-        current = self._safe_float(current_row.get("Close"), default=0.0) or 0.0
-        previous = self._safe_float(previous_row.get("Close"), default=current) or current
+        current = self._valid_price(current_row.get("Close"))
+        previous = self._valid_price(previous_row.get("Close")) or current
+        if current is None or previous is None:
+            raise ExternalServiceError(f"No live market data available for {symbol}.")
         change_percent = ((current - previous) / previous * 100) if previous else 0.0
 
         try:
@@ -200,11 +255,11 @@ class FinnhubDashboardService:
             weburl=website,
             market_capitalization=self._safe_float(market_cap, allow_none=True),
             share_outstanding=self._safe_float(shares_outstanding, allow_none=True),
-            price=round(current, 2),
+            price=current,
             change_percent=round(change_percent, 2),
-            high=round(self._safe_float(current_row.get("High"), default=current) or current, 2),
-            low=round(self._safe_float(current_row.get("Low"), default=current) or current, 2),
-            open=round(self._safe_float(current_row.get("Open"), default=current) or current, 2),
+            high=self._quote_number(current_row.get("High"), current),
+            low=self._quote_number(current_row.get("Low"), current),
+            open=self._quote_number(current_row.get("Open"), current),
             previous_close=round(previous, 2),
             stale=False,
         )
@@ -229,7 +284,7 @@ class FinnhubDashboardService:
         active = self.watchlist_cache.get("watchlist") or []
         stale = self.watchlist_cache.get_stale("watchlist") or []
         for item in [*active, *stale]:
-            if item.symbol == symbol:
+            if item.symbol == symbol and self._valid_price(item.price) is not None:
                 return item.model_copy(update={"stale": True})
         return None
 
@@ -241,7 +296,7 @@ class FinnhubDashboardService:
         if not snapshot:
             return None
         for item in snapshot:
-            if item.symbol == symbol:
+            if item.symbol == symbol and self._valid_price(item.price) is not None:
                 return item
         return None
 
@@ -273,17 +328,20 @@ class FinnhubDashboardService:
     def _build_watchlist_item(self, symbol: str) -> DashboardWatchlistItem:
         try:
             quote = self._fetch_quote(symbol)
+            price = self._valid_price(quote.get("c"))
+            if price is None:
+                raise ExternalServiceError(f"No Finnhub quote data available for {symbol}.")
             return DashboardWatchlistItem(
                 symbol=symbol,
                 name=self.watchlist_names.get(symbol) or symbol,
                 exchange=None,
                 logo=None,
-                price=float(quote.get("c") or 0),
-                change_percent=float(quote.get("dp") or 0),
-                high=float(quote.get("h") or 0),
-                low=float(quote.get("l") or 0),
-                open=float(quote.get("o") or 0),
-                previous_close=float(quote.get("pc") or 0),
+                price=price,
+                change_percent=self._quote_number(quote.get("dp"), 0.0),
+                high=self._quote_number(quote.get("h"), price),
+                low=self._quote_number(quote.get("l"), price),
+                open=self._quote_number(quote.get("o"), price),
+                previous_close=self._quote_number(quote.get("pc"), price),
                 stale=False,
             )
         except ExternalServiceError:
@@ -293,7 +351,7 @@ class FinnhubDashboardService:
                 last_known = self._last_known_watchlist_item(symbol)
                 if last_known is not None:
                     return last_known
-                raise
+                return self._no_data_watchlist_item(symbol)
 
     def get_watchlist(self, force_refresh: bool = False) -> list[DashboardWatchlistItem]:
         cache_key = "watchlist"
@@ -312,12 +370,18 @@ class FinnhubDashboardService:
             items: list[DashboardWatchlistItem] = []
             for symbol in self.watchlist:
                 try:
-                    items.append(self._build_watchlist_item(symbol))
+                    item = self._build_watchlist_item(symbol)
                 except ExternalServiceError:
                     last_known = self._find_item_in_snapshot(stale_snapshot, symbol)
                     if last_known is not None:
                         items.append(last_known)
                     continue
+                if item.no_data:
+                    last_known = self._find_item_in_snapshot(stale_snapshot, symbol)
+                    if last_known is not None:
+                        items.append(last_known.model_copy(update={"stale": True}))
+                        continue
+                items.append(item)
 
             if not items:
                 stale = self.watchlist_cache.get_stale(cache_key)
@@ -348,17 +412,20 @@ class FinnhubDashboardService:
             try:
                 quote = self._fetch_quote(normalized)
             except ExternalServiceError:
-                stale = self.symbol_cache.get_stale(cache_key)
-                if stale is not None:
-                    return stale.model_copy(update={"stale": True})
                 try:
                     overview = self._fallback_symbol_overview(normalized)
-                except Exception as exc:
-                    raise ExternalServiceError(f"No live market data available for {normalized}.") from exc
+                except Exception:
+                    last_known = self._last_known_symbol_overview(normalized)
+                    if last_known is not None:
+                        return last_known
+                    return self._no_data_symbol_overview(normalized)
                 return self.symbol_cache.set(cache_key, overview)
 
             try:
                 profile = self._fetch_profile(normalized)
+                price = self._valid_price(quote.get("c"))
+                if price is None:
+                    raise ExternalServiceError(f"No Finnhub quote data available for {normalized}.")
                 overview = DashboardSymbolOverview(
                     symbol=normalized,
                     name=profile.get("name") or normalized,
@@ -370,12 +437,12 @@ class FinnhubDashboardService:
                     weburl=profile.get("weburl"),
                     market_capitalization=profile.get("marketCapitalization"),
                     share_outstanding=profile.get("shareOutstanding"),
-                    price=float(quote.get("c") or 0),
-                    change_percent=float(quote.get("dp") or 0),
-                    high=float(quote.get("h") or 0),
-                    low=float(quote.get("l") or 0),
-                    open=float(quote.get("o") or 0),
-                    previous_close=float(quote.get("pc") or 0),
+                    price=price,
+                    change_percent=self._quote_number(quote.get("dp"), 0.0),
+                    high=self._quote_number(quote.get("h"), price),
+                    low=self._quote_number(quote.get("l"), price),
+                    open=self._quote_number(quote.get("o"), price),
+                    previous_close=self._quote_number(quote.get("pc"), price),
                     stale=False,
                 )
             except ExternalServiceError:

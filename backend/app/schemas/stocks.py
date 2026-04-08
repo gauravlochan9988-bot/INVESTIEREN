@@ -7,11 +7,12 @@ from pydantic import BaseModel, Field, computed_field, model_validator
 class StockQuote(BaseModel):
     symbol: str
     name: str
-    price: float
+    price: Optional[float] = None
     change_percent: float
     volume: int = 0
     updated_at: datetime
     stale: bool = False
+    no_data: bool = False
 
     @computed_field
     @property

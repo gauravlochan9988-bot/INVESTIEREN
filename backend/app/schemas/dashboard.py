@@ -11,13 +11,14 @@ class DashboardWatchlistItem(BaseModel):
     name: str
     exchange: Optional[str] = None
     logo: Optional[str] = None
-    price: float
-    change_percent: float
-    high: float
-    low: float
-    open: float
-    previous_close: float
+    price: Optional[float] = None
+    change_percent: Optional[float] = None
+    high: Optional[float] = None
+    low: Optional[float] = None
+    open: Optional[float] = None
+    previous_close: Optional[float] = None
     stale: bool = False
+    no_data: bool = False
 
 
 class DashboardSymbolOverview(BaseModel):
@@ -31,13 +32,14 @@ class DashboardSymbolOverview(BaseModel):
     weburl: Optional[str] = None
     market_capitalization: Optional[float] = None
     share_outstanding: Optional[float] = None
-    price: float
-    change_percent: float
-    high: float
-    low: float
-    open: float
-    previous_close: float
+    price: Optional[float] = None
+    change_percent: Optional[float] = None
+    high: Optional[float] = None
+    low: Optional[float] = None
+    open: Optional[float] = None
+    previous_close: Optional[float] = None
     stale: bool = False
+    no_data: bool = False
 
 
 class DashboardNewsItem(BaseModel):
