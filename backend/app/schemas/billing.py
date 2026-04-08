@@ -23,3 +23,12 @@ class SubscriptionStatusResponse(BaseModel):
 class BillingSyncResponse(BaseModel):
     status: str
     subscription_status: str
+
+
+class BillingStateSyncRequest(BaseModel):
+    active: bool
+    status: str = "inactive"
+    plan_name: str = "Investieren Pro Monthly"
+    amount_cents: int = 999
+    currency: str = "usd"
+    interval: str = "month"

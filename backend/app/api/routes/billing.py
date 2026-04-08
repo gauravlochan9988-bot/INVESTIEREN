@@ -11,7 +11,12 @@ from app.api.deps import (
 )
 from app.core.database import get_db
 from app.repositories.app_user import AppUserRepository
-from app.schemas.billing import BillingSyncResponse, CheckoutSessionResponse, SubscriptionStatusResponse
+from app.schemas.billing import (
+    BillingStateSyncRequest,
+    BillingSyncResponse,
+    CheckoutSessionResponse,
+    SubscriptionStatusResponse,
+)
 from app.services.billing import BillingService
 
 
@@ -59,6 +64,28 @@ def get_subscription_status(
     user = _require_authenticated_user(db, user_context, app_user_repository)
     payload = billing_service.get_subscription_status(db, app_user_id=user.id)
     return SubscriptionStatusResponse(**payload)
+
+
+@router.post("/sync", response_model=BillingSyncResponse)
+def sync_billing_state(
+    payload: BillingStateSyncRequest,
+    db: Session = Depends(get_db),
+    user_context: RequestUserContext = Depends(get_request_user_context),
+    app_user_repository: AppUserRepository = Depends(get_app_user_repository),
+    billing_service: BillingService = Depends(get_billing_service),
+) -> BillingSyncResponse:
+    user = _require_authenticated_user(db, user_context, app_user_repository)
+    result = billing_service.sync_clerk_subscription_state(
+        db,
+        app_user=user,
+        active=payload.active,
+        status=payload.status,
+        plan_name=payload.plan_name,
+        amount_cents=payload.amount_cents,
+        currency=payload.currency,
+        interval=payload.interval,
+    )
+    return BillingSyncResponse(**result)
 
 
 @router.get("/checkout-session/{session_id}", response_model=BillingSyncResponse)

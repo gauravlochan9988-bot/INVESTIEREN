@@ -73,6 +73,20 @@ class StubBillingService:
     def sync_checkout_session(self, db, *, app_user, session_id):
         return {"status": "ok", "subscription_status": "active"}
 
+    def sync_clerk_subscription_state(
+        self,
+        db,
+        *,
+        app_user,
+        active,
+        status,
+        plan_name,
+        amount_cents,
+        currency,
+        interval,
+    ):
+        return {"status": "ok", "subscription_status": "active" if active else status}
+
     def handle_webhook(self, db, *, payload, signature):
         return {"status": "ok"}
 
@@ -601,6 +615,36 @@ def test_billing_success_sync_updates_status_for_authenticated_user(client, db_s
     client.app.dependency_overrides[get_billing_service] = lambda: StubBillingService()
     try:
         response = client.get("/api/billing/checkout-session/cs_test_123")
+        assert response.status_code == 200
+        assert response.json() == {"status": "ok", "subscription_status": "active"}
+    finally:
+        client.app.dependency_overrides.pop(get_request_user_context, None)
+        client.app.dependency_overrides.pop(get_billing_service, None)
+
+
+def test_billing_sync_updates_status_for_authenticated_user(client, db_session):
+    user = AppUser(auth_subject="clerk|billing-sync-1", provider="clerk", email="sync@example.com", name="Sync User")
+    db_session.add(user)
+    db_session.commit()
+
+    client.app.dependency_overrides[get_request_user_context] = lambda: RequestUserContext(
+        user_key="clerk|billing-sync-1",
+        app_user_id=user.id,
+        is_authenticated=True,
+    )
+    client.app.dependency_overrides[get_billing_service] = lambda: StubBillingService()
+    try:
+        response = client.post(
+            "/api/billing/sync",
+            json={
+                "active": True,
+                "status": "active",
+                "plan_name": "Investieren Pro Monthly",
+                "amount_cents": 999,
+                "currency": "usd",
+                "interval": "month",
+            },
+        )
         assert response.status_code == 200
         assert response.json() == {"status": "ok", "subscription_status": "active"}
     finally:

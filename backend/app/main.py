@@ -181,6 +181,14 @@ def create_app() -> FastAPI:
     def root_script() -> FileResponse:
         return FileResponse(FRONTEND_DIR / "app.js", media_type="application/javascript")
 
+    @app.get("/pricing.html")
+    def pricing_page() -> FileResponse:
+        return FileResponse(FRONTEND_DIR / "pricing.html", media_type="text/html")
+
+    @app.get("/pricing.js")
+    def pricing_script() -> FileResponse:
+        return FileResponse(FRONTEND_DIR / "pricing.js", media_type="application/javascript")
+
     @app.get("/auth-hero-hq.png")
     def root_auth_hero_hq() -> FileResponse:
         return FileResponse(FRONTEND_DIR / "auth-hero-hq.png", media_type="image/png")

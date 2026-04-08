@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     clerk_publishable_key: str = ""
     clerk_frontend_api_url: str = ""
     clerk_jwt_key: str = ""
+    clerk_plan_slug: str = "pro"
+    clerk_plan_name: str = "Investieren Pro Monthly"
     frontend_origin: str = "https://gauravtrades.de"
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""

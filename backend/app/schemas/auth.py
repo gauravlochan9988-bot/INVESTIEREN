@@ -8,6 +8,11 @@ class AuthConfigResponse(BaseModel):
     provider: Optional[str] = None
     publishable_key: Optional[str] = None
     frontend_api_url: Optional[str] = None
+    plan_slug: Optional[str] = None
+    plan_name: Optional[str] = None
+    plan_amount_cents: Optional[int] = None
+    plan_currency: Optional[str] = None
+    plan_interval: Optional[str] = None
 
 
 class AppUserResponse(BaseModel):

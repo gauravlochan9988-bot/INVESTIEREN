@@ -152,6 +152,36 @@ class BillingService:
             "current_period_end": row.current_period_end,
         }
 
+    def sync_clerk_subscription_state(
+        self,
+        db: Session,
+        *,
+        app_user: AppUser,
+        active: bool,
+        status: str,
+        plan_name: str,
+        amount_cents: int,
+        currency: str,
+        interval: str,
+    ) -> Dict[str, Any]:
+        normalized_status = "active" if active else (status or "inactive")
+        row = self.subscription_repository.upsert_for_user(
+            db,
+            app_user_id=app_user.id,
+            auth_subject=app_user.auth_subject,
+            status=normalized_status,
+            plan_name=plan_name or self.settings.clerk_plan_name,
+            amount_cents=max(0, int(amount_cents or 0)),
+            currency=(currency or "usd").lower(),
+            interval=(interval or "month").lower(),
+            cancel_at_period_end=False,
+            current_period_end=None,
+        )
+        return {
+            "status": "ok",
+            "subscription_status": row.status,
+        }
+
     def handle_webhook(self, db: Session, *, payload: bytes, signature: Optional[str]) -> Dict[str, str]:
         self._ensure_enabled()
         if not self.webhook_secret:

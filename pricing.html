@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' http://127.0.0.1:8000 http://localhost:8000 https://investieren-production.up.railway.app https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com; frame-src 'self' https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com; child-src 'self' https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com; font-src 'self' https: data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+    />
+    <title>Investieren Pricing</title>
+    <link rel="dns-prefetch" href="//investieren-production.up.railway.app" />
+    <link rel="preconnect" href="https://investieren-production.up.railway.app" crossorigin />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="min-h-screen bg-slate-950 text-slate-100">
+    <main class="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6 sm:px-6 sm:py-10">
+      <header class="flex items-center justify-between rounded-[28px] border border-white/10 bg-slate-900/85 px-5 py-4 shadow-2xl shadow-black/20 backdrop-blur">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">Pricing</p>
+          <h1 class="mt-2 text-2xl font-black tracking-[-0.04em] text-white">Choose Pro access</h1>
+        </div>
+        <a
+          href="/"
+          class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+        >
+          Back
+        </a>
+      </header>
+
+      <section class="mt-6 rounded-[32px] border border-white/10 bg-slate-900/70 p-5 shadow-2xl shadow-black/30 backdrop-blur sm:p-8">
+        <div class="max-w-2xl">
+          <p class="text-sm font-semibold text-emerald-300">Pro plan</p>
+          <h2 class="mt-3 text-4xl font-black tracking-[-0.05em] text-white">Unlock signals, alerts and watchlists</h2>
+          <p class="mt-4 text-sm leading-6 text-slate-300">
+            Monthly subscription. Clerk Billing handles access and Stripe handles payment.
+          </p>
+        </div>
+
+        <div
+          id="pricingClerkMount"
+          class="mt-8 min-h-[560px] rounded-[28px] border border-white/10 bg-slate-950/40 p-2"
+        ></div>
+        <p id="pricingStatus" class="mt-4 text-sm text-slate-400">Loading monthly pricing…</p>
+      </section>
+    </main>
+    <script src="/pricing.js"></script>
+  </body>
+</html>
