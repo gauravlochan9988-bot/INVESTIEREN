@@ -2639,7 +2639,8 @@ async function api(path, options = {}) {
     !options.skipAuth && String(path || "").startsWith("/api/") && path !== "/api/auth/config"
       ? await (async () => {
           const token = await getAccessToken();
-          return token ? { Authorization: `Bearer ${token}` } : {};
+          const accessCodeHeaders = state.auth.accessOverride ? { "X-Access-Code": "9988" } : {};
+          return token ? { Authorization: `Bearer ${token}`, ...accessCodeHeaders } : accessCodeHeaders;
         })()
       : {};
 

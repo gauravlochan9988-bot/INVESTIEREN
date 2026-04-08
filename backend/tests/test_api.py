@@ -568,6 +568,29 @@ def test_authenticated_user_context_isolates_alerts(client, db_session):
         client.app.dependency_overrides.pop(get_request_user_context, None)
 
 
+def test_access_code_header_grants_full_alerts_and_favorites_access(client, db_session):
+    favorite_response = client.post(
+        "/api/favorites",
+        json={"symbol": "AAPL"},
+        headers={"X-Access-Code": "9988"},
+    )
+    assert favorite_response.status_code == 200
+    assert favorite_response.json() == {"symbol": "AAPL", "user_key": "access-code|9988"}
+
+    alerts_response = client.get(
+        "/api/alerts",
+        params={"strategy": "simple", "favorites_only": True, "limit": 6},
+        headers={"X-Access-Code": "9988"},
+    )
+    assert alerts_response.status_code == 200
+    payload = alerts_response.json()
+    assert payload
+    assert all(item["symbol"] == "AAPL" for item in payload)
+
+    saved = list(db_session.scalars(select(AlertEvent)).all())
+    assert any(row.symbol == "AAPL" and row.user_key == "access-code|9988" for row in saved)
+
+
 def test_billing_checkout_creates_checkout_session_for_authenticated_user(client, db_session):
     user = AppUser(auth_subject="auth0|billing-1", provider="auth0", email="user@example.com", name="User")
     db_session.add(user)
