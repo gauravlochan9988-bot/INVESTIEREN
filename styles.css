@@ -31,6 +31,9 @@ body {
     var(--color-bg);
   color: var(--color-text);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 [hidden] {
@@ -917,19 +920,21 @@ body {
 }
 
 .auth-bottom-card {
-  width: min(100%, 31rem);
-  max-width: 31rem;
+  width: min(100%, 29.5rem);
+  max-width: 29.5rem;
   align-self: center;
-  border: 1px solid rgba(31, 41, 55, 0.96);
+  border: 1px solid rgba(148, 163, 184, 0.12);
   border-radius: 2rem;
   background:
-    radial-gradient(circle at top center, rgba(56, 189, 248, 0.08), transparent 34%),
-    linear-gradient(180deg, rgba(17, 24, 39, 0.97), rgba(11, 15, 26, 0.99));
-  padding: 1.85rem 1.5rem 1.45rem;
-  backdrop-filter: blur(24px);
+    radial-gradient(circle at top center, rgba(148, 210, 255, 0.06), transparent 34%),
+    linear-gradient(180deg, rgba(16, 22, 36, 0.72), rgba(8, 12, 24, 0.86));
+  padding: 2.55rem 2rem 1.7rem;
+  backdrop-filter: blur(28px) saturate(130%);
+  -webkit-backdrop-filter: blur(28px) saturate(130%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 30px 90px rgba(2, 6, 23, 0.42);
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 34px 90px rgba(2, 6, 23, 0.34),
+    0 12px 40px rgba(8, 15, 30, 0.12);
   position: relative;
   z-index: 2;
 }
@@ -937,12 +942,21 @@ body {
 .auth-bottom-card::before {
   content: "";
   position: absolute;
-  left: 1rem;
-  right: 1rem;
+  left: 1.4rem;
+  right: 1.4rem;
   top: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(20, 184, 166, 0.24), transparent);
-  opacity: 0.9;
+  background: linear-gradient(90deg, transparent, rgba(186, 230, 253, 0.22), transparent);
+  opacity: 0.75;
+}
+
+.auth-bottom-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.04), transparent 30%, transparent 72%, rgba(191, 219, 254, 0.03));
 }
 
 .auth-copy-text {
@@ -962,7 +976,7 @@ body {
 }
 
 .auth-form-panel {
-  margin-top: 0.7rem;
+  margin-top: 1.15rem;
   padding: 0;
   background: transparent;
   border: 0;
@@ -985,33 +999,34 @@ body {
 .auth-brand-stack {
   display: grid;
   justify-items: center;
-  gap: 0.9rem;
-  margin-bottom: 1.4rem;
+  gap: 0.82rem;
+  margin-bottom: 1.8rem;
 }
 
 .auth-brand-mark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 3.7rem;
-  height: 3.7rem;
-  border-radius: 1.2rem;
-  border: 1px solid rgba(56, 189, 248, 0.22);
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(2, 6, 23, 0.96));
+  width: 3.15rem;
+  height: 3.15rem;
+  border-radius: 999px;
+  border: 1px solid rgba(191, 219, 254, 0.16);
+  background: linear-gradient(180deg, rgba(18, 24, 38, 0.92), rgba(8, 12, 24, 0.95));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 18px 40px rgba(2, 6, 23, 0.36);
-  font-size: 1.45rem;
-  font-weight: 800;
-  letter-spacing: -0.08em;
-  color: #7dd3fc;
+    0 14px 28px rgba(2, 6, 23, 0.2),
+    0 0 20px rgba(148, 210, 255, 0.04);
+  font-size: 1.12rem;
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  color: rgba(232, 244, 255, 0.96);
 }
 
-.auth-brand-name {
-  font-size: 1.04rem;
-  font-weight: 700;
-  letter-spacing: -0.035em;
-  color: rgba(248, 250, 252, 0.96);
+.auth-brand-subtitle {
+  margin: 0;
+  font-size: 0.94rem;
+  letter-spacing: -0.01em;
+  color: rgba(198, 208, 223, 0.76);
 }
 
 .auth-desktop-mark {
@@ -1097,42 +1112,46 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 2rem;
-  margin: 0 auto 0.15rem;
-  padding: 0 0.9rem;
+  margin: 0.4rem auto 0;
+  padding: 0 0.92rem;
   border-radius: 999px;
-  border: 1px solid rgba(56, 189, 248, 0.16);
-  background: rgba(56, 189, 248, 0.08);
-  color: rgba(226, 232, 240, 0.92);
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(230, 239, 249, 0.88);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  font-size: 0.69rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
 }
 
 .auth-panel-title {
-  font-size: clamp(2rem, 4vw, 2.5rem);
-  font-weight: 800;
-  line-height: 1.02;
-  letter-spacing: -0.05em;
-  color: #f8fbff;
+  font-size: clamp(2.2rem, 4.8vw, 3rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.055em;
+  color: rgba(249, 251, 255, 0.98);
   margin: 0;
+  text-wrap: balance;
 }
 
 .auth-panel-copy {
   margin: 0;
-  font-size: 0.95rem;
-  line-height: 1.7;
-  color: rgba(148, 163, 184, 0.92);
+  font-size: 0.96rem;
+  line-height: 1.72;
+  color: rgba(188, 200, 217, 0.8);
   max-width: 20rem;
   margin-inline: auto;
 }
 
 .auth-input-label {
   display: block;
-  margin-bottom: 0.05rem;
-  color: rgba(226, 232, 240, 0.88);
-  font-size: 0.82rem;
+  margin-bottom: 0.45rem;
+  color: rgba(204, 216, 232, 0.72);
+  font-size: 0.72rem;
   font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
   text-align: left;
 }
 
@@ -1145,20 +1164,71 @@ body {
   position: absolute;
   inset: -1px;
   border-radius: 1.15rem;
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(45, 212, 191, 0.08));
-  opacity: 0.8;
+  background: linear-gradient(135deg, rgba(191, 219, 254, 0.06), rgba(125, 211, 252, 0.03));
+  opacity: 1;
   pointer-events: none;
+}
+
+.auth-input-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  z-index: 2;
+  transform: translateY(-50%);
+  color: rgba(186, 230, 253, 0.56);
+  font-size: 0.88rem;
+  text-shadow: 0 0 10px rgba(148, 210, 255, 0.08);
+  pointer-events: none;
+}
+
+.login-input {
+  position: relative;
+  z-index: 1;
+  min-height: 3.7rem;
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 10px 24px rgba(2, 6, 23, 0.1);
+  padding-left: 2.85rem;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.login-input::placeholder {
+  color: rgba(148, 163, 184, 0.74);
+}
+
+.login-input:focus {
+  border-color: rgba(186, 230, 253, 0.38);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 4px rgba(186, 230, 253, 0.06),
+    0 16px 30px rgba(2, 6, 23, 0.14);
 }
 
 .auth-benefit-copy {
   color: #f8fbff;
   text-align: left;
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  border-radius: 1.1rem;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.3), rgba(8, 12, 24, 0.46));
+  padding: 0.8rem 0.88rem 0.84rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 6px 18px rgba(2, 6, 23, 0.05);
 }
 
 .auth-benefit-text {
-  font-size: 1rem;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   line-height: 1.55;
-  color: rgba(241, 245, 249, 0.96);
+  color: rgba(227, 236, 247, 0.84);
 }
 
 .auth-benefit-list {
@@ -1172,9 +1242,9 @@ body {
 .auth-benefit-list li {
   position: relative;
   padding-left: 1.55rem;
-  font-size: 0.92rem;
+  font-size: 0.84rem;
   line-height: 1.5;
-  color: rgba(226, 232, 240, 0.92);
+  color: rgba(206, 216, 229, 0.86);
 }
 
 .auth-benefit-list li::before {
@@ -1237,9 +1307,9 @@ body {
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin: 1.35rem 0 0.95rem;
-  color: rgba(148, 163, 184, 0.78);
-  font-size: 0.76rem;
+  margin: 1.8rem 0 0.9rem;
+  color: rgba(148, 163, 184, 0.58);
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.16em;
 }
@@ -1253,11 +1323,12 @@ body {
 }
 
 .auth-password-hint {
-  margin-top: 0.4rem;
-  font-size: 0.8rem;
-  line-height: 1.5;
-  color: rgba(148, 163, 184, 0.88);
+  margin-top: 0.7rem;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: rgba(148, 163, 184, 0.72);
   text-align: center;
+  letter-spacing: 0.02em;
 }
 
 .auth-action-stack {
@@ -1314,34 +1385,50 @@ body {
 
 .auth-private-button {
   width: 100%;
-  min-height: 3.35rem;
+  min-height: 3.95rem;
+  margin-top: 0.45rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, #dff6ff 0%, #bdeee0 100%);
   box-shadow:
-    0 18px 34px rgba(45, 212, 191, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.24);
-  letter-spacing: 0.01em;
+    0 16px 34px rgba(147, 197, 253, 0.12),
+    0 4px 12px rgba(16, 24, 40, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34);
+  letter-spacing: -0.01em;
+  text-transform: none;
+  font-size: 0.96rem;
+  font-weight: 600;
 }
 
 .auth-private-button:hover {
   transform: translateY(-1px);
+  box-shadow:
+    0 20px 38px rgba(147, 197, 253, 0.15),
+    0 10px 20px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.36);
+}
+
+@media (max-width: 640px) {
+  .auth-bottom-card {
+    padding: 2rem 1.2rem 1.25rem;
+    border-radius: 1.75rem;
+  }
+
+  .auth-panel-title {
+    font-size: clamp(1.95rem, 9vw, 2.35rem);
+  }
+
+  .auth-brand-mark {
+    width: 3rem;
+    height: 3rem;
+  }
+
+  .auth-benefit-copy {
+    padding: 0.78rem 0.82rem 0.84rem;
+  }
 }
 
 .auth-info-panel {
-  margin-top: 0.4rem;
-}
-
-.auth-benefit-copy {
-  border: 1px solid rgba(148, 163, 184, 0.1);
-  border-radius: 1.4rem;
-  background: rgba(2, 6, 23, 0.36);
-  padding: 1rem 1rem 1.05rem;
-}
-
-.auth-helper-copy {
-  margin: 0.15rem 0 0;
-  font-size: 0.78rem;
-  line-height: 1.6;
-  color: rgba(148, 163, 184, 0.88);
+  margin-top: 0.8rem;
 }
 
 #watchlistBody button {
