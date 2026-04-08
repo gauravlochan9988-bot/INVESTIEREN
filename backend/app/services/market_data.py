@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Dict, Iterable, List, Optional, Protocol
+
+import httpx
 
 from app.core.config import get_settings
 from app.core.exceptions import ExternalServiceError, NotFoundError, ValidationError
@@ -18,6 +21,12 @@ SUPPORTED_RANGES: Dict[str, str] = {
 }
 
 NO_LIVE_MARKET_DATA_MESSAGE = "No live market data available."
+TICKER_ALIASES: Dict[str, str] = {
+    "BRK.B": "BRK-B",
+    "BRK/A": "BRK-A",
+    "BRK.A": "BRK-A",
+}
+
 
 @dataclass
 class QuoteSnapshot:
@@ -27,6 +36,7 @@ class QuoteSnapshot:
     change_percent: float
     volume: int
     updated_at: datetime
+    stale: bool = False
 
 
 class MarketDataProvider(Protocol):
@@ -149,6 +159,119 @@ class YFinanceProvider:
         return points
 
 
+class FinnhubQuoteProvider:
+    BASE_URL = "https://finnhub.io/api/v1"
+
+    def __init__(self, api_key: str, timeout_seconds: float = 2.0):
+        self.api_key = api_key.strip()
+        self.timeout_seconds = timeout_seconds
+
+    def _ensure_api_key(self) -> None:
+        if not self.api_key:
+            raise ExternalServiceError("Finnhub API key is not configured.")
+
+    def _market_symbol(self, symbol: str) -> str:
+        normalized = symbol.strip().upper()
+        return TICKER_ALIASES.get(normalized, normalized)
+
+    def fetch_quotes(
+        self, symbols: Iterable[str], names: Dict[str, str]
+    ) -> List[QuoteSnapshot]:
+        self._ensure_api_key()
+        symbols_list = list(symbols)
+        snapshots: List[QuoteSnapshot] = []
+        updated_at = datetime.now(timezone.utc)
+
+        try:
+            with httpx.Client(timeout=self.timeout_seconds) as client:
+                for symbol in symbols_list:
+                    response = client.get(
+                        f"{self.BASE_URL}/quote",
+                        params={"symbol": self._market_symbol(symbol), "token": self.api_key},
+                    )
+                    response.raise_for_status()
+                    payload = response.json()
+                    current = float(payload.get("c") or 0)
+                    if current <= 0:
+                        if len(symbols_list) == 1:
+                            raise ExternalServiceError(f"No Finnhub quote data available for {symbol}.")
+                        continue
+                    snapshots.append(
+                        QuoteSnapshot(
+                            symbol=symbol,
+                            name=names.get(symbol, symbol),
+                            price=round(current, 2),
+                            change_percent=round(float(payload.get("dp") or 0), 2),
+                            volume=0,
+                            updated_at=updated_at,
+                        )
+                    )
+        except httpx.HTTPError as exc:
+            raise ExternalServiceError("Finnhub is currently unavailable.") from exc
+
+        if not snapshots:
+            raise ExternalServiceError("No Finnhub quote data available.")
+        return snapshots
+
+    def fetch_history(self, symbol: str, period: str) -> List[HistoryPoint]:
+        raise ExternalServiceError("Finnhub history lookup is not configured for this service.")
+
+
+class CompositeMarketDataProvider:
+    def __init__(self, providers: Iterable[MarketDataProvider], timeout_seconds: float = 2.0):
+        self.providers = list(providers)
+        self.timeout_seconds = timeout_seconds
+
+    def _run_with_timeout(self, fn, *args):
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(fn, *args)
+            try:
+                return future.result(timeout=self.timeout_seconds)
+            except FutureTimeoutError as exc:
+                raise ExternalServiceError("Market data provider timed out.") from exc
+
+    def fetch_quotes(
+        self, symbols: Iterable[str], names: Dict[str, str]
+    ) -> List[QuoteSnapshot]:
+        ordered_symbols = list(symbols)
+        remaining = ordered_symbols[:]
+        collected: Dict[str, QuoteSnapshot] = {}
+        last_error: Exception | None = None
+
+        for provider in self.providers:
+            if not remaining:
+                break
+            try:
+                snapshots = self._run_with_timeout(provider.fetch_quotes, remaining, names)
+            except (ExternalServiceError, NotFoundError) as error:
+                last_error = error
+                continue
+
+            for snapshot in snapshots:
+                normalized = snapshot.symbol.strip().upper()
+                if normalized in remaining and snapshot.price > 0:
+                    collected[normalized] = snapshot
+
+            remaining = [symbol for symbol in remaining if symbol not in collected]
+
+        if not collected:
+            raise ExternalServiceError(NO_LIVE_MARKET_DATA_MESSAGE) from last_error
+
+        return [collected[symbol] for symbol in ordered_symbols if symbol in collected]
+
+    def fetch_history(self, symbol: str, period: str) -> List[HistoryPoint]:
+        last_error: Exception | None = None
+        for provider in self.providers:
+            try:
+                history = self._run_with_timeout(provider.fetch_history, symbol, period)
+            except (ExternalServiceError, NotFoundError) as error:
+                last_error = error
+                continue
+            if history:
+                return history
+        raise ExternalServiceError(NO_LIVE_MARKET_DATA_MESSAGE) from last_error
+
+
 class MarketDataService:
     def __init__(
         self,
@@ -178,7 +301,25 @@ class MarketDataService:
         return normalized
 
     def _normalize_symbol(self, symbol: str) -> str:
-        return self.ensure_supported_symbol(symbol)
+        normalized = self.ensure_supported_symbol(symbol)
+        return TICKER_ALIASES.get(normalized, normalized)
+
+    def _mark_quote_stale(self, quote: StockQuote) -> StockQuote:
+        return quote.model_copy(update={"stale": True})
+
+    def _last_known_quote(self, symbol: str) -> StockQuote | None:
+        normalized = self.ensure_supported_symbol(symbol)
+        cache_key = f"quote:{normalized}"
+        active = self.quote_cache.get(cache_key) or []
+        stale = self.quote_cache.get_stale(cache_key) or []
+        watchlist_active = self.quote_cache.get("watchlist") or []
+        watchlist_stale = self.quote_cache.get_stale("watchlist") or []
+
+        for bucket in (active, stale, watchlist_active, watchlist_stale):
+            for item in bucket:
+                if item.symbol == normalized and item.price > 0:
+                    return item
+        return None
 
     def get_watchlist_quotes(self, force_refresh: bool = False) -> List[StockQuote]:
         cache_key = "watchlist"
@@ -194,27 +335,44 @@ class MarketDataService:
             if cached_inner is not None:
                 return cached_inner
 
-            symbols = list(self.allowed_symbols.keys())
             try:
+                symbols = list(self.allowed_symbols.keys())
                 snapshots = self.provider.fetch_quotes(symbols, self.allowed_symbols)
-                quotes = [
-                    StockQuote(
-                        symbol=snapshot.symbol,
-                        name=snapshot.name,
-                        price=snapshot.price,
-                        change_percent=snapshot.change_percent,
-                        volume=snapshot.volume,
-                        updated_at=snapshot.updated_at,
-                    )
-                    for snapshot in snapshots
-                ]
+                snapshot_map = {snapshot.symbol: snapshot for snapshot in snapshots if snapshot.price > 0}
+                quotes: List[StockQuote] = []
+                for symbol in symbols:
+                    snapshot = snapshot_map.get(symbol)
+                    if snapshot is not None:
+                        quote = StockQuote(
+                            symbol=snapshot.symbol,
+                            name=snapshot.name,
+                            price=snapshot.price,
+                            change_percent=snapshot.change_percent,
+                            volume=snapshot.volume,
+                            updated_at=snapshot.updated_at,
+                            stale=snapshot.stale,
+                        )
+                        self.quote_cache.set(f"quote:{symbol}", [quote])
+                        quotes.append(quote)
+                        continue
+
+                    last_known = self._last_known_quote(symbol)
+                    if last_known is not None:
+                        quotes.append(self._mark_quote_stale(last_known))
             except (ExternalServiceError, NotFoundError) as error:
                 stale = self.quote_cache.get_stale(cache_key)
                 if stale is not None:
-                    return stale
+                    return [self._mark_quote_stale(quote) for quote in stale]
                 if stale_snapshot is not None:
-                    return stale_snapshot
+                    return [self._mark_quote_stale(quote) for quote in stale_snapshot]
                 raise ExternalServiceError(NO_LIVE_MARKET_DATA_MESSAGE) from error
+            if not quotes:
+                stale = self.quote_cache.get_stale(cache_key)
+                if stale is not None:
+                    return [self._mark_quote_stale(quote) for quote in stale]
+                if stale_snapshot is not None:
+                    return [self._mark_quote_stale(quote) for quote in stale_snapshot]
+                raise ExternalServiceError(NO_LIVE_MARKET_DATA_MESSAGE)
             return self.quote_cache.set(cache_key, quotes)
 
         return self.request_deduper.run(f"quotes:{cache_key}", load_quotes)
@@ -256,11 +414,6 @@ class MarketDataService:
 
     def get_latest_quote(self, symbol: str, force_refresh: bool = False) -> StockQuote:
         normalized = self.ensure_supported_symbol(symbol)
-        if normalized in self.allowed_symbols:
-            quotes = self.get_watchlist_quotes(force_refresh=force_refresh)
-            for quote in quotes:
-                if quote.symbol == normalized:
-                    return quote
 
         cache_key = f"quote:{normalized}"
         stale_snapshot = self.quote_cache.get_stale(cache_key) if force_refresh else None
@@ -286,13 +439,17 @@ class MarketDataService:
                     change_percent=snapshots[0].change_percent,
                     volume=snapshots[0].volume,
                     updated_at=snapshots[0].updated_at,
+                    stale=snapshots[0].stale,
                 )
             except ExternalServiceError as error:
+                last_known = self._last_known_quote(normalized)
+                if last_known is not None:
+                    return self._mark_quote_stale(last_known)
                 stale = self.quote_cache.get_stale(cache_key)
                 if stale is not None and stale:
-                    return stale[0]
+                    return self._mark_quote_stale(stale[0])
                 if stale_snapshot is not None and stale_snapshot:
-                    return stale_snapshot[0]
+                    return self._mark_quote_stale(stale_snapshot[0])
                 raise ExternalServiceError(NO_LIVE_MARKET_DATA_MESSAGE) from error
             self.quote_cache.set(cache_key, [quote])
             return quote

@@ -17,6 +17,7 @@ class DashboardWatchlistItem(BaseModel):
     low: float
     open: float
     previous_close: float
+    stale: bool = False
 
 
 class DashboardSymbolOverview(BaseModel):
@@ -36,6 +37,7 @@ class DashboardSymbolOverview(BaseModel):
     low: float
     open: float
     previous_close: float
+    stale: bool = False
 
 
 class DashboardNewsItem(BaseModel):

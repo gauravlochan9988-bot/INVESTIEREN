@@ -11,6 +11,7 @@ class StockQuote(BaseModel):
     change_percent: float
     volume: int = 0
     updated_at: datetime
+    stale: bool = False
 
     @computed_field
     @property

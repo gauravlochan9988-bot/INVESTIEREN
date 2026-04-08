@@ -13,7 +13,12 @@ from app.services.analysis_calibration import AnalysisCalibrationService
 from app.services.analysis import AnalysisService
 from app.services.finnhub_dashboard import FinnhubDashboardService
 from app.services.macro import MacroContextService
-from app.services.market_data import MarketDataService, YFinanceProvider
+from app.services.market_data import (
+    CompositeMarketDataProvider,
+    FinnhubQuoteProvider,
+    MarketDataService,
+    YFinanceProvider,
+)
 from app.services.news import (
     ChainedNewsProvider,
     FinnhubNewsProvider,
@@ -40,7 +45,13 @@ DASHBOARD_WATCHLIST = ("AAPL", "MSFT", "NVDA", "AMZN", "META", "TSLA")
 def get_market_data_service_instance() -> MarketDataService:
     settings = get_settings()
     return MarketDataService(
-        provider=YFinanceProvider(),
+        provider=CompositeMarketDataProvider(
+            [
+                FinnhubQuoteProvider(settings.finnhub_api_key, timeout_seconds=2.0),
+                YFinanceProvider(),
+            ],
+            timeout_seconds=2.0,
+        ),
         allowed_symbols=settings.watchlist,
         ttl_seconds=settings.market_cache_ttl_seconds,
     )

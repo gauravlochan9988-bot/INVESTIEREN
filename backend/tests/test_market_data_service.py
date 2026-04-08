@@ -1,4 +1,5 @@
 import pytest
+from datetime import datetime, timezone
 
 from app.core.exceptions import ExternalServiceError, ValidationError
 
@@ -111,9 +112,16 @@ def test_market_data_service_returns_stale_cache_when_provider_fails_after_warmu
 
     provider.fail = True
 
-    assert market_data_service.get_watchlist_quotes(force_refresh=True) == warm_quotes
-    assert market_data_service.get_history("AAPL", "1mo", force_refresh=True) == warm_history
-    assert market_data_service.get_latest_quote("NFLX", force_refresh=True) == warm_quote
+    stale_watchlist = market_data_service.get_watchlist_quotes(force_refresh=True)
+    stale_history = market_data_service.get_history("AAPL", "1mo", force_refresh=True)
+    stale_quote = market_data_service.get_latest_quote("NFLX", force_refresh=True)
+
+    assert [quote.symbol for quote in stale_watchlist] == [quote.symbol for quote in warm_quotes]
+    assert all(quote.price > 0 for quote in stale_watchlist)
+    assert stale_history == warm_history
+    assert stale_quote.symbol == warm_quote.symbol
+    assert stale_quote.price == warm_quote.price
+    assert stale_quote.stale is True
 
 
 class PartiallyFailingMarketDataProvider:
@@ -169,3 +177,49 @@ def test_watchlist_quotes_skip_symbols_that_fail_to_parse_in_multi_symbol_reques
     quotes = service.get_watchlist_quotes()
 
     assert [quote.symbol for quote in quotes] == ["AAPL", "MSFT"]
+
+
+def test_composite_market_data_provider_falls_back_to_secondary_for_quotes():
+    from app.services.market_data import (
+        CompositeMarketDataProvider,
+        MarketDataService,
+        QuoteSnapshot,
+    )
+
+    class PrimaryFailingProvider:
+        def fetch_quotes(self, symbols, names):
+            raise ExternalServiceError("primary down")
+
+        def fetch_history(self, symbol, period):
+            raise ExternalServiceError("primary down")
+
+    class SecondaryWorkingProvider:
+        def fetch_quotes(self, symbols, names):
+            return [
+                QuoteSnapshot(
+                    symbol="AMD",
+                    name=names["AMD"],
+                    price=166.45,
+                    change_percent=1.12,
+                    volume=123456,
+                    updated_at=datetime.now(timezone.utc),
+                )
+            ]
+
+        def fetch_history(self, symbol, period):
+            raise ExternalServiceError("history not needed")
+
+    service = MarketDataService(
+        provider=CompositeMarketDataProvider(
+            [PrimaryFailingProvider(), SecondaryWorkingProvider()],
+            timeout_seconds=2.0,
+        ),
+        allowed_symbols={"AMD": "AMD"},
+        ttl_seconds=3600,
+    )
+
+    quote = service.get_latest_quote("AMD", force_refresh=True)
+
+    assert quote.symbol == "AMD"
+    assert quote.price == 166.45
+    assert quote.stale is False

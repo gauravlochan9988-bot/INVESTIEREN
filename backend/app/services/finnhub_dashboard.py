@@ -31,7 +31,7 @@ class FinnhubDashboardService:
         watchlist: Iterable[str] | dict[str, str],
         news_sentiment_service: NewsSentimentService | None = None,
         ttl_seconds: int | None = None,
-        timeout_seconds: float = 10.0,
+        timeout_seconds: float = 2.0,
     ) -> None:
         settings = get_settings()
         self.api_key = api_key.strip()
@@ -119,6 +119,7 @@ class FinnhubDashboardService:
             low=float(quote.get("l") or 0),
             open=float(quote.get("o") or 0),
             previous_close=float(quote.get("pc") or 0),
+            stale=False,
         )
 
     def _safe_float(
@@ -205,6 +206,7 @@ class FinnhubDashboardService:
             low=round(self._safe_float(current_row.get("Low"), default=current) or current, 2),
             open=round(self._safe_float(current_row.get("Open"), default=current) or current, 2),
             previous_close=round(previous, 2),
+            stale=False,
         )
 
     def _fallback_watchlist_item(self, symbol: str) -> DashboardWatchlistItem:
@@ -220,6 +222,7 @@ class FinnhubDashboardService:
             low=overview.low,
             open=overview.open,
             previous_close=overview.previous_close,
+            stale=overview.stale,
         )
 
     def _last_known_watchlist_item(self, symbol: str) -> DashboardWatchlistItem | None:
@@ -227,7 +230,7 @@ class FinnhubDashboardService:
         stale = self.watchlist_cache.get_stale("watchlist") or []
         for item in [*active, *stale]:
             if item.symbol == symbol:
-                return item
+                return item.model_copy(update={"stale": True})
         return None
 
     def _find_item_in_snapshot(
@@ -281,6 +284,7 @@ class FinnhubDashboardService:
                 low=float(quote.get("l") or 0),
                 open=float(quote.get("o") or 0),
                 previous_close=float(quote.get("pc") or 0),
+                stale=False,
             )
         except ExternalServiceError:
             try:
@@ -346,7 +350,7 @@ class FinnhubDashboardService:
             except ExternalServiceError:
                 stale = self.symbol_cache.get_stale(cache_key)
                 if stale is not None:
-                    return stale
+                    return stale.model_copy(update={"stale": True})
                 try:
                     overview = self._fallback_symbol_overview(normalized)
                 except Exception as exc:
@@ -372,6 +376,7 @@ class FinnhubDashboardService:
                     low=float(quote.get("l") or 0),
                     open=float(quote.get("o") or 0),
                     previous_close=float(quote.get("pc") or 0),
+                    stale=False,
                 )
             except ExternalServiceError:
                 overview = self._partial_symbol_overview(normalized, quote)
