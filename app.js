@@ -2179,15 +2179,54 @@ function renderLoadingWatchlist() {
   `;
 }
 
+function safeWatchlistPrice(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
+}
+
+function safeWatchlistChange(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
 function renderWatchlist(items) {
   const visibleItems = getVisibleWatchlistItems(items);
   elements.watchlistMeta.textContent = `${visibleItems.length}/${MAX_SIDEBAR_SLOTS} visible`;
   elements.watchlistBody.innerHTML = "";
 
+  if (!visibleItems.length) {
+    elements.watchlistBody.innerHTML = `
+      <div class="rounded-2xl border border-white/10 bg-slate-950/50 px-3 py-4">
+        <div class="flex items-center gap-3">
+          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-xs font-bold text-white/90">
+            ${String(state.selectedSymbol || "WL").slice(0, 2)}
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center justify-between gap-3">
+              <p class="truncate text-sm font-semibold tracking-tight text-white">${state.selectedSymbol || "Watchlist"}</p>
+              <p class="text-xs font-medium text-slate-400">${percent(0)}</p>
+            </div>
+            <div class="mt-1 flex items-center justify-between gap-3">
+              <p class="truncate text-[11px] text-slate-400">Market data syncing</p>
+              <p class="text-sm font-semibold text-white">${currency(0)}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    renderFavorites();
+    return;
+  }
+
   visibleItems.forEach((item) => {
-    const hasChange = typeof item.change_percent === "number" && !Number.isNaN(item.change_percent);
-    const hasPrice = typeof item.price === "number" && !Number.isNaN(item.price) && item.price > 0;
-    const tone = !hasChange ? "text-slate-500" : item.change_percent >= 0 ? "text-emerald-300" : "text-rose-300";
+    const changeValue = safeWatchlistChange(item.change_percent);
+    const priceValue = safeWatchlistPrice(item.price);
+    const stale = Boolean(item.stale);
+    const tone = stale
+      ? "text-amber-300"
+      : changeValue >= 0
+        ? "text-emerald-300"
+        : "text-rose-300";
     const active = item.symbol === state.selectedSymbol;
     const card = document.createElement("button");
     card.type = "button";
@@ -2206,11 +2245,14 @@ function renderWatchlist(items) {
         <div class="min-w-0 flex-1">
           <div class="flex items-center justify-between gap-3">
             <p class="watchlist-symbol truncate text-sm font-semibold tracking-tight text-white">${item.symbol}</p>
-            <p class="watchlist-change text-xs font-medium ${tone}">${hasChange ? percent(item.change_percent) : "--"}</p>
+            <p class="watchlist-change text-xs font-medium ${tone}">${percent(changeValue)}</p>
           </div>
           <div class="mt-1 flex items-center justify-between gap-3">
             <p class="watchlist-name truncate text-[11px] text-slate-400">${item.name}</p>
-            <p class="watchlist-price text-sm font-semibold text-white">${hasPrice ? currency(item.price) : "--"}</p>
+            <div class="flex items-center gap-2">
+              ${stale ? '<span class="text-[10px] font-medium text-amber-300" title="Last known price">⚠️</span>' : ""}
+              <p class="watchlist-price text-sm font-semibold text-white">${currency(priceValue)}</p>
+            </div>
           </div>
         </div>
         <div class="shrink-0">
