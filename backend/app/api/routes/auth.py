@@ -50,8 +50,8 @@ def get_auth_config() -> AuthConfigResponse:
         frontend_api_url=frontend_api_url,
         plan_slug=settings.clerk_plan_slug.strip() or None,
         plan_name=settings.clerk_plan_name.strip() or None,
-        plan_amount_cents=999,
-        plan_currency="usd",
+        plan_amount_cents=499,
+        plan_currency="eur",
         plan_interval="month",
     )
 

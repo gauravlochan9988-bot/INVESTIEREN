@@ -37,7 +37,7 @@ class AppSubscriptionRepository:
         stripe_checkout_session_id: Optional[str] = None,
         status: str = "inactive",
         plan_name: str = "Investieren Pro Monthly",
-        amount_cents: int = 999,
+        amount_cents: int = 499,
         currency: str = "eur",
         interval: str = "month",
         cancel_at_period_end: bool = False,

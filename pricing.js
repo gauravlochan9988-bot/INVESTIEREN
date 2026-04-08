@@ -63,29 +63,8 @@ async function ensureClerkFrontendLoaded(config) {
   return window.Clerk;
 }
 
-async function syncSubscription(clerk, config) {
-  const token = await clerk.session?.getToken();
-  const active = Boolean(await clerk.session?.checkAuthorization?.({ plan: config.plan_slug || "pro" }));
-
-  await pricingApi("/api/billing/sync", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      active,
-      status: active ? "active" : "inactive",
-      plan_name: config.plan_name || "Investieren Pro Monthly",
-      amount_cents: Number(config.plan_amount_cents || 999),
-      currency: config.plan_currency || "usd",
-      interval: config.plan_interval || "month",
-    }),
-  });
-}
-
 async function initializePricing() {
-  const mount = document.getElementById("pricingClerkMount");
+  const button = document.getElementById("pricingCheckoutButton");
   const status = document.getElementById("pricingStatus");
 
   try {
@@ -102,13 +81,31 @@ async function initializePricing() {
       return;
     }
 
-    clerk.mountPricingTable(mount, {
-      for: "user",
-      newSubscriptionRedirectUrl: `${window.location.origin}/?pricing=success`,
+    const token = await clerk.session.getToken();
+
+    button?.addEventListener("click", async () => {
+      try {
+        button.disabled = true;
+        status.textContent = "Redirecting to Stripe Checkout…";
+        const session = await pricingApi("/api/billing/checkout", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({}),
+        });
+        if (!session?.url) {
+          throw new Error("Checkout is unavailable.");
+        }
+        window.location.href = session.url;
+      } catch (error) {
+        button.disabled = false;
+        status.textContent = error.message || "Checkout failed.";
+      }
     });
 
-    await syncSubscription(clerk, config);
-    status.textContent = "Choose your plan in Clerk Billing.";
+    status.textContent = "Secure payment via Stripe Checkout.";
   } catch (error) {
     console.error("[pricing] init failed", error);
     status.textContent = error.message || "Pricing is unavailable.";

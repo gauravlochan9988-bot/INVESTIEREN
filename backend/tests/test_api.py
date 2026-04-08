@@ -63,7 +63,7 @@ class StubBillingService:
             "active": False,
             "status": "inactive",
             "plan_name": "Investieren Pro Monthly",
-            "amount_cents": 999,
+            "amount_cents": 499,
             "currency": "eur",
             "interval": "month",
             "cancel_at_period_end": False,
@@ -606,7 +606,7 @@ def test_billing_subscription_status_returns_current_user_subscription(client, d
         response = client.get("/api/billing/subscription")
         assert response.status_code == 200
         assert response.json()["status"] == "inactive"
-        assert response.json()["amount_cents"] == 999
+        assert response.json()["amount_cents"] == 499
     finally:
         client.app.dependency_overrides.pop(get_request_user_context, None)
         client.app.dependency_overrides.pop(get_billing_service, None)
@@ -650,8 +650,8 @@ def test_billing_sync_updates_status_for_authenticated_user(client, db_session):
                 "active": True,
                 "status": "active",
                 "plan_name": "Investieren Pro Monthly",
-                "amount_cents": 999,
-                "currency": "usd",
+                "amount_cents": 499,
+                "currency": "eur",
                 "interval": "month",
             },
         )

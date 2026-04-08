@@ -47,7 +47,7 @@ class BillingService:
             {
                 "price_data": {
                     "currency": "eur",
-                    "unit_amount": 999,
+                    "unit_amount": 499,
                     "recurring": {"interval": "month"},
                     "product_data": {"name": "Investieren Pro Monthly"},
                 },
@@ -135,7 +135,7 @@ class BillingService:
                 "active": False,
                 "status": "inactive",
                 "plan_name": "Investieren Pro Monthly",
-                "amount_cents": 999,
+                "amount_cents": 499,
                 "currency": "eur",
                 "interval": "month",
                 "cancel_at_period_end": False,
@@ -172,7 +172,7 @@ class BillingService:
             status=normalized_status,
             plan_name=plan_name or self.settings.clerk_plan_name,
             amount_cents=max(0, int(amount_cents or 0)),
-            currency=(currency or "usd").lower(),
+            currency=(currency or "eur").lower(),
             interval=(interval or "month").lower(),
             cancel_at_period_end=False,
             current_period_end=None,

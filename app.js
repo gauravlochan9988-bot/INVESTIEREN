@@ -8,8 +8,8 @@ const AUTH_TOKEN_CACHE_MS = 45 * 1000;
 const DEFAULT_CLERK_PLAN = {
   slug: "pro",
   name: "Investieren Pro Monthly",
-  amountCents: 999,
-  currency: "usd",
+  amountCents: 499,
+  currency: "eur",
   interval: "month",
 };
 const STORAGE_KEYS = {
@@ -401,7 +401,7 @@ function renderSubscriptionButton() {
   }
 
   elements.subscribeButton.disabled = !state.auth.enabled || !isAuthenticated();
-  elements.subscribeButton.textContent = "Subscribe €9.99";
+  elements.subscribeButton.textContent = "Subscribe €4.99";
   elements.subscribeButton.className =
     "action-secondary rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/15 xl:min-w-[132px]";
 }
@@ -472,55 +472,38 @@ async function loadSubscriptionStatus() {
   return state.auth.subscription;
 }
 
-async function syncManagedSubscriptionState() {
-  if (!state.auth.enabled || !state.auth.client?.session || !isAuthenticated()) {
-    state.auth.subscription = null;
-    renderSubscriptionButton();
-    return null;
-  }
-
-  const plan = managedPlanConfig();
-  const active = Boolean(await state.auth.client.session.checkAuthorization?.({ plan: plan.slug }));
-  const payload = {
-    active,
-    status: active ? "active" : "inactive",
-    plan_name: plan.name,
-    amount_cents: plan.amountCents,
-    currency: plan.currency,
-    interval: plan.interval,
-  };
-
-  try {
-    await api("/api/billing/sync", {
-      method: "POST",
-      timeoutMs: 12000,
-      retryCount: 0,
-      body: JSON.stringify(payload),
-    });
-  } catch (error) {
-    console.error("[frontend] billing sync failed", error);
-  }
-
-  state.auth.subscription = {
-    active: payload.active,
-    status: payload.status,
-    plan_name: payload.plan_name,
-    amount_cents: payload.amount_cents,
-    currency: payload.currency,
-    interval: payload.interval,
-    cancel_at_period_end: false,
-    current_period_end: null,
-  };
-  renderSubscriptionButton();
-  return state.auth.subscription;
-}
-
 async function startCheckout() {
   window.location.href = "/pricing.html";
 }
 
 async function handleBillingRedirectState() {
-  return;
+  const params = new URLSearchParams(window.location.search);
+  const checkoutState = params.get("checkout");
+  const sessionId = params.get("session_id");
+  if (!checkoutState) {
+    return;
+  }
+
+  try {
+    if (checkoutState === "success" && sessionId && isAuthenticated()) {
+      await api(`/api/billing/checkout-session/${encodeURIComponent(sessionId)}`, {
+        timeoutMs: 15000,
+        retryCount: 0,
+      });
+      await loadSubscriptionStatus();
+      setBackendStatus("Subscription active", "ok");
+    } else if (checkoutState === "cancel") {
+      setBackendStatus("Checkout canceled", "warning");
+    }
+  } catch (error) {
+    showError(error.message || "Subscription sync failed.");
+  } finally {
+    params.delete("checkout");
+    params.delete("session_id");
+    const nextQuery = params.toString();
+    const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`;
+    window.history.replaceState({}, document.title, nextUrl);
+  }
 }
 
 async function initializeManagedAuth() {
@@ -558,7 +541,7 @@ async function initializeManagedAuth() {
 
       try {
         await syncAuthenticatedUser(true);
-        await syncManagedSubscriptionState();
+        await loadSubscriptionStatus();
         if (hasActiveSubscription()) {
           showAppShell();
           void bootDashboard();
@@ -576,7 +559,7 @@ async function initializeManagedAuth() {
 
   if (state.auth.client.user && state.auth.client.session) {
     await syncAuthenticatedUser(true);
-    await syncManagedSubscriptionState();
+    await loadSubscriptionStatus();
   }
 
   state.auth.ready = true;
@@ -3954,7 +3937,7 @@ async function initializeApp() {
   bindApp();
 
   if (isAuthenticated()) {
-    await syncManagedSubscriptionState();
+    await loadSubscriptionStatus();
     if (hasActiveSubscription()) {
       showAppShell();
       void bootDashboard();

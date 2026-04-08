@@ -29,6 +29,6 @@ class BillingStateSyncRequest(BaseModel):
     active: bool
     status: str = "inactive"
     plan_name: str = "Investieren Pro Monthly"
-    amount_cents: int = 999
-    currency: str = "usd"
+    amount_cents: int = 499
+    currency: str = "eur"
     interval: str = "month"

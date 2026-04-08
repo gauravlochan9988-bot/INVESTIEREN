@@ -12,7 +12,7 @@ def test_root_serves_static_dashboard(client):
     assert 'id="authClerkMount"' in response.text
     assert 'id="paywallOverlay"' in response.text
     assert "Upgrade to unlock the dashboard" in response.text
-    assert "Upgrade €9.99 / month" in response.text
+    assert "Upgrade €4.99 / month" in response.text
     assert 'placeholder="Search"' in response.text
     assert "Quotes" in response.text
     assert "TradingView" in response.text

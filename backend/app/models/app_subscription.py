@@ -24,7 +24,7 @@ class AppSubscription(Base):
     stripe_checkout_session_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(64), nullable=False, default="inactive", index=True)
     plan_name: Mapped[str] = mapped_column(String(128), nullable=False, default="Investieren Pro Monthly")
-    amount_cents: Mapped[int] = mapped_column(Integer, nullable=False, default=999)
+    amount_cents: Mapped[int] = mapped_column(Integer, nullable=False, default=499)
     currency: Mapped[str] = mapped_column(String(8), nullable=False, default="eur")
     interval: Mapped[str] = mapped_column(String(16), nullable=False, default="month")
     cancel_at_period_end: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
