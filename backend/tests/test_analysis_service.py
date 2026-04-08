@@ -80,11 +80,11 @@ def test_simple_strategy_now_holds_on_plus_one_score(analysis_service):
     result = analysis_service.analyze("MSFT", history, strategy="simple")
 
     assert result.recommendation == "HOLD"
-    assert result.signal_quality == "PARTIAL"
-    assert result.decision_label == "PARTIAL"
+    assert result.signal_quality == "FULL"
+    assert result.decision_label == "HOLD"
     assert result.score == 1
     assert 0.5 < result.probability_up < 0.68
-    assert result.data_quality == "PARTIAL"
+    assert result.data_quality == "FULL"
     assert result.no_trade is True
     assert result.entry_signal is False
     assert result.exit_signal is True
@@ -104,7 +104,7 @@ def test_negative_news_and_overbought_condition_raise_exit_flag(analysis_service
     assert result.score == 0
     assert result.risk_level == "HIGH"
     assert result.no_trade is True
-    assert "partially confirmed" in result.no_trade_reason.lower()
+    assert "hold" in result.no_trade_reason.lower()
     assert result.entry_signal is False
     assert result.exit_signal is True
     assert "Negative News" in result.warnings
@@ -120,8 +120,8 @@ def test_high_risk_hold_does_not_automatically_become_no_trade(analysis_service)
 
     result = analysis_service.analyze("AMZN", history)
 
-    assert result.recommendation in {"BUY", "HOLD"}
-    assert result.signal_quality == "PARTIAL"
+    assert result.recommendation == "HOLD"
+    assert result.signal_quality == "FULL"
     assert result.score >= 2
     assert result.risk_level == "HIGH"
     assert result.no_trade is True
@@ -612,13 +612,13 @@ def test_strategies_return_distinct_results_without_overwriting_each_other(analy
     assert simple.recommendation == "HOLD"
     assert ai.recommendation == "BUY"
     assert hedgefund.recommendation == "HOLD"
-    assert simple.signal_quality == "PARTIAL"
-    assert ai.signal_quality == "PARTIAL"
-    assert hedgefund.signal_quality == "PARTIAL"
+    assert simple.signal_quality == "FULL"
+    assert ai.signal_quality == "FULL"
+    assert hedgefund.signal_quality == "FULL"
     assert simple.score != ai.score
-    assert simple.data_quality == "PARTIAL"
-    assert ai.data_quality == "PARTIAL"
-    assert hedgefund.data_quality == "PARTIAL"
+    assert simple.data_quality == "FULL"
+    assert ai.data_quality == "FULL"
+    assert hedgefund.data_quality == "FULL"
     assert simple.no_trade is True
     assert ai.no_trade is False
     assert hedgefund.no_trade is True

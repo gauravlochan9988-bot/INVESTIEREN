@@ -291,12 +291,12 @@ def test_strategy_query_returns_selected_strategy_without_frontend_overrides(cli
     assert simple_payload["recommendation"] == "HOLD"
     assert ai_payload["recommendation"] == "BUY"
     assert hedgefund_payload["recommendation"] == "HOLD"
-    assert simple_payload["decision_label"] == "PARTIAL"
-    assert ai_payload["decision_label"] == "BUY PARTIAL"
-    assert hedgefund_payload["decision_label"] == "PARTIAL"
-    assert simple_payload["data_quality"] == "PARTIAL"
-    assert ai_payload["data_quality"] == "PARTIAL"
-    assert hedgefund_payload["data_quality"] == "PARTIAL"
+    assert simple_payload["decision_label"] == "HOLD"
+    assert ai_payload["decision_label"] == "BUY FULL"
+    assert hedgefund_payload["decision_label"] == "HOLD"
+    assert simple_payload["data_quality"] == "FULL"
+    assert ai_payload["data_quality"] == "FULL"
+    assert hedgefund_payload["data_quality"] == "FULL"
 
 
 def test_analysis_endpoint_logs_each_analysis_to_database(client, db_session):

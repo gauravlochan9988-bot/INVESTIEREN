@@ -753,13 +753,13 @@ class AnalysisService:
         )
         summary = decision["reason"]
 
-        no_trade = decision["recommendation"] == "HOLD" and decision["signal_quality"] == "PARTIAL"
+        no_trade = decision["recommendation"] == "HOLD"
         no_trade_reason = "Trade evaluation available."
         if no_trade:
             no_trade_reason = (
                 f"{trade_filter.block_reason.capitalize()}."
                 if trade_filter.block_reason
-                else "The setup is only partially confirmed."
+                else "Strong uncertainty keeps the setup on HOLD."
             )
 
         return AnalysisResponse(
@@ -968,16 +968,8 @@ class AnalysisService:
 
         if strong_conflicts:
             partial_reasons.append("strong indicator conflicts are present")
-        elif conflicts:
-            partial_reasons.append("signals are conflicting")
-
-        buy_threshold = self._effective_buy_threshold(strategy)
-        sell_threshold = self._effective_sell_threshold(strategy)
-        if sell_threshold < score < buy_threshold:
-            partial_reasons.append("the score is still near its trade threshold")
-
-        if recommendation == "HOLD" and abs(score) > 0:
-            partial_reasons.append("the setup is not clean enough for a full-strength signal")
+        elif base_decision.level == "PARTIAL" and conflicts:
+            partial_reasons.append("partial inputs still contain conflicting signals")
 
         if not partial_reasons:
             return base_decision
@@ -1014,17 +1006,17 @@ class AnalysisService:
         data_quality: DataQuality,
         conflicts: Sequence[str],
     ) -> SignalQuality:
-        buy_threshold = self._effective_buy_threshold(strategy)
-        sell_threshold = self._effective_sell_threshold(strategy)
-        near_buy = (buy_threshold - 1) <= score < buy_threshold
-        near_sell = (sell_threshold + 1) >= score > sell_threshold
+        strong_conflicts = self._strong_conflicts(conflicts)
 
-        if recommendation in {"BUY", "SELL"}:
-            if data_quality == "FULL" and not conflicts:
-                return "FULL"
+        if data_quality == "PARTIAL":
             return "PARTIAL"
 
-        if data_quality == "PARTIAL" or conflicts or near_buy or near_sell:
+        if recommendation in {"BUY", "SELL"}:
+            if strong_conflicts:
+                return "PARTIAL"
+            return "FULL"
+
+        if strong_conflicts:
             return "PARTIAL"
         return "FULL"
 
@@ -1279,8 +1271,8 @@ class AnalysisService:
 
         return TradeFilterDecision(
             recommendation="HOLD",
-            signal_quality="PARTIAL",
-            confidence=round(min(confidence, 49.0), 1),
+            signal_quality="FULL",
+            confidence=round(min(confidence, 44.0), 1),
             block_reason=block_reason,
         )
 
