@@ -206,43 +206,6 @@
           </aside>
 
           <section id="analysisCenterColumn" class="min-w-0 space-y-5">
-            <div id="signalsOverviewRow" class="min-w-0 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(280px,320px)]">
-              <section id="alertsSection" class="dashboard-panel rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
-                <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
-                  <div>
-                    <p class="text-xs font-medium text-slate-500">Alerts</p>
-                    <h2 class="mt-2 text-xl font-semibold">Signals</h2>
-                  </div>
-                  <span id="alertsMeta" class="text-xs text-slate-500">Scanning...</span>
-                </div>
-                <div id="alertsList" class="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-                  <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                    <p class="text-sm font-semibold text-white">Scanning</p>
-                    <p class="mt-2 text-sm leading-6 text-slate-400">📈 Checking moves.</p>
-                  </article>
-                </div>
-              </section>
-
-              <aside
-                id="opportunitySection"
-                class="dashboard-panel rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5"
-              >
-                <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
-                  <div>
-                    <p class="text-xs font-medium text-slate-500">Opportunity panel</p>
-                    <h2 class="mt-2 text-xl font-semibold">Setups</h2>
-                  </div>
-                  <span id="opportunityMeta" class="text-xs text-slate-500">Ranking...</span>
-                </div>
-                <div id="opportunityList" class="space-y-3">
-                  <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                    <p class="text-sm font-semibold text-white">Ranking</p>
-                    <p class="mt-2 text-sm leading-6 text-slate-400">📈 Best moves first.</p>
-                  </article>
-                </div>
-              </aside>
-            </div>
-
             <div id="selectedSymbolSection" class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
               <div id="selectedSymbolHero" class="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
@@ -478,6 +441,43 @@
                   <span>Tap chart</span>
                 </button>
               </div>
+            </div>
+
+            <div id="signalsOverviewRow" class="min-w-0 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(280px,320px)]">
+              <section id="alertsSection" class="dashboard-panel rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
+                <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <p class="text-xs font-medium text-slate-500">Alerts</p>
+                    <h2 class="mt-2 text-xl font-semibold">Signals</h2>
+                  </div>
+                  <span id="alertsMeta" class="text-xs text-slate-500">Scanning...</span>
+                </div>
+                <div id="alertsList" class="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+                  <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                    <p class="text-sm font-semibold text-white">Scanning</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-400">📈 Checking moves.</p>
+                  </article>
+                </div>
+              </section>
+
+              <aside
+                id="opportunitySection"
+                class="dashboard-panel rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5"
+              >
+                <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <p class="text-xs font-medium text-slate-500">Opportunity panel</p>
+                    <h2 class="mt-2 text-xl font-semibold">Setups</h2>
+                  </div>
+                  <span id="opportunityMeta" class="text-xs text-slate-500">Ranking...</span>
+                </div>
+                <div id="opportunityList" class="space-y-3">
+                  <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                    <p class="text-sm font-semibold text-white">Ranking</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-400">📈 Best moves first.</p>
+                  </article>
+                </div>
+              </aside>
             </div>
           </section>
 

@@ -1482,6 +1482,7 @@ body {
   #selectedSymbolSection {
     grid-column: 2;
     padding: 1.15rem !important;
+    max-width: none;
   }
 
   #signalsOverviewRow {
@@ -1491,10 +1492,23 @@ body {
   #chartSection {
     grid-column: 2;
     padding: 1rem !important;
+    margin-top: -0.15rem;
   }
 
   #alertsSection {
     padding: 1rem !important;
+  }
+
+  #signalsOverviewRow {
+    grid-column: 2;
+    margin-top: 0.7rem;
+    align-items: start;
+  }
+
+  #alertsSection,
+  #opportunitySection,
+  #learningSection {
+    opacity: 0.92;
   }
 
   #decisionRail {
@@ -1522,17 +1536,27 @@ body {
     position: relative;
     top: auto;
     align-self: stretch;
-    padding: 1.05rem !important;
+    padding: 1.35rem !important;
     width: 100%;
+    border-color: rgba(45, 212, 191, 0.18);
+    background:
+      radial-gradient(circle at top left, rgba(20, 184, 166, 0.08), transparent 34%),
+      linear-gradient(180deg, rgba(17, 24, 39, 0.96), rgba(15, 23, 36, 0.9));
+    box-shadow:
+      0 22px 48px rgba(2, 6, 23, 0.26),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 
   #tradeDecisionSection .signal-hero {
     min-height: 0;
-    padding: 1.15rem !important;
+    padding: 1.4rem !important;
+    min-height: 22rem;
+    background:
+      linear-gradient(180deg, rgba(15, 23, 42, 0.82), rgba(2, 6, 23, 0.72));
   }
 
   #recommendationValue {
-    font-size: clamp(4.5rem, 5vw, 6rem) !important;
+    font-size: clamp(4.9rem, 5.8vw, 6.8rem) !important;
     line-height: 0.82;
   }
 
@@ -1574,6 +1598,11 @@ body {
     font-size: 1.55rem;
   }
 
+  #tradeDecisionSection .decision-summary {
+    font-size: 0.98rem;
+    line-height: 1.7;
+  }
+
   #tradeDecisionSection .mt-4.grid,
   #tradeDecisionSection .sm\:grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -1582,6 +1611,20 @@ body {
   #tradingviewChart {
     min-height: 520px;
     height: min(62vh, 620px) !important;
+  }
+
+  #selectedSymbolSection .dashboard-card {
+    padding: 0.9rem !important;
+  }
+
+  #selectedSymbolSection .dashboard-card p.text-2xl,
+  #selectedSymbolSection .dashboard-card p.text-3xl {
+    font-size: 1.45rem !important;
+  }
+
+  #alertsSection .dashboard-panel,
+  #opportunitySection .dashboard-panel {
+    box-shadow: none;
   }
 
   #watchlistSection h2,
