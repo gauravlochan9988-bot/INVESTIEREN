@@ -8,7 +8,7 @@ def test_root_serves_static_dashboard(client):
     assert "Continue with Google" in response.text
     assert "Continue with Apple" in response.text
     assert "Email Login" in response.text
-    assert "Admin access" in response.text
+    assert "Admin Mode" in response.text
     assert 'id="authManagedPanel"' in response.text
     assert 'id="authClerkMount"' in response.text
     assert 'id="paywallOverlay"' in response.text
