@@ -4,9 +4,12 @@ def test_root_serves_static_dashboard(client):
     assert response.status_code == 200
     assert "Investieren AI" in response.text
     assert 'id="authOverlay"' in response.text
-    assert "Private access" in response.text
-    assert "Private Code" in response.text
-    assert "Unlock Dashboard" in response.text
+    assert "Access dashboard" in response.text
+    assert "Continue with Google" in response.text
+    assert "Continue with Apple" in response.text
+    assert "Create Account" in response.text
+    assert "Login" in response.text
+    assert 'id="authManagedPanel"' in response.text
     assert 'placeholder="Search"' in response.text
     assert "Quotes" in response.text
     assert "TradingView" in response.text
@@ -45,8 +48,11 @@ def test_static_assets_are_available(client):
     assert "/api/dashboard/news/" in response.text
     assert "/api/analysis/" in response.text
     assert "/api/analysis/performance" in response.text
+    assert "/api/auth/config" in response.text
+    assert "/api/auth/me" in response.text
     assert "sessionStorage" in response.text
-    assert 'const AUTH_PASSWORD = "9988"' in response.text
+    assert "initializeManagedAuth" in response.text
+    assert "createAuth0Client" in response.text
     assert "showLoginOverlay" in response.text
     assert "showAppShell" in response.text
     assert "buildApiUrl" in response.text

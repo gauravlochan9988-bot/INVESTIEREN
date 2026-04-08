@@ -4,7 +4,7 @@ if (window.location.protocol === "file:") {
 
 const DEPLOYED_API_ORIGIN = "https://investieren-production.up.railway.app";
 const LOCAL_API_HOSTS = new Set(["127.0.0.1", "localhost"]);
-const AUTH_PASSWORD = "9988";
+const AUTH_TOKEN_CACHE_MS = 45 * 1000;
 const STORAGE_KEYS = {
   authenticated: "investieren:authenticated",
   selectedSymbol: "investieren:selectedSymbol",
@@ -70,11 +70,26 @@ const state = {
   latestOverview: null,
   learningStats: null,
   opportunities: [],
+  auth: {
+    enabled: false,
+    ready: false,
+    config: null,
+    client: null,
+    accessToken: "",
+    tokenFetchedAt: 0,
+    currentUser: null,
+  },
 };
 
 const elements = {
   authOverlay: document.getElementById("authOverlay"),
+  authManagedPanel: document.getElementById("authManagedPanel"),
   authForm: document.getElementById("authForm"),
+  authGoogleButton: document.getElementById("authGoogleButton"),
+  authAppleButton: document.getElementById("authAppleButton"),
+  authCreateAccountButton: document.getElementById("authCreateAccountButton"),
+  authLoginButton: document.getElementById("authLoginButton"),
+  authLoading: document.getElementById("authLoading"),
   authPassword: document.getElementById("authPassword"),
   authError: document.getElementById("authError"),
   authCancelButton: document.getElementById("authCancelButton"),
@@ -184,6 +199,164 @@ function resolveApiBaseUrl() {
 
 function buildApiUrl(path) {
   return `${resolveApiBaseUrl()}${path}`;
+}
+
+function currentUserKey() {
+  return state.auth.currentUser?.auth_subject || "default";
+}
+
+function renderAuthMode() {
+  const managedEnabled = Boolean(state.auth.enabled);
+  if (elements.authManagedPanel) {
+    elements.authManagedPanel.hidden = !managedEnabled;
+  }
+  if (elements.authForm) {
+    elements.authForm.hidden = managedEnabled;
+  }
+}
+
+function setAuthLoading(loading, message = "Redirecting…") {
+  if (!elements.authLoading) {
+    return;
+  }
+  elements.authLoading.hidden = !loading;
+  elements.authLoading.textContent = message;
+}
+
+function setAuthError(message = "") {
+  if (!elements.authError) {
+    return;
+  }
+  if (!message) {
+    elements.authError.hidden = true;
+    return;
+  }
+  elements.authError.textContent = message;
+  elements.authError.hidden = false;
+}
+
+async function fetchAuthConfig() {
+  const config = await api("/api/auth/config", {
+    timeoutMs: 12000,
+    retryCount: 1,
+    skipAuth: true,
+  });
+  state.auth.config = config;
+  state.auth.enabled = Boolean(config?.enabled && config.domain && config.client_id && config.audience);
+  renderAuthMode();
+  return config;
+}
+
+async function getAccessToken(forceRefresh = false) {
+  if (!state.auth.enabled || !state.auth.client) {
+    return "";
+  }
+
+  if (
+    !forceRefresh &&
+    state.auth.accessToken &&
+    Date.now() - state.auth.tokenFetchedAt < AUTH_TOKEN_CACHE_MS
+  ) {
+    return state.auth.accessToken;
+  }
+
+  try {
+    const token = await state.auth.client.getTokenSilently();
+    state.auth.accessToken = token;
+    state.auth.tokenFetchedAt = Date.now();
+    return token;
+  } catch (error) {
+    console.error("[frontend] silent token refresh failed", error);
+    state.auth.accessToken = "";
+    state.auth.tokenFetchedAt = 0;
+    return "";
+  }
+}
+
+async function syncAuthenticatedUser(forceRefresh = false) {
+  if (!state.auth.enabled) {
+    return null;
+  }
+
+  const token = await getAccessToken(forceRefresh);
+  if (!token) {
+    throw new Error("Auth session unavailable.");
+  }
+
+  const user = await api("/api/auth/me", {
+    timeoutMs: 12000,
+    retryCount: 1,
+    skipAuth: true,
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  state.auth.currentUser = user;
+  return user;
+}
+
+async function initializeManagedAuth() {
+  const config = await fetchAuthConfig();
+  if (!state.auth.enabled) {
+    state.auth.ready = true;
+    return false;
+  }
+
+  if (typeof window.createAuth0Client !== "function") {
+    state.auth.ready = true;
+    state.auth.enabled = false;
+    renderAuthMode();
+    setAuthError("Managed login is unavailable.");
+    return false;
+  }
+
+  state.auth.client = await window.createAuth0Client({
+    domain: config.domain,
+    clientId: config.client_id,
+    cacheLocation: "memory",
+    authorizationParams: {
+      audience: config.audience,
+      redirect_uri: `${window.location.origin}${window.location.pathname}`,
+      scope: "openid profile email",
+    },
+  });
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.has("code") && params.has("state")) {
+    await state.auth.client.handleRedirectCallback();
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
+  if (await state.auth.client.isAuthenticated()) {
+    await syncAuthenticatedUser(true);
+  }
+
+  state.auth.ready = true;
+  return isAuthenticated();
+}
+
+async function loginWithManagedProvider(mode = "login", connection = "") {
+  if (!state.auth.enabled || !state.auth.client) {
+    setAuthError("Managed login is not configured.");
+    return;
+  }
+
+  setAuthError("");
+  setAuthLoading(true);
+  try {
+    const authorizationParams = {};
+    if (mode === "signup") {
+      authorizationParams.screen_hint = "signup";
+    }
+    if (connection) {
+      authorizationParams.connection = connection;
+    }
+    await state.auth.client.loginWithRedirect({ authorizationParams });
+  } catch (error) {
+    console.error("[frontend] login redirect failed", error);
+    setAuthLoading(false);
+    setAuthError("Login failed. Try again.");
+  }
 }
 
 function scheduleLowPriorityTask(task, delayMs = 0) {
@@ -1780,6 +1953,14 @@ function closePortfolioSheet() {
 }
 
 function setAuthenticated(value) {
+  if (state.auth.enabled) {
+    if (!value) {
+      state.auth.currentUser = null;
+      state.auth.accessToken = "";
+      state.auth.tokenFetchedAt = 0;
+    }
+    return;
+  }
   if (value) {
     window.sessionStorage.setItem(STORAGE_KEYS.authenticated, "1");
     return;
@@ -1788,6 +1969,9 @@ function setAuthenticated(value) {
 }
 
 function isAuthenticated() {
+  if (state.auth.enabled) {
+    return Boolean(state.auth.currentUser);
+  }
   return window.sessionStorage.getItem(STORAGE_KEYS.authenticated) === "1";
 }
 
@@ -1896,11 +2080,40 @@ function getVisibleWatchlistItems(items) {
   return [...favoriteItems, ...defaultItems, ...adHocItems].slice(0, MAX_SIDEBAR_SLOTS);
 }
 
-function toggleFavorite(symbol) {
+async function loadFavoriteSymbolsFromBackend() {
+  if (!isAuthenticated()) {
+    return state.favoriteSymbols;
+  }
+
+  try {
+    const params = new URLSearchParams({ user_key: currentUserKey() });
+    const favorites = await api(`/api/favorites?${params.toString()}`, {
+      timeoutMs: 12000,
+      retryCount: 1,
+    });
+    state.favoriteSymbols = new Set(
+      (Array.isArray(favorites) ? favorites : [])
+        .map((entry) => String(entry?.symbol || "").trim().toUpperCase())
+        .filter(Boolean),
+    );
+    persistFavoriteSymbols();
+    renderWatchlist(state.watchlist);
+    renderFavorites();
+    syncMobileFavoriteButton();
+    syncSelectedFavoriteButton();
+  } catch (error) {
+    console.error("[frontend] favorite sync failed", error);
+  }
+
+  return state.favoriteSymbols;
+}
+
+async function toggleFavorite(symbol) {
   const normalized = String(symbol || "").trim().toUpperCase();
   if (!normalized) {
     return;
   }
+  const wasFavorite = state.favoriteSymbols.has(normalized);
   if (state.favoriteSymbols.has(normalized)) {
     state.favoriteSymbols.delete(normalized);
   } else {
@@ -1918,6 +2131,43 @@ function toggleFavorite(symbol) {
   renderFavorites();
   syncMobileFavoriteButton();
   syncSelectedFavoriteButton();
+
+  if (!isAuthenticated()) {
+    return;
+  }
+
+  try {
+    if (wasFavorite) {
+      await api(`/api/favorites/${encodeURIComponent(normalized)}?user_key=${encodeURIComponent(currentUserKey())}`, {
+        method: "DELETE",
+        timeoutMs: 12000,
+        retryCount: 0,
+      });
+    } else {
+      await api("/api/favorites", {
+        method: "POST",
+        timeoutMs: 12000,
+        retryCount: 0,
+        body: JSON.stringify({
+          symbol: normalized,
+          user_key: currentUserKey(),
+        }),
+      });
+    }
+  } catch (error) {
+    console.error("[frontend] favorite update failed", error);
+    if (wasFavorite) {
+      state.favoriteSymbols.add(normalized);
+    } else {
+      state.favoriteSymbols.delete(normalized);
+    }
+    persistFavoriteSymbols();
+    renderWatchlist(state.watchlist);
+    renderFavorites();
+    syncMobileFavoriteButton();
+    syncSelectedFavoriteButton();
+    showError(error.message || "Favorite could not update.");
+  }
 }
 
 function renderFavoriteButton(symbol) {
@@ -1933,7 +2183,7 @@ function bindFavoriteButtons(scope = document) {
   scope.querySelectorAll("[data-favorite-symbol]").forEach((button) => {
     button.addEventListener("click", (event) => {
       event.stopPropagation();
-      toggleFavorite(button.dataset.favoriteSymbol);
+      void toggleFavorite(button.dataset.favoriteSymbol);
     });
   });
 }
@@ -2103,9 +2353,17 @@ async function api(path, options = {}) {
   const retryDelayMs = options.retryDelayMs ?? 1200;
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  const authHeaders =
+    !options.skipAuth && String(path || "").startsWith("/api/") && path !== "/api/auth/config"
+      ? await (async () => {
+          const token = await getAccessToken();
+          return token ? { Authorization: `Bearer ${token}` } : {};
+        })()
+      : {};
 
   const headers = {
     "Content-Type": "application/json",
+    ...authHeaders,
     ...(options.headers || {}),
   };
 
@@ -2234,6 +2492,7 @@ async function loadAlerts(forceRefresh = false) {
   const params = new URLSearchParams({
     strategy: state.selectedStrategy,
     limit: "6",
+    user_key: currentUserKey(),
   });
   if (forceRefresh) {
     params.set("refresh", "1");
@@ -3123,7 +3382,8 @@ async function bootDashboard(forceRefresh = false) {
       console.error("[frontend] health load failed", error);
     });
 
-    const [watchlistResult, symbolResult] = await Promise.allSettled([
+    const [favoritesResult, watchlistResult, symbolResult] = await Promise.allSettled([
+      loadFavoriteSymbolsFromBackend(),
       loadWatchlist(forceRefresh),
       loadSymbol(state.selectedSymbol, forceRefresh),
     ]);
@@ -3155,6 +3415,10 @@ async function bootDashboard(forceRefresh = false) {
       });
     }, 220);
 
+    if (favoritesResult.status === "rejected") {
+      console.error("[frontend] favorite preload failed", favoritesResult.reason);
+    }
+
     if (watchlistResult.status === "rejected") {
       throw watchlistResult.reason;
     }
@@ -3176,27 +3440,45 @@ async function bootDashboard(forceRefresh = false) {
 }
 
 function bindAuth() {
+  elements.authGoogleButton?.addEventListener("click", () => {
+    const connection = state.auth.config?.google_connection || "google-oauth2";
+    void loginWithManagedProvider("login", connection);
+  });
+
+  elements.authAppleButton?.addEventListener("click", () => {
+    const connection = state.auth.config?.apple_connection || "apple";
+    void loginWithManagedProvider("login", connection);
+  });
+
+  elements.authCreateAccountButton?.addEventListener("click", () => {
+    void loginWithManagedProvider("signup");
+  });
+
+  elements.authLoginButton?.addEventListener("click", () => {
+    void loginWithManagedProvider("login");
+  });
+
   if (elements.authCancelButton) {
     elements.authCancelButton.addEventListener("click", () => {
       elements.authForm.reset();
-      elements.authError.hidden = true;
-      elements.authPassword.focus();
+      setAuthError("");
+      elements.authPassword?.focus();
     });
   }
 
-  elements.authPassword.addEventListener("input", () => {
-    elements.authError.hidden = true;
+  elements.authPassword?.addEventListener("input", () => {
+    setAuthError("");
   });
 
-  elements.authForm.addEventListener("submit", async (event) => {
+  elements.authForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (elements.authPassword.value.trim() !== AUTH_PASSWORD) {
-      elements.authError.textContent = "Wrong password";
-      elements.authError.hidden = false;
+    if (elements.authPassword.value.trim() !== "9988") {
+      setAuthError("Wrong password");
       elements.authPassword.select();
       return;
     }
 
+    setAuthError("");
     setAuthenticated(true);
     showAppShell();
     await bootDashboard();
@@ -3236,7 +3518,15 @@ function bindApp() {
     }
   };
 
-  elements.logoutButton.addEventListener("click", () => {
+  elements.logoutButton.addEventListener("click", async () => {
+    if (state.auth.enabled && state.auth.client) {
+      await state.auth.client.logout({
+        logoutParams: {
+          returnTo: `${window.location.origin}${window.location.pathname}`,
+        },
+      });
+      return;
+    }
     setAuthenticated(false);
     showLoginOverlay();
   });
@@ -3252,12 +3542,12 @@ function bindApp() {
   });
 
   elements.mobileFavoriteButton?.addEventListener("click", () => {
-    toggleFavorite(state.selectedSymbol);
+    void toggleFavorite(state.selectedSymbol);
     syncMobileFavoriteButton();
   });
 
   elements.selectedFavoriteButton?.addEventListener("click", () => {
-    toggleFavorite(state.selectedSymbol);
+    void toggleFavorite(state.selectedSymbol);
     syncSelectedFavoriteButton();
   });
 
@@ -3387,12 +3677,28 @@ function bindApp() {
   }, { passive: true });
 }
 
-bindAuth();
-bindApp();
+async function initializeApp() {
+  try {
+    await initializeManagedAuth();
+  } catch (error) {
+    console.error("[frontend] auth init failed", error);
+    state.auth.enabled = false;
+    renderAuthMode();
+    setAuthError("Login setup failed.");
+  } finally {
+    setAuthLoading(false);
+  }
 
-if (isAuthenticated()) {
-  showAppShell();
-  bootDashboard();
-} else {
+  bindAuth();
+  bindApp();
+
+  if (isAuthenticated()) {
+    showAppShell();
+    void bootDashboard();
+    return;
+  }
+
   showLoginOverlay();
 }
+
+void initializeApp();

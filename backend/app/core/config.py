@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     finnhub_api_key: str = ""
     openai_api_key: str = ""
     openai_model: str = "gpt-5.4"
+    auth0_domain: str = ""
+    auth0_client_id: str = ""
+    auth0_audience: str = ""
+    auth0_google_connection: str = "google-oauth2"
+    auth0_apple_connection: str = "apple"
     watchlist: Dict[str, str] = Field(default_factory=lambda: DEFAULT_WATCHLIST.copy())
 
     @field_validator("database_url", mode="before")

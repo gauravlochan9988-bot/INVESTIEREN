@@ -1,10 +1,12 @@
 from functools import lru_cache
 
+from app.core.auth import Auth0TokenVerifier
 from app.core.config import get_settings
 from app.core.database import get_session_factory
 from app.repositories.alert_repository import AlertRepository
 from app.repositories.analysis_log import AnalysisLogRepository
 from app.repositories.analysis_threshold import AnalysisThresholdRepository
+from app.repositories.app_user import AppUserRepository
 from app.repositories.favorite_symbol import FavoriteSymbolRepository
 from app.repositories.portfolio import PortfolioRepository
 from app.repositories.trade_performance import TradePerformanceRepository
@@ -143,6 +145,11 @@ def get_analysis_threshold_repository_instance() -> AnalysisThresholdRepository:
 
 
 @lru_cache
+def get_app_user_repository_instance() -> AppUserRepository:
+    return AppUserRepository()
+
+
+@lru_cache
 def get_alert_repository_instance() -> AlertRepository:
     return AlertRepository()
 
@@ -217,6 +224,23 @@ def get_analysis_calibration_service_instance() -> AnalysisCalibrationService:
 
 def get_analysis_threshold_repository() -> AnalysisThresholdRepository:
     return get_analysis_threshold_repository_instance()
+
+
+@lru_cache
+def get_auth0_verifier_instance() -> Auth0TokenVerifier:
+    settings = get_settings()
+    return Auth0TokenVerifier(
+        domain=settings.auth0_domain,
+        audience=settings.auth0_audience,
+    )
+
+
+def get_auth0_verifier() -> Auth0TokenVerifier:
+    return get_auth0_verifier_instance()
+
+
+def get_app_user_repository() -> AppUserRepository:
+    return get_app_user_repository_instance()
 
 
 def get_analysis_calibration_service() -> AnalysisCalibrationService:
