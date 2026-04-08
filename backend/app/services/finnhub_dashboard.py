@@ -19,6 +19,11 @@ from app.services.news import NewsSentimentService
 
 class FinnhubDashboardService:
     BASE_URL = "https://finnhub.io/api/v1"
+    TICKER_ALIASES = {
+        "BRK.B": "BRK-B",
+        "BRK/A": "BRK-A",
+        "BRK.A": "BRK-A",
+    }
 
     def __init__(
         self,
@@ -61,6 +66,10 @@ class FinnhubDashboardService:
             raise ValidationError("Symbol contains unsupported characters.")
         return normalized
 
+    def _normalize_market_symbol(self, symbol: str) -> str:
+        normalized = self._normalize_symbol(symbol)
+        return self.TICKER_ALIASES.get(normalized, normalized)
+
     def _request(self, path: str, **params: str) -> Union[dict, list]:
         self._ensure_api_key()
         request_params = {**params, "token": self.api_key}
@@ -80,13 +89,13 @@ class FinnhubDashboardService:
         return response.json()
 
     def _fetch_quote(self, symbol: str) -> dict:
-        payload = self._request("/quote", symbol=symbol)
+        payload = self._request("/quote", symbol=self._normalize_market_symbol(symbol))
         if not isinstance(payload, dict) or payload.get("c") in (None, 0):
             raise ExternalServiceError(f"No Finnhub quote data available for {symbol}.")
         return payload
 
     def _fetch_profile(self, symbol: str) -> dict:
-        payload = self._request("/stock/profile2", symbol=symbol)
+        payload = self._request("/stock/profile2", symbol=self._normalize_market_symbol(symbol))
         if not isinstance(payload, dict) or not payload.get("ticker"):
             raise ExternalServiceError(f"No Finnhub profile available for {symbol}.")
         return payload
@@ -128,6 +137,7 @@ class FinnhubDashboardService:
         return numeric
 
     def _fallback_symbol_overview(self, symbol: str) -> DashboardSymbolOverview:
+        lookup_symbol = self._normalize_market_symbol(symbol)
         try:
             import yfinance as yf
         except ImportError as exc:
@@ -136,7 +146,7 @@ class FinnhubDashboardService:
             ) from exc
 
         try:
-            ticker = yf.Ticker(symbol)
+            ticker = yf.Ticker(lookup_symbol)
             history = ticker.history(
                 period="5d",
                 interval="1d",
@@ -197,6 +207,41 @@ class FinnhubDashboardService:
             previous_close=round(previous, 2),
         )
 
+    def _fallback_watchlist_item(self, symbol: str) -> DashboardWatchlistItem:
+        overview = self._fallback_symbol_overview(symbol)
+        return DashboardWatchlistItem(
+            symbol=overview.symbol,
+            name=overview.name,
+            exchange=overview.exchange,
+            logo=overview.logo,
+            price=overview.price,
+            change_percent=overview.change_percent,
+            high=overview.high,
+            low=overview.low,
+            open=overview.open,
+            previous_close=overview.previous_close,
+        )
+
+    def _last_known_watchlist_item(self, symbol: str) -> DashboardWatchlistItem | None:
+        active = self.watchlist_cache.get("watchlist") or []
+        stale = self.watchlist_cache.get_stale("watchlist") or []
+        for item in [*active, *stale]:
+            if item.symbol == symbol:
+                return item
+        return None
+
+    def _find_item_in_snapshot(
+        self,
+        snapshot: list[DashboardWatchlistItem] | None,
+        symbol: str,
+    ) -> DashboardWatchlistItem | None:
+        if not snapshot:
+            return None
+        for item in snapshot:
+            if item.symbol == symbol:
+                return item
+        return None
+
     def _fallback_company_news(self, symbol: str) -> list[DashboardNewsItem]:
         if self.news_sentiment_service is None:
             return []
@@ -223,22 +268,32 @@ class FinnhubDashboardService:
         return items
 
     def _build_watchlist_item(self, symbol: str) -> DashboardWatchlistItem:
-        quote = self._fetch_quote(symbol)
-        return DashboardWatchlistItem(
-            symbol=symbol,
-            name=self.watchlist_names.get(symbol) or symbol,
-            exchange=None,
-            logo=None,
-            price=float(quote.get("c") or 0),
-            change_percent=float(quote.get("dp") or 0),
-            high=float(quote.get("h") or 0),
-            low=float(quote.get("l") or 0),
-            open=float(quote.get("o") or 0),
-            previous_close=float(quote.get("pc") or 0),
-        )
+        try:
+            quote = self._fetch_quote(symbol)
+            return DashboardWatchlistItem(
+                symbol=symbol,
+                name=self.watchlist_names.get(symbol) or symbol,
+                exchange=None,
+                logo=None,
+                price=float(quote.get("c") or 0),
+                change_percent=float(quote.get("dp") or 0),
+                high=float(quote.get("h") or 0),
+                low=float(quote.get("l") or 0),
+                open=float(quote.get("o") or 0),
+                previous_close=float(quote.get("pc") or 0),
+            )
+        except ExternalServiceError:
+            try:
+                return self._fallback_watchlist_item(symbol)
+            except ExternalServiceError:
+                last_known = self._last_known_watchlist_item(symbol)
+                if last_known is not None:
+                    return last_known
+                raise
 
     def get_watchlist(self, force_refresh: bool = False) -> list[DashboardWatchlistItem]:
         cache_key = "watchlist"
+        stale_snapshot = self.watchlist_cache.get_stale(cache_key) if force_refresh else None
         if force_refresh:
             self.watchlist_cache.delete(cache_key)
         cached = self.watchlist_cache.get(cache_key)
@@ -255,6 +310,9 @@ class FinnhubDashboardService:
                 try:
                     items.append(self._build_watchlist_item(symbol))
                 except ExternalServiceError:
+                    last_known = self._find_item_in_snapshot(stale_snapshot, symbol)
+                    if last_known is not None:
+                        items.append(last_known)
                     continue
 
             if not items:

@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from app.core.exceptions import ExternalServiceError
 from app.schemas.dashboard import DashboardNewsItem
 from app.schemas.dashboard import DashboardSymbolOverview
+from app.schemas.dashboard import DashboardWatchlistItem
 from app.services.finnhub_dashboard import FinnhubDashboardService
 
 
@@ -70,3 +71,69 @@ def test_company_news_falls_back_to_sentiment_articles_when_finnhub_fails(monkey
     assert items[0].url
     assert isinstance(items[0].published_at, datetime)
     assert items[0].published_at.tzinfo == timezone.utc
+
+
+def test_watchlist_item_falls_back_to_yfinance_style_overview_when_finnhub_fails(monkeypatch):
+    service = FinnhubDashboardService(api_key="demo", watchlist=("AMD",))
+
+    def fail_quote(symbol: str):
+        raise ExternalServiceError("quote failed")
+
+    def fallback_watchlist_item(symbol: str):
+        return DashboardWatchlistItem(
+            symbol=symbol,
+            name="AMD",
+            exchange="NASDAQ",
+            logo=None,
+            price=101.25,
+            change_percent=1.5,
+            high=102.0,
+            low=99.5,
+            open=100.0,
+            previous_close=99.75,
+        )
+
+    monkeypatch.setattr(service, "_fetch_quote", fail_quote)
+    monkeypatch.setattr(service, "_fallback_watchlist_item", fallback_watchlist_item)
+
+    items = service.get_watchlist(force_refresh=True)
+
+    assert len(items) == 1
+    assert items[0].symbol == "AMD"
+    assert items[0].price == 101.25
+
+
+def test_watchlist_item_uses_last_known_price_when_live_sources_fail(monkeypatch):
+    service = FinnhubDashboardService(api_key="demo", watchlist=("GOOGL",))
+
+    stale_item = DashboardWatchlistItem(
+        symbol="GOOGL",
+        name="Alphabet",
+        exchange="NASDAQ",
+        logo=None,
+        price=188.2,
+        change_percent=0.8,
+        high=189.0,
+        low=186.5,
+        open=187.0,
+        previous_close=186.7,
+    )
+    service.watchlist_cache.set(
+        "watchlist",
+        [stale_item],
+    )
+
+    def fail_quote(symbol: str):
+        raise ExternalServiceError("quote failed")
+
+    def fail_fallback(symbol: str):
+        raise ExternalServiceError("fallback failed")
+
+    monkeypatch.setattr(service, "_fetch_quote", fail_quote)
+    monkeypatch.setattr(service, "_fallback_watchlist_item", fail_fallback)
+
+    items = service.get_watchlist(force_refresh=True)
+
+    assert len(items) == 1
+    assert items[0].symbol == "GOOGL"
+    assert items[0].price == 188.2
