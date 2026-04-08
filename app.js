@@ -25,7 +25,7 @@ const STRATEGY_LABELS = {
 };
 
 const MAX_SIDEBAR_SLOTS = 10;
-const OPPORTUNITY_LIMIT = 4;
+const OPPORTUNITY_LIMIT = 3;
 const DEFAULT_SIDEBAR_ITEMS = [
   { symbol: "AAPL", name: "Apple Inc" },
   { symbol: "MSFT", name: "Microsoft" },
@@ -970,6 +970,63 @@ function buildOpportunitySection(title, tone, entries, emptyMessage) {
   `;
 }
 
+function uniqueOpportunityEntries(entries) {
+  const seen = new Set();
+  return entries.filter((entry) => {
+    if (!entry?.symbol || seen.has(entry.symbol)) {
+      return false;
+    }
+    seen.add(entry.symbol);
+    return true;
+  });
+}
+
+function opportunityBuyCandidates(entries) {
+  return uniqueOpportunityEntries(
+    [...entries]
+      .filter((entry) => entry.recommendation === "BUY" || entry.score > 0 || entry.confidence >= 45)
+      .sort((left, right) => {
+        const leftBoost = left.recommendation === "BUY" ? 1 : 0;
+        const rightBoost = right.recommendation === "BUY" ? 1 : 0;
+        return (
+          rightBoost - leftBoost ||
+          right.rank - left.rank ||
+          right.score - left.score ||
+          right.confidence - left.confidence
+        );
+      }),
+  ).slice(0, OPPORTUNITY_LIMIT);
+}
+
+function opportunitySellCandidates(entries) {
+  return uniqueOpportunityEntries(
+    [...entries]
+      .filter((entry) => entry.recommendation === "SELL" || entry.score < 0 || entry.confidence >= 45)
+      .sort((left, right) => {
+        const leftBoost = left.recommendation === "SELL" ? 1 : 0;
+        const rightBoost = right.recommendation === "SELL" ? 1 : 0;
+        return (
+          rightBoost - leftBoost ||
+          left.rank - right.rank ||
+          left.score - right.score ||
+          right.confidence - left.confidence
+        );
+      }),
+  ).slice(0, OPPORTUNITY_LIMIT);
+}
+
+function opportunityConfidenceCandidates(entries, excludedSymbols = new Set()) {
+  const primary = entries
+    .filter((entry) => !excludedSymbols.has(entry.symbol) && entry.confidence >= 60)
+    .sort((left, right) => right.confidence - left.confidence || Math.abs(right.score) - Math.abs(left.score));
+
+  const fallback = entries
+    .filter((entry) => !excludedSymbols.has(entry.symbol))
+    .sort((left, right) => right.confidence - left.confidence || Math.abs(right.score) - Math.abs(left.score));
+
+  return uniqueOpportunityEntries(primary.length ? primary : fallback).slice(0, OPPORTUNITY_LIMIT);
+}
+
 function renderOpportunityPanel(entries) {
   if (!elements.opportunityList || !elements.opportunityMeta) {
     return;
@@ -978,25 +1035,15 @@ function renderOpportunityPanel(entries) {
   const fullCount = entries.filter((entry) => entry.dataQuality === "FULL").length;
   elements.opportunityMeta.textContent = `${entries.length} ranked · ${fullCount} full data`;
 
-  const topBuy = entries
-    .filter((entry) => entry.recommendation === "BUY")
-    .sort((left, right) => right.rank - left.rank)
-    .slice(0, OPPORTUNITY_LIMIT);
-
-  const topSell = entries
-    .filter((entry) => entry.recommendation === "SELL")
-    .sort((left, right) => left.score - right.score || right.confidence - left.confidence)
-    .slice(0, OPPORTUNITY_LIMIT);
-
-  const highConfidence = entries
-    .filter((entry) => entry.confidence > 75)
-    .sort((left, right) => right.confidence - left.confidence || Math.abs(right.score) - Math.abs(left.score))
-    .slice(0, OPPORTUNITY_LIMIT);
+  const topBuy = opportunityBuyCandidates(entries);
+  const topSell = opportunitySellCandidates(entries);
+  const excludedSymbols = new Set([...topBuy, ...topSell].map((entry) => entry.symbol));
+  const highConfidence = opportunityConfidenceCandidates(entries, excludedSymbols);
 
   elements.opportunityList.innerHTML = [
-    buildOpportunitySection("Top BUY", "BUY", topBuy, "No strong BUY opportunities right now."),
-    buildOpportunitySection("Top SELL", "SELL", topSell, "No urgent SELL risks right now."),
-    buildOpportunitySection("High confidence", "HOLD", highConfidence, "No high-confidence setups crossed the threshold."),
+    buildOpportunitySection("Top BUY", "BUY", topBuy, "Showing the best bullish setup available right now."),
+    buildOpportunitySection("Top SELL", "SELL", topSell, "Showing the weakest setup available right now."),
+    buildOpportunitySection("High confidence", "HOLD", highConfidence, "Showing the clearest available setup right now."),
   ].join("");
 
   elements.opportunityList.querySelectorAll(".opportunity-card").forEach((button) => {
@@ -1065,15 +1112,26 @@ async function loadOpportunities(forceRefresh = false) {
       const score = Number(analysis.score || 0);
       const dataQuality = String(analysis.data_quality || "NO_DATA").toUpperCase();
       const watchlistItem = watchlistMap.get(symbol);
+      const recommendation = analysis.recommendation || "HOLD";
+      const directionalBias =
+        recommendation === "BUY"
+          ? 1.25
+          : recommendation === "SELL"
+            ? -1.25
+            : score > 0
+              ? 0.5
+              : score < 0
+                ? -0.5
+                : 0;
       return {
         symbol,
         name: watchlistItem?.name || analysis.name || symbol,
-        recommendation: analysis.recommendation || "HOLD",
+        recommendation,
         score,
         scoreLabel: score >= 0 ? `+${score}` : `${score}`,
         confidence,
         dataQuality,
-        rank: score + confidence / 100,
+        rank: score + directionalBias + confidence / 100,
       };
     })
     .filter((entry) => entry.dataQuality === "FULL" || entry.dataQuality === "PARTIAL");
