@@ -2686,3 +2686,341 @@ body {
     max-width: 100%;
   }
 }
+
+@media (min-width: 769px) and (max-width: 1279px) {
+  #dashboardWorkspace {
+    grid-template-columns: minmax(248px, 288px) minmax(0, 1fr) !important;
+    gap: 1rem !important;
+    align-items: start;
+  }
+
+  #watchlistSection {
+    grid-column: 1;
+    grid-row: 1 / span 3;
+    position: sticky;
+    top: 1rem;
+    align-self: start;
+  }
+
+  #analysisCenterColumn {
+    grid-column: 2;
+    gap: 1rem;
+  }
+
+  #signalsOverviewRow {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  #decisionRail {
+    grid-column: 2;
+    position: static !important;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 0;
+  }
+
+  #companySection {
+    margin-top: 0 !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  #dashboardWorkspace {
+    grid-template-columns: minmax(260px, 292px) minmax(0, 1fr) !important;
+    column-gap: 1.1rem;
+    row-gap: 1.1rem;
+  }
+
+  #watchlistSection {
+    grid-column: 1;
+    grid-row: 1 / span 3;
+    width: auto;
+    min-width: 0;
+    top: 1rem;
+  }
+
+  #analysisCenterColumn {
+    grid-column: 2;
+    gap: 1.1rem;
+  }
+
+  #selectedSymbolSection {
+    padding: 1rem 1.05rem !important;
+    border-color: rgba(148, 163, 184, 0.12);
+    background:
+      radial-gradient(circle at top left, rgba(56, 189, 248, 0.06), transparent 32%),
+      linear-gradient(180deg, rgba(17, 24, 39, 0.94), rgba(15, 23, 36, 0.86));
+  }
+
+  #selectedSymbolHero {
+    margin-bottom: 0.85rem !important;
+  }
+
+  #selectedSymbolSection > .grid {
+    gap: 0.75rem !important;
+  }
+
+  #selectedSymbolSection .dashboard-card {
+    min-height: 0;
+    padding: 0.85rem !important;
+    border-radius: 18px !important;
+  }
+
+  #metricPrice {
+    font-size: 2.2rem !important;
+    line-height: 1;
+  }
+
+  #metricHigh,
+  #metricLow,
+  #metricOpen,
+  #metricPrevClose {
+    font-size: 1.2rem !important;
+  }
+
+  #tradeDecisionSection {
+    padding: 1.55rem !important;
+    border-color: rgba(45, 212, 191, 0.22);
+    background:
+      radial-gradient(circle at top left, rgba(20, 184, 166, 0.1), transparent 36%),
+      linear-gradient(180deg, rgba(17, 24, 39, 0.97), rgba(15, 23, 36, 0.92));
+    box-shadow:
+      0 24px 56px rgba(2, 6, 23, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  #tradeDecisionSection .signal-hero {
+    min-height: 24rem;
+    padding: 1.6rem !important;
+    border-color: rgba(45, 212, 191, 0.16);
+  }
+
+  #tradeDecisionSection .signal-hero-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+    gap: 1rem;
+    align-items: start;
+  }
+
+  #tradeDecisionSection .signal-hero-top,
+  #tradeDecisionSection .decision-context-box {
+    grid-column: 1 / -1;
+  }
+
+  #tradeDecisionSection .signal-confidence-shell,
+  #tradeDecisionSection .signal-reason-block {
+    min-height: 100%;
+  }
+
+  #tradeDecisionSection .signal-confidence-shell {
+    padding: 1rem;
+  }
+
+  #tradeDecisionSection .signal-reason-block {
+    padding: 1rem;
+  }
+
+  #recommendationValue {
+    font-size: clamp(5.3rem, 6vw, 7.1rem) !important;
+    line-height: 0.82;
+  }
+
+  #confidenceValue {
+    font-size: 2.6rem !important;
+  }
+
+  #analysisSummary,
+  #noTradeReason {
+    max-width: 62ch;
+  }
+
+  #chartSection {
+    padding: 1rem !important;
+    margin-top: 0;
+  }
+
+  #tradingviewChart {
+    min-height: 470px;
+    height: min(56vh, 590px) !important;
+  }
+
+  #signalsOverviewRow {
+    grid-template-columns: minmax(0, 1.35fr) minmax(300px, 360px) !important;
+    gap: 1rem !important;
+    margin-top: 0.1rem;
+    align-items: stretch;
+  }
+
+  #alertsSection,
+  #opportunitySection {
+    min-height: 100%;
+    padding: 1rem !important;
+  }
+
+  #alertsList {
+    grid-template-columns: 1fr !important;
+    gap: 0.85rem !important;
+  }
+
+  #decisionRail {
+    grid-column: 2;
+    position: static !important;
+    top: auto !important;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 0;
+  }
+
+  #companySection {
+    margin-top: 0 !important;
+  }
+
+  #companySection,
+  #learningSection {
+    min-width: 0;
+  }
+
+  #companySection > section,
+  #learningSection {
+    height: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  #dashboardWorkspace {
+    gap: 14px !important;
+  }
+
+  #tradeDecisionSection {
+    order: 1;
+  }
+
+  #selectedSymbolSection {
+    order: 2;
+  }
+
+  #chartSection {
+    order: 3;
+  }
+
+  #opportunitySection {
+    display: block !important;
+    order: 4;
+  }
+
+  #decisionRail {
+    display: flex !important;
+    flex-direction: column;
+    order: 5;
+    gap: 12px;
+  }
+
+  #companySection {
+    display: block !important;
+    margin-top: 0 !important;
+  }
+
+  #learningSection {
+    display: none !important;
+  }
+
+  #watchlistSection {
+    order: 6;
+  }
+
+  #alertsSection {
+    order: 7;
+  }
+
+  #opportunitySection,
+  #companySection {
+    border-radius: 18px !important;
+  }
+
+  #selectedSymbolSection {
+    padding: 12px !important;
+  }
+
+  #selectedSymbolHero {
+    margin-bottom: 0.7rem !important;
+  }
+
+  #selectedSymbolSection > .grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.55rem !important;
+  }
+
+  #metricPriceCard {
+    order: -1;
+  }
+
+  #metricHighCard,
+  #metricLowCard,
+  #metricOpenCard,
+  #metricPrevCloseCard {
+    display: none !important;
+  }
+
+  #tradeDecisionSection,
+  #selectedSymbolSection,
+  #chartSection,
+  #opportunitySection,
+  #watchlistSection,
+  #alertsSection,
+  #companySection > section {
+    box-shadow: 0 18px 34px rgba(2, 6, 23, 0.2);
+  }
+
+  #recommendationCard {
+    padding: 14px !important;
+  }
+
+  #recommendationCard .signal-hero-layout {
+    gap: 0.8rem;
+  }
+
+  #recommendationCard .signal-confidence-shell,
+  #recommendationCard .signal-reason-block,
+  #recommendationCard .decision-context-box {
+    display: block !important;
+    padding: 0.85rem;
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  #recommendationCard .signal-hero-top {
+    gap: 0.8rem;
+  }
+
+  #recommendationValue {
+    font-size: 3rem !important;
+  }
+
+  #confidenceValue,
+  #mobileConfidenceValue {
+    font-size: 1.8rem !important;
+  }
+
+  #mobileDecisionDetails {
+    display: none !important;
+  }
+
+  #chartSection > .mb-4 {
+    margin-bottom: 8px !important;
+  }
+
+  #tradingviewChart {
+    min-height: 210px !important;
+    height: 210px !important;
+  }
+
+  #watchlistBody button,
+  #favoritesBody button,
+  .opportunity-card,
+  #alertsList article {
+    min-height: 54px;
+  }
+}
