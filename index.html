@@ -85,6 +85,10 @@
 
               <form id="authForm" class="w-full max-w-md space-y-4 auth-form-panel auth-private-panel" novalidate hidden>
                 <div class="space-y-2">
+                  <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">Access code</p>
+                  <p class="text-sm text-slate-400">Use your private code for full access.</p>
+                </div>
+                <div class="space-y-2">
                   <label for="authPassword" class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
                     Private Code
                   </label>
@@ -261,29 +265,13 @@
             <p class="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">Limited access</p>
             <p id="limitedAccessMessage" class="mt-1 text-sm text-emerald-100">You can explore the dashboard. Unlock live signals and alerts for full access.</p>
           </div>
-          <div class="flex w-full max-w-md flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
-            <input
-              id="limitedAccessCode"
-              type="password"
-              placeholder="Access code"
-              autocomplete="one-time-code"
-              class="w-full rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-400/60 sm:w-40"
-            />
-            <button
-              id="limitedAccessCodeButton"
-              type="button"
-              class="shrink-0 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-            >
-              Full Access
-            </button>
-            <button
-              id="limitedAccessUpgradeButton"
-              type="button"
-              class="shrink-0 rounded-2xl bg-gradient-to-r from-cyan-300 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px]"
-            >
-              Unlock €4.99
-            </button>
-          </div>
+          <button
+            id="limitedAccessUpgradeButton"
+            type="button"
+            class="shrink-0 rounded-2xl bg-gradient-to-r from-cyan-300 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px]"
+          >
+            Unlock €4.99
+          </button>
         </section>
 
         <main id="dashboardWorkspace" class="grid flex-1 items-start gap-5 xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_minmax(280px,340px)] 2xl:grid-cols-[minmax(280px,340px)_minmax(0,1fr)_minmax(300px,360px)]">

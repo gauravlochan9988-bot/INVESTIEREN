@@ -112,8 +112,6 @@ const elements = {
   errorBanner: document.getElementById("errorBanner"),
   limitedAccessBanner: document.getElementById("limitedAccessBanner"),
   limitedAccessMessage: document.getElementById("limitedAccessMessage"),
-  limitedAccessCode: document.getElementById("limitedAccessCode"),
-  limitedAccessCodeButton: document.getElementById("limitedAccessCodeButton"),
   limitedAccessUpgradeButton: document.getElementById("limitedAccessUpgradeButton"),
   alertsSection: document.getElementById("alertsSection"),
   alertsMeta: document.getElementById("alertsMeta"),
@@ -231,7 +229,7 @@ function renderAuthMode() {
     elements.authManagedPanel.hidden = !managedEnabled;
   }
   if (elements.authForm) {
-    elements.authForm.hidden = managedEnabled;
+    elements.authForm.hidden = false;
   }
 }
 
@@ -486,6 +484,18 @@ function syncLimitedAccessBanner() {
 }
 
 async function loadSubscriptionStatus() {
+  if (state.auth.accessOverride && !state.auth.currentUser) {
+    state.auth.subscription = {
+      active: true,
+      status: "override",
+      amount_cents: 0,
+      currency: "eur",
+      interval: "month",
+    };
+    renderSubscriptionButton();
+    syncLimitedAccessBanner();
+    return state.auth.subscription;
+  }
   if (!state.auth.enabled || !isAuthenticated()) {
     state.auth.subscription = null;
     renderSubscriptionButton();
@@ -571,6 +581,11 @@ async function initializeManagedAuth() {
         setAuthenticated(false);
         state.auth.subscription = null;
         renderSubscriptionButton();
+        if (state.auth.accessOverride) {
+          showAppShell();
+          void bootDashboard();
+          return;
+        }
         showLoginOverlay();
         return;
       }
@@ -2226,7 +2241,7 @@ function setAuthenticated(value) {
 
 function isAuthenticated() {
   if (state.auth.enabled) {
-    return Boolean(state.auth.currentUser);
+    return Boolean(state.auth.currentUser || state.auth.accessOverride);
   }
   return window.sessionStorage.getItem(STORAGE_KEYS.authenticated) === "1";
 }
@@ -2600,9 +2615,6 @@ function showLoginOverlay() {
   elements.limitedAccessBanner?.classList.remove("flex");
   if (elements.limitedAccessBanner) {
     elements.limitedAccessBanner.hidden = true;
-  }
-  if (elements.limitedAccessCode) {
-    elements.limitedAccessCode.value = "";
   }
   elements.authOverlay.classList.remove("hidden");
   elements.authOverlay.hidden = false;
@@ -3745,8 +3757,9 @@ function bindAuth() {
     }
 
     setAuthError("");
-    setAuthenticated(true);
+    setAccessOverride(true);
     showAppShell();
+    await loadSubscriptionStatus();
     await bootDashboard();
   });
 }
@@ -3800,19 +3813,6 @@ function bindApp() {
 
   elements.limitedAccessUpgradeButton?.addEventListener("click", () => {
     void startCheckout();
-  });
-
-  elements.limitedAccessCodeButton?.addEventListener("click", () => {
-    if ((elements.limitedAccessCode?.value || "").trim() !== "9988") {
-      showError("Wrong access code.");
-      elements.limitedAccessCode?.focus();
-      elements.limitedAccessCode?.select();
-      return;
-    }
-    clearError();
-    setAccessOverride(true);
-    renderSubscriptionButton();
-    syncLimitedAccessBanner();
   });
 
   elements.paywallUpgradeButton?.addEventListener("click", () => {
