@@ -2702,6 +2702,20 @@ function renderStrategyButtons() {
   renderStrategyDescription(state.selectedStrategy);
 }
 
+function resetAuthOverlayPosition() {
+  if (!elements.authOverlay) {
+    return;
+  }
+
+  const resetScroll = () => {
+    elements.authOverlay.scrollTop = 0;
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  };
+
+  resetScroll();
+  window.requestAnimationFrame(resetScroll);
+}
+
 function showAppShell() {
   elements.authOverlay.classList.add("hidden");
   elements.authOverlay.hidden = true;
@@ -2727,6 +2741,7 @@ function showLoginOverlay() {
   closePortfolioSheet();
   elements.authError.hidden = true;
   elements.authForm?.reset();
+  resetAuthOverlayPosition();
   state.auth.showManagedAuth = false;
   state.auth.showAdminAccess = false;
   renderAuthMode();
