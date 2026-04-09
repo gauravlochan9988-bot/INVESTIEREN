@@ -38,61 +38,107 @@
         <div id="authOverlayShade" class="absolute inset-0 login-overlay bg-[radial-gradient(circle_at_top_left,_rgba(15,23,42,0.35),_transparent_32%),linear-gradient(90deg,rgba(2,6,23,0.96)_0%,rgba(2,6,23,0.82)_36%,rgba(2,6,23,0.54)_60%,rgba(2,6,23,0.18)_100%)]"></div>
       </div>
 
-      <section
-        class="relative z-10 mx-4 grid w-full max-w-6xl grid-cols-1 gap-8 sm:mx-6 sm:gap-10 auth-overlay-content login-container"
-      >
-        <div class="auth-shell-centered">
-          <div class="auth-bottom-card login-card auth-desktop-card auth-centered-card">
-            <div class="auth-brand-stack">
-              <div class="auth-brand-mark" aria-hidden="true">GQ</div>
-              <h1 class="auth-panel-title">GQ Trading Terminal</h1>
-              <p class="auth-brand-subtitle">by Gaurav Lochan</p>
-              <div class="auth-status-pill">PRIVATE ACCESS • FOUNDER SYSTEM</div>
+      <section class="relative z-10 mx-4 w-full max-w-6xl sm:mx-6 auth-landing-shell login-container">
+        <div class="auth-landing-grid">
+          <div class="auth-landing-copy">
+            <div class="auth-landing-topline">
+              <div class="auth-brand-mark auth-landing-mark" aria-hidden="true">GQ</div>
+              <div>
+                <p class="auth-landing-mini">Built by Gaurav Lochan</p>
+                <div class="auth-status-pill auth-landing-pill">PRIVATE ACCESS • FOUNDER SYSTEM</div>
+              </div>
             </div>
 
-            <div class="space-y-3 auth-copy-text auth-copy-centered">
-              <p class="auth-panel-copy">Private market intelligence &amp; trading signals.</p>
+            <div class="auth-landing-headline-block">
+              <h1 class="auth-landing-title">GQ Trading System</h1>
+              <p class="auth-landing-subtitle">Real-time signals. AI-driven decisions.</p>
+              <p class="auth-landing-description">
+                A private trading terminal built for fast market reads, clean execution logic and high-conviction signal monitoring.
+              </p>
             </div>
 
-            <form id="authForm" class="w-full max-w-md space-y-3 auth-form-panel auth-private-panel" novalidate>
-              <label for="authPassword" class="auth-input-label">Access code</label>
-              <div class="auth-input-shell">
-                <span class="auth-input-icon" aria-hidden="true">◎</span>
+            <form id="authForm" class="auth-landing-form" novalidate>
+              <label for="authPassword" class="auth-input-label">Private access code</label>
+              <div class="auth-input-shell auth-landing-input-shell">
                 <input
                   id="authPassword"
                   name="password"
                   type="password"
                   placeholder="Enter private access code"
                   autocomplete="current-password"
-                  class="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base text-white outline-none transition focus:border-emerald-400/60 focus:bg-white/10 login-input"
+                  class="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base text-white outline-none transition login-input"
                 />
               </div>
 
-              <button
-                type="submit"
-                class="auth-private-button rounded-2xl bg-gradient-to-r from-cyan-300 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px] login-button"
-              >
-                Enter Terminal
-              </button>
+              <div class="auth-landing-actions">
+                <button type="submit" class="auth-private-button auth-landing-primary login-button">Enter Dashboard</button>
+                <a href="#systemSignals" class="auth-landing-secondary">View Signals</a>
+              </div>
 
               <p id="authError" class="text-sm text-rose-400" hidden>Invalid access code</p>
               <p class="auth-password-hint">Private system. Access for authorized users only.</p>
             </form>
 
-            <div class="w-full max-w-md auth-form-panel auth-info-panel">
-              <div class="auth-divider" aria-hidden="true"></div>
-              <div class="auth-benefit-copy space-y-3">
-                <p class="auth-benefit-text">Inside your system</p>
-                <ul class="auth-benefit-list">
-                  <li>Live signals</li>
-                  <li>AI-based decisions</li>
-                  <li>Strategy comparison</li>
-                </ul>
+            <div class="auth-feature-grid">
+              <article class="auth-feature-card">
+                <h2>Live Signals</h2>
+                <p>Actionable entries and exits with real-time market context.</p>
+              </article>
+              <article class="auth-feature-card">
+                <h2>AI Strategy Engine</h2>
+                <p>Model-driven decisions built for fast directional reads.</p>
+              </article>
+              <article class="auth-feature-card">
+                <h2>Risk Analysis</h2>
+                <p>Clear market framing before taking high-conviction trades.</p>
+              </article>
+            </div>
+          </div>
+
+          <div class="auth-visual-column">
+            <div class="auth-visual-panel">
+              <div class="auth-visual-art" aria-hidden="true">
+                <span class="auth-visual-focus"></span>
+                <span class="auth-visual-orb auth-visual-orb-one"></span>
+                <span class="auth-visual-orb auth-visual-orb-two"></span>
+                <span class="auth-visual-node auth-visual-node-one"></span>
+                <span class="auth-visual-node auth-visual-node-two"></span>
+                <span class="auth-visual-node auth-visual-node-three"></span>
+                <span class="auth-visual-line auth-visual-line-one"></span>
+                <span class="auth-visual-line auth-visual-line-two"></span>
+                <span class="auth-visual-grid"></span>
+              </div>
+
+              <div class="auth-stat-grid">
+                <article class="auth-stat-card">
+                  <span>Win Rate</span>
+                  <strong>78%</strong>
+                </article>
+                <article class="auth-stat-card">
+                  <span>Signals</span>
+                  <strong>230+</strong>
+                </article>
+                <article class="auth-stat-card">
+                  <span>Accuracy</span>
+                  <strong>88%</strong>
+                </article>
               </div>
             </div>
           </div>
         </div>
 
+        <div id="systemSignals" class="auth-system-grid">
+          <section class="auth-system-box">
+            <p class="auth-system-label">Inside your system</p>
+            <ul class="auth-benefit-list auth-system-list">
+              <li>Live signals</li>
+              <li>AI-based decisions</li>
+              <li>Strategy comparison</li>
+            </ul>
+          </section>
+        </div>
+
+        <footer class="auth-landing-footer">GQ Trading</footer>
       </section>
     </div>
 
@@ -131,8 +177,12 @@
         <header
           class="dashboard-topbar mb-4 flex flex-col gap-4 rounded-[24px] border border-white/10 bg-slate-900/85 px-4 py-4 shadow-2xl shadow-black/30 backdrop-blur sm:mb-5 sm:rounded-[28px] sm:px-5 sm:py-5 xl:grid xl:grid-cols-[auto_minmax(420px,1fr)_auto] xl:items-center xl:gap-5"
         >
-          <button id="brandHomeButton" type="button" class="flex items-center text-left" aria-label="Go to dashboard home">
+          <button id="brandHomeButton" type="button" class="dashboard-brand flex items-center text-left" aria-label="Go to dashboard home">
             <span id="headerMonogram" aria-hidden="true">GQ</span>
+            <span class="dashboard-brand-copy">
+              <span class="dashboard-brand-name">GQ Trading</span>
+              <span class="dashboard-brand-subtitle">Private system</span>
+            </span>
           </button>
 
           <form id="searchForm" class="relative z-30 flex w-full max-w-none flex-col items-stretch gap-3 sm:flex-row sm:items-center">
@@ -258,7 +308,7 @@
           <aside id="watchlistSection" class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
             <div id="watchlistHeader" class="mb-4 flex items-end justify-between">
               <div>
-                <p class="text-xs font-medium text-slate-500">Watchlist</p>
+                <p class="text-xs font-medium text-slate-500">LIVE</p>
                 <h2 class="mt-2 text-xl font-semibold">Quotes</h2>
               </div>
               <span id="watchlistMeta" class="text-xs text-slate-500">Syncing...</span>
@@ -336,10 +386,13 @@
             <section id="tradeDecisionSection" class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
               <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
                 <div class="min-w-0">
-                  <p class="text-xs font-medium text-slate-500">Trade decision</p>
+                  <p class="text-xs font-medium text-slate-500">MAIN DECISION</p>
                   <h3 class="mt-2 text-xl font-semibold">Current setup</h3>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
+                  <span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-xs font-semibold text-emerald-200">
+                    SIGNAL ACTIVE
+                  </span>
                   <span
                     id="selectedStrategyBadge"
                     class="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-xs font-semibold text-cyan-200"
@@ -456,7 +509,7 @@
                 </article>
               </div>
 
-              <div class="mt-4 grid gap-3 sm:grid-cols-2">
+              <div class="decision-context-grid mt-4 grid gap-3 sm:grid-cols-2">
                 <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <p class="text-[11px] font-medium text-slate-500">Risk level</p>
                   <p id="riskValue" class="mt-3 text-2xl font-semibold text-white">--</p>
@@ -475,6 +528,19 @@
                   <p id="positionSizeValue" class="mt-3 text-2xl font-semibold text-white">--</p>
                   <p id="positionSizeReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting.</p>
                 </article>
+              </div>
+
+              <div class="trade-details-block mt-4">
+                <div class="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p class="text-xs font-medium text-slate-500">TRADE DETAILS</p>
+                    <h4 class="mt-2 text-lg font-semibold text-white">Execution plan</h4>
+                  </div>
+                  <span class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-300">
+                    Updated
+                  </span>
+                </div>
+                <div class="trade-details-grid grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <p class="text-[11px] font-medium text-slate-500">Entry</p>
                   <p id="entryValue" class="mt-3 text-2xl font-semibold text-white">--</p>
@@ -496,6 +562,7 @@
                     <span class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-400">Waiting</span>
                   </div>
                 </article>
+                </div>
               </div>
             </section>
 
@@ -530,29 +597,13 @@
             </div>
 
             <div id="signalsOverviewRow" class="min-w-0 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(280px,320px)]">
-              <section id="alertsSection" class="dashboard-panel rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
-                <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
-                  <div>
-                    <p class="text-xs font-medium text-slate-500">Alerts</p>
-                    <h2 class="mt-2 text-xl font-semibold">Signals</h2>
-                  </div>
-                  <span id="alertsMeta" class="text-xs text-slate-500">Scanning...</span>
-                </div>
-                <div id="alertsList" class="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-                  <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                    <p class="text-sm font-semibold text-white">Scanning</p>
-                    <p class="mt-2 text-sm leading-6 text-slate-400">📈 Checking moves.</p>
-                  </article>
-                </div>
-              </section>
-
               <aside
                 id="opportunitySection"
                 class="dashboard-panel rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5"
               >
                 <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <p class="text-xs font-medium text-slate-500">Opportunity panel</p>
+                    <p class="text-xs font-medium text-slate-500">SIGNALS</p>
                     <h2 class="mt-2 text-xl font-semibold">Setups</h2>
                   </div>
                   <span id="opportunityMeta" class="text-xs text-slate-500">Ranking...</span>
@@ -568,9 +619,25 @@
           </section>
 
           <aside id="decisionRail" class="min-w-0 space-y-5">
+            <section id="alertsSection" class="dashboard-panel rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
+              <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p class="text-xs font-medium text-slate-500">LIVE</p>
+                  <h2 class="mt-2 text-xl font-semibold">Alerts</h2>
+                </div>
+                <span id="alertsMeta" class="text-xs text-slate-500">Scanning...</span>
+              </div>
+              <div id="alertsList" class="grid gap-3">
+                <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                  <p class="text-sm font-semibold text-white">Scanning</p>
+                  <p class="mt-2 text-sm leading-6 text-slate-400">📈 Checking moves.</p>
+                </article>
+              </div>
+            </section>
+
             <aside id="companySection" class="min-w-0 space-y-5">
             <section class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
-              <p class="text-xs font-medium text-slate-500">Snapshot</p>
+              <p class="text-xs font-medium text-slate-500">STATS</p>
               <div class="mt-5 flex items-center gap-4">
                 <img
                   id="companyLogo"
@@ -592,8 +659,8 @@
             >
               <div class="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <p class="text-xs font-medium text-slate-500">Learning Stats</p>
-                  <h3 class="mt-2 text-xl font-semibold">Learning</h3>
+                  <p class="text-xs font-medium text-slate-500">UPDATED</p>
+                  <h3 class="mt-2 text-xl font-semibold">Performance</h3>
                 </div>
                 <span
                   id="learningMeta"

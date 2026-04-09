@@ -246,6 +246,7 @@ const elements = {
   portfolioSheetClose: document.getElementById("portfolioSheetClose"),
   portfolioSheetSummary: document.getElementById("portfolioSheetSummary"),
   portfolioSheetPositions: document.getElementById("portfolioSheetPositions"),
+  authVisualArt: document.querySelector(".auth-visual-art"),
 };
 
 function resolveApiBaseUrl() {
@@ -257,6 +258,72 @@ function resolveApiBaseUrl() {
 
 function buildApiUrl(path) {
   return `${resolveApiBaseUrl()}${path}`;
+}
+
+function resetAuthVisualMotion() {
+  if (!elements.authVisualArt) {
+    return;
+  }
+  elements.authVisualArt.style.setProperty("--visual-shift-x", "0px");
+  elements.authVisualArt.style.setProperty("--visual-shift-y", "0px");
+  elements.authVisualArt.style.setProperty("--visual-tilt-x", "0deg");
+  elements.authVisualArt.style.setProperty("--visual-tilt-y", "0deg");
+  elements.authVisualArt.style.setProperty("--visual-glow-x", "50%");
+  elements.authVisualArt.style.setProperty("--visual-glow-y", "50%");
+  elements.authVisualArt.style.setProperty("--visual-glow-opacity", "0");
+}
+
+function updateAuthVisualMotion(clientX, clientY) {
+  if (!elements.authVisualArt) {
+    return;
+  }
+  const rect = elements.authVisualArt.getBoundingClientRect();
+  const relativeX = (clientX - rect.left) / rect.width;
+  const relativeY = (clientY - rect.top) / rect.height;
+  const shiftX = (relativeX - 0.5) * 26;
+  const shiftY = (relativeY - 0.5) * 18;
+  const tiltY = (relativeX - 0.5) * 4;
+  const tiltX = (0.5 - relativeY) * 3.5;
+
+  elements.authVisualArt.style.setProperty("--visual-shift-x", `${shiftX.toFixed(2)}px`);
+  elements.authVisualArt.style.setProperty("--visual-shift-y", `${shiftY.toFixed(2)}px`);
+  elements.authVisualArt.style.setProperty("--visual-tilt-x", `${tiltX.toFixed(2)}deg`);
+  elements.authVisualArt.style.setProperty("--visual-tilt-y", `${tiltY.toFixed(2)}deg`);
+  elements.authVisualArt.style.setProperty("--visual-glow-x", `${(relativeX * 100).toFixed(2)}%`);
+  elements.authVisualArt.style.setProperty("--visual-glow-y", `${(relativeY * 100).toFixed(2)}%`);
+  elements.authVisualArt.style.setProperty("--visual-glow-opacity", "1");
+}
+
+function bindAuthVisualMotion() {
+  if (!elements.authVisualArt) {
+    return;
+  }
+
+  resetAuthVisualMotion();
+
+  elements.authVisualArt.addEventListener("pointermove", (event) => {
+    updateAuthVisualMotion(event.clientX, event.clientY);
+  });
+
+  elements.authVisualArt.addEventListener("pointerleave", () => {
+    resetAuthVisualMotion();
+  });
+
+  elements.authVisualArt.addEventListener(
+    "touchmove",
+    (event) => {
+      const touch = event.touches[0];
+      if (!touch) {
+        return;
+      }
+      updateAuthVisualMotion(touch.clientX, touch.clientY);
+    },
+    { passive: true }
+  );
+
+  elements.authVisualArt.addEventListener("touchend", () => {
+    window.setTimeout(() => resetAuthVisualMotion(), 140);
+  });
 }
 
 function currentUserKey() {
@@ -4052,6 +4119,7 @@ async function initializeApp() {
 
   bindAuth();
   bindApp();
+  bindAuthVisualMotion();
 
   if (isAuthenticated()) {
     await loadSubscriptionStatus();
