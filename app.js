@@ -1,5 +1,5 @@
 if (window.location.protocol === "file:") {
-  window.location.replace("http://127.0.0.1:8000/");
+  window.location.replace("http://127.0.0.1:8003/");
 }
 
 if ("scrollRestoration" in window.history) {
@@ -10,6 +10,8 @@ window.scrollTo({ top: 0, left: 0, behavior: "auto" });
 
 const DEPLOYED_API_ORIGIN = "https://investieren-production.up.railway.app";
 const LOCAL_API_HOSTS = new Set(["127.0.0.1", "localhost"]);
+/** Local FastAPI (uvicorn); static pages on other ports still call API here */
+const LOCAL_API_PORT = "8003";
 const AUTH_TOKEN_CACHE_MS = 45 * 1000;
 const SIMPLE_ACCESS_CODE = "9988";
 const DEFAULT_CLERK_PLAN = {
@@ -257,7 +259,8 @@ const elements = {
 
 function resolveApiBaseUrl() {
   if (LOCAL_API_HOSTS.has(window.location.hostname)) {
-    return `${window.location.protocol}//${window.location.host}`;
+    const protocol = window.location.protocol || "http:";
+    return `${protocol}//${window.location.hostname}:${LOCAL_API_PORT}`;
   }
   return DEPLOYED_API_ORIGIN;
 }
@@ -330,6 +333,103 @@ function bindAuthVisualMotion() {
   elements.authVisualArt.addEventListener("touchend", () => {
     window.setTimeout(() => resetAuthVisualMotion(), 140);
   });
+}
+
+let authMiniGameDispose = null;
+
+function stopAuthMiniGame() {
+  if (typeof authMiniGameDispose === "function") {
+    authMiniGameDispose();
+    authMiniGameDispose = null;
+  }
+}
+
+function initAuthMiniGame() {
+  const root = document.getElementById("authMiniGame");
+  const board = document.getElementById("authMiniGameBoard");
+  const scoreEl = document.getElementById("authMiniGameScore");
+  if (!root || !board || !scoreEl) {
+    return;
+  }
+
+  stopAuthMiniGame();
+
+  const cols = 4;
+  const rows = 3;
+  const total = cols * rows;
+  let score = 0;
+  let activeIndex = -1;
+  let timeoutId = null;
+  const cells = [];
+
+  function isAuthOverlayOpen() {
+    const el = document.getElementById("authOverlay");
+    return Boolean(el && !el.hidden && !el.classList.contains("hidden"));
+  }
+
+  function clearPulse() {
+    if (activeIndex >= 0 && cells[activeIndex]) {
+      cells[activeIndex].classList.remove("auth-mini-game-cell--pulse");
+    }
+    activeIndex = -1;
+  }
+
+  function scheduleNext() {
+    if (timeoutId) {
+      window.clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+    if (!isAuthOverlayOpen()) {
+      return;
+    }
+    clearPulse();
+    activeIndex = Math.floor(Math.random() * total);
+    cells[activeIndex].classList.add("auth-mini-game-cell--pulse");
+    const ms = Math.max(400, 1050 - Math.min(score, 14) * 40);
+    timeoutId = window.setTimeout(() => {
+      timeoutId = null;
+      if (!isAuthOverlayOpen()) {
+        return;
+      }
+      clearPulse();
+      scheduleNext();
+    }, ms);
+  }
+
+  board.replaceChildren();
+  for (let i = 0; i < total; i += 1) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "auth-mini-game-cell";
+    btn.setAttribute("aria-label", `Feld ${i + 1}`);
+    const idx = i;
+    btn.addEventListener("click", () => {
+      if (!isAuthOverlayOpen() || idx !== activeIndex) {
+        return;
+      }
+      score += 1;
+      scoreEl.textContent = String(score);
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      clearPulse();
+      scheduleNext();
+    });
+    board.appendChild(btn);
+    cells.push(btn);
+  }
+
+  scoreEl.textContent = "0";
+  scheduleNext();
+
+  authMiniGameDispose = () => {
+    if (timeoutId) {
+      window.clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+    clearPulse();
+  };
 }
 
 function currentUserKey() {
@@ -756,6 +856,17 @@ function shouldFallbackToDeployedApi(path, options = {}, baseUrl) {
     baseUrl !== DEPLOYED_API_ORIGIN &&
     !options.skipDeployedFallback &&
     isReadOnlyApiRequest(path, options)
+  );
+}
+
+/** POST /api/auth/access-code is not covered by read-only fallback; retry deployed if local has no route or is down */
+function canFallbackAccessCodePost(path, options = {}, baseUrl) {
+  return (
+    path === "/api/auth/access-code" &&
+    String(options.method || "GET").toUpperCase() === "POST" &&
+    LOCAL_API_HOSTS.has(window.location.hostname) &&
+    baseUrl !== DEPLOYED_API_ORIGIN &&
+    !options.skipDeployedFallback
   );
 }
 
@@ -2723,6 +2834,7 @@ function resetAuthOverlayPosition() {
 }
 
 function showAppShell() {
+  stopAuthMiniGame();
   elements.authOverlay.classList.add("hidden");
   elements.authOverlay.hidden = true;
   hidePaywall();
@@ -2754,6 +2866,7 @@ function showLoginOverlay() {
   if (state.auth.enabled) {
     setAuthLoading(false);
   }
+  window.requestAnimationFrame(() => initAuthMiniGame());
 }
 
 async function api(path, options = {}) {
@@ -2801,6 +2914,16 @@ async function api(path, options = {}) {
           timeoutMs: Math.round(timeoutMs * 1.25),
         });
       }
+      if (canFallbackAccessCodePost(path, options, baseUrl)) {
+        console.warn("[frontend] local access-code timed out, retrying against deployed backend", { path });
+        return api(path, {
+          ...options,
+          baseUrlOverride: DEPLOYED_API_ORIGIN,
+          skipDeployedFallback: true,
+          retryCount: Math.max(retryCount, 1),
+          timeoutMs: Math.round(timeoutMs * 1.25),
+        });
+      }
       if (canRetry) {
         await new Promise((resolve) => window.setTimeout(resolve, retryDelayMs));
         return api(path, {
@@ -2815,6 +2938,19 @@ async function api(path, options = {}) {
     console.error("[frontend] API network error", { path, error: error.message });
     if (shouldFallbackToDeployedApi(path, options, baseUrl)) {
       console.warn("[frontend] local API failed, retrying against deployed backend", { path, error: error.message });
+      return api(path, {
+        ...options,
+        baseUrlOverride: DEPLOYED_API_ORIGIN,
+        skipDeployedFallback: true,
+        retryCount: Math.max(retryCount, 1),
+        timeoutMs: Math.round(timeoutMs * 1.25),
+      });
+    }
+    if (canFallbackAccessCodePost(path, options, baseUrl)) {
+      console.warn("[frontend] local access-code request failed, retrying against deployed backend", {
+        path,
+        error: error.message,
+      });
       return api(path, {
         ...options,
         baseUrlOverride: DEPLOYED_API_ORIGIN,
@@ -2851,7 +2987,10 @@ async function api(path, options = {}) {
     if (response.status === 402 && state.auth.enabled && isAuthenticated()) {
       showPaywall("Upgrade to unlock the dashboard.");
     }
-    if (shouldFallbackToDeployedApi(path, options, baseUrl)) {
+    if (
+      shouldFallbackToDeployedApi(path, options, baseUrl) ||
+      (canFallbackAccessCodePost(path, options, baseUrl) && response.status === 404)
+    ) {
       console.warn("[frontend] local API returned error, retrying against deployed backend", {
         path,
         status: response.status,

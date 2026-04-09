@@ -30,13 +30,13 @@ source .venv/bin/activate
 pip install -r backend/requirements-dev.txt
 ```
 
-3. Start the application:
+3. Start the application (from repo root, with `.venv` active):
 
 ```bash
-uvicorn app.main:app --reload
+uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8003
 ```
 
-4. Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
+4. Open [http://127.0.0.1:8003](http://127.0.0.1:8003).
 
 ## Vercel deployment
 - Vercel should serve only the root frontend files

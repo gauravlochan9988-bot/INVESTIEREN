@@ -1646,14 +1646,13 @@ body {
   position: relative;
   height: 22rem;
   border-radius: 1.6rem;
-  border: 1px solid rgba(96, 165, 250, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.14);
   background:
-    radial-gradient(circle at 30% 35%, rgba(34, 211, 238, 0.18), transparent 24%),
-    radial-gradient(circle at 70% 60%, rgba(74, 222, 128, 0.15), transparent 26%),
-    linear-gradient(180deg, rgba(6, 11, 22, 0.82), rgba(3, 7, 16, 0.92));
+    radial-gradient(ellipse 120% 80% at 50% 0%, rgba(56, 189, 248, 0.09), transparent 45%),
+    linear-gradient(180deg, rgba(10, 16, 30, 0.96), rgba(4, 8, 18, 0.99));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 0 30px rgba(34, 211, 238, 0.08);
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 28px rgba(34, 211, 238, 0.06);
   overflow: hidden;
   transform:
     perspective(1200px)
@@ -1707,6 +1706,127 @@ body {
   transform: translate(calc(var(--visual-shift-x, 0px) * 0.12), calc(var(--visual-shift-y, 0px) * 0.12));
   transition: transform 180ms ease;
   animation: authGridFloat 18s linear infinite;
+}
+
+/* Login mini-game: no grid lines, orbs, nodes, or connector lines behind the board */
+.auth-visual-art > .auth-visual-focus,
+.auth-visual-art > .auth-visual-orb,
+.auth-visual-art > .auth-visual-node,
+.auth-visual-art > .auth-visual-line,
+.auth-visual-art > .auth-visual-grid {
+  display: none !important;
+}
+
+.auth-mini-game {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  padding: 0.65rem 0.85rem 0.45rem;
+  pointer-events: auto;
+  border-radius: inherit;
+}
+
+.auth-mini-game-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+  flex-shrink: 0;
+}
+
+.auth-mini-game-title {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(125, 211, 252, 0.72);
+}
+
+.auth-mini-game-score {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: rgba(103, 232, 249, 0.95);
+  text-shadow: 0 0 18px rgba(34, 211, 238, 0.35);
+}
+
+.auth-mini-game-board {
+  position: relative;
+  isolation: isolate;
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(2.25rem, 1fr));
+  gap: 0.32rem;
+  min-height: 0;
+  padding: 0.5rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(56, 189, 248, 0.14);
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 85%, rgba(34, 211, 238, 0.07), transparent 60%),
+    linear-gradient(160deg, rgba(12, 20, 36, 0.98) 0%, rgba(6, 11, 22, 0.99) 100%);
+  overflow: hidden;
+}
+
+/* Large GQ watermark behind cells */
+.auth-mini-game-board::before {
+  content: "GQ";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 0;
+  transform: translate(-50%, -52%);
+  font-size: clamp(4.25rem, min(20vw, 18vh), 9.5rem);
+  font-weight: 900;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: rgba(56, 189, 248, 0.07);
+  text-shadow: 0 0 48px rgba(34, 211, 238, 0.12);
+  pointer-events: none;
+  user-select: none;
+}
+
+.auth-mini-game-cell {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  padding: 0;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  background: rgba(8, 14, 28, 0.45);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, transform 0.1s ease;
+}
+
+.auth-mini-game-cell:hover {
+  border-color: rgba(125, 211, 252, 0.28);
+}
+
+.auth-mini-game-cell:focus-visible {
+  outline: 2px solid rgba(103, 232, 249, 0.65);
+  outline-offset: 2px;
+}
+
+.auth-mini-game-cell--pulse {
+  border-color: rgba(103, 232, 249, 0.7);
+  background: radial-gradient(circle at 50% 45%, rgba(103, 232, 249, 0.38), rgba(8, 20, 36, 0.92));
+  box-shadow:
+    0 0 22px rgba(34, 211, 238, 0.32),
+    inset 0 0 14px rgba(103, 232, 249, 0.18);
+}
+
+.auth-mini-game-hint {
+  margin: 0.35rem 0 0;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 0.65rem;
+  line-height: 1.35;
+  color: rgba(148, 163, 184, 0.78);
 }
 
 .auth-visual-orb {
