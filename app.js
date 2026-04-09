@@ -14,6 +14,484 @@ const LOCAL_API_HOSTS = new Set(["127.0.0.1", "localhost"]);
 const LOCAL_API_PORT = "8003";
 const AUTH_TOKEN_CACHE_MS = 45 * 1000;
 const SIMPLE_ACCESS_CODE = "9988";
+
+const I18N_STORAGE_KEY = "investieren:lang";
+const I18N_DEFAULT = "auto";
+const I18N_SUPPORTED = new Set(["de", "en"]);
+
+const I18N = {
+  de: {
+    "auth.builtBy": "Entwickelt von Gaurav Lochan",
+    "auth.privateAccess": "PRIVATER ZUGANG • FOUNDER SYSTEM",
+    "auth.subtitle": "Echtzeit-Signale. KI-gestutzte Entscheidungen.",
+    "auth.description":
+      "Ein privates Trading-Terminal fur schnelle Marktanalysen, klare Ausfuhrungslogik und Signal-Monitoring mit hoher Ueberzeugung.",
+    "auth.accessCodeLabel": "Zugangscode",
+    "auth.accessCodePlaceholder": "Code eingeben",
+    "auth.enterDashboard": "Zum Dashboard",
+    "auth.viewSignals": "Signale",
+    "auth.hint": "Nur fur autorisierte Nutzer. Verbindung ist verschlusselt.",
+    "auth.features.liveSignalsTitle": "Live-Signale",
+    "auth.features.liveSignalsBody": "Konkrete Einstiegs- und Ausstiegssignale mit Echtzeit-Marktkontext.",
+    "auth.features.aiTitle": "KI-Strategie-Engine",
+    "auth.features.aiBody": "Modellgestutzte Entscheidungen fur schnelle Richtungsanalysen.",
+    "auth.features.riskTitle": "Risikoanalyse",
+    "auth.features.riskBody": "Klare Markteinschatzung vor Trades mit hoher Ueberzeugung.",
+    "auth.system.liveSignals": "Live-Signale",
+    "auth.system.strategyComparison": "Strategie-Vergleich",
+
+    "paywall.kicker": "Pro-Zugang",
+    "paywall.title": "Upgrade fur vollen Dashboard-Zugriff",
+    "paywall.body": "Aktiviere Pro, um Live-Signale, Alerts und Watchlists zu nutzen.",
+    "paywall.upgradeCta": "Upgrade €4.99 / Monat",
+    "paywall.logout": "Abmelden",
+    "paywall.note": "Apple Pay und Google Pay sind im Stripe-Checkout verfugbar.",
+
+    "dashboard.homeAria": "Zur Dashboard-Startseite",
+    "dashboard.privateSystem": "Privates System",
+    "dashboard.searchPlaceholder": "Suchen",
+    "dashboard.backendConnecting": "Backend wird verbunden...",
+    "dashboard.subscribe": "Upgrade €4.99",
+    "dashboard.refresh": "Aktualisieren",
+    "dashboard.logout": "Abmelden",
+    "dashboard.kickerLive": "LIVE",
+    "dashboard.kickerStats": "STATS",
+    "dashboard.kickerUpdated": "AKTUALISIERT",
+
+    "errors.invalidCode": "Ungultiger Zugangscode.",
+    "auth.loadingLogin": "Login wird geladen...",
+    "paywall.defaultMessage": "Aktiviere Pro, um Live-Signale, Alerts und Watchlists zu nutzen.",
+    "dashboard.tradingViewLoading": "TradingView-Chart wird geladen...",
+    "dashboard.alertsRefreshing": "Alerts werden aktualisiert...",
+    "dashboard.favoritesUpdateFailed": "Favorit konnte nicht aktualisiert werden.",
+    "dashboard.selectedSymbolFailed": "Ausgewahltes Symbol konnte noch nicht geladen werden.",
+    "dashboard.loading": "Laden",
+    "dashboard.saved": "Gespeichert",
+    "dashboard.favorite": "Favorit",
+    "dashboard.refreshing": "Aktualisiere",
+    "auth.title": "GQ Trading System",
+    "auth.system.inside": "In deinem System",
+    "auth.system.aiDecisions": "KI-basierte Entscheidungen",
+    "auth.stat.winRate": "Trefferquote",
+    "auth.stat.signals": "Signale",
+    "auth.stat.accuracy": "Genauigkeit",
+    "auth.miniGame.title": "GQ Pulse",
+    "auth.miniGame.hint": "Tippe das leuchtende Feld",
+    "auth.miniGame.aria": "Kurzes Reflexspiel: tippe das leuchtende Feld",
+    "lang.de": "Deutsch",
+    "lang.en": "English",
+    "lang.switch": "Sprache",
+    "dashboard.quickActionsAria": "Schnellaktionen",
+    "dashboard.mobileFavoriteAria": "Favorit umschalten",
+    "dashboard.mobileAlertsAria": "Alerts offnen",
+    "dashboard.mobilePortfolioAria": "Depot offnen",
+    "dashboard.depot": "Depot",
+    "dashboard.mobileAlerts": "Alerts",
+    "dashboard.strategyToggleAria": "Handelsstrategie",
+    "strategy.simple": "Einfach",
+    "strategy.ai": "KI",
+    "strategy.hedgefund": "Hedgefonds",
+    "limited.kicker": "Eingeschrankter Zugriff",
+    "limited.body":
+      "Du kannst das Dashboard ansehen. Aktiviere Live-Signale und Alerts fur vollen Zugriff.",
+    "limited.unlock": "Freischalten €4.99",
+    "watchlist.quotes": "Kurse",
+    "watchlist.syncing": "Synchronisiere...",
+    "watchlist.favoritesTitle": "Favoriten",
+    "watchlist.favoritesHint": "Mit Stern anheften.",
+    "favorites.label": "Favoriten",
+    "favorites.pinned": "Angeheftete Symbole",
+    "favorites.meta": "0 gespeichert",
+    "favorites.emptyTitle": "Keine Favoriten",
+    "favorites.emptyBody": "Markiere eine Aktie mit Stern.",
+    "symbol.selected": "Ausgewahlt",
+    "symbol.favoriteAria": "Ausgewahltes Symbol zu Favoriten hinzufugen",
+    "symbol.favoriteButton": "Favorit",
+    "metric.price": "Preis",
+    "metric.dayHigh": "Tageshoch",
+    "metric.dayLow": "Tagestief",
+    "metric.open": "Eroffnung",
+    "metric.prevClose": "Vortag Schluss",
+    "decision.mainLabel": "HAUPTENTSCHEIDUNG",
+    "decision.setupTitle": "Aktuelles Setup",
+    "decision.signalActive": "SIGNAL AKTIV",
+    "decision.waiting": "Warten",
+    "decision.recommendation": "Empfehlung",
+    "decision.mainDecision": "Hauptentscheidung",
+    "decision.scan": "Scan",
+    "decision.partialSignal": "Teilsignal",
+    "decision.mixedSignals": "Gemischte Signale",
+    "decision.confidence": "Konfidenz",
+    "decision.scanning": "Scannt...",
+    "decision.reason": "Begrundung",
+    "decision.loadingSignal": "Signal wird geladen...",
+    "decision.context": "Kontext",
+    "decision.balanced": "Ausgewogenes Signal",
+    "decision.waitingShort": "Warten.",
+    "decision.riskLevel": "Risikostufe",
+    "decision.timeframe": "Zeitrahmen",
+    "decision.dataQuality": "Datenqualitat",
+    "decision.positionSize": "Positionsgrosse",
+    "decision.tradeDetails": "TRADE-DETAILS",
+    "decision.executionPlan": "Ausfuhrungsplan",
+    "decision.updated": "Aktualisiert",
+    "decision.entry": "Einstieg",
+    "decision.exit": "Ausstieg",
+    "decision.stopLoss": "Stop-Loss",
+    "decision.warnings": "Warnungen",
+    "chart.label": "Chart",
+    "chart.tradingView": "TradingView",
+    "chart.selectedBadge": "Ausgewahlter Chart",
+    "chart.comparePlaceholder": "Vergleichen mit...",
+    "chart.compareAria": "Aktuellen Chart mit anderem Symbol vergleichen",
+    "chart.compare": "Vergleichen",
+    "chart.clear": "Zurucksetzen",
+    "chart.tapAria": "Chart-Interaktion aktivieren",
+    "chart.tap": "Chart antippen",
+    "signals.label": "SIGNALE",
+    "signals.setups": "Setups",
+    "signals.ranking": "Rangliste...",
+    "signals.rankingTitle": "Rangliste",
+    "signals.rankingHint": "Beste Bewegungen zuerst.",
+    "alerts.title": "Alerts",
+    "alerts.scanning": "Scannt...",
+    "alerts.scanningTitle": "Scannt",
+    "alerts.scanningHint": "Bewegungen werden gepruft.",
+    "company.selectSymbol": "Symbol wahlen",
+    "company.exchangeHint": "Borse erscheint hier",
+    "company.exchangeUnavailable": "Borse nicht verfugbar",
+    "chart.badgeCompared": "{primary} VS {compare}",
+    "chart.badgeSingle": "CHART · {primary}",
+    "chart.compareLegend": "Auf 100% normiert",
+    "alerts.metaCount": "{count} Live-Alerts",
+    "alerts.noAlertsTitle": "Keine Alerts",
+    "alerts.noAlertsBody": "Nichts Starkes.",
+    "alerts.warmingTitle": "Alerts starten",
+    "alerts.warmingBody": "Bald erneut versuchen.",
+    "alerts.retryTap": "Zum Aktualisieren tippen",
+    "alerts.retrying": "Alerts erneut... ({n}/5)",
+    "alerts.cached": "Zwischengespeicherte Alerts",
+    "signals.metaRanked": "{count} bewertet · {full} vollstandige Daten",
+    "signals.noSymbols": "Keine Symbole",
+    "signals.noRanked": "Noch keine Chancen gerankt",
+    "signals.panelWarmingTitle": "Panel warmt auf",
+    "signals.panelWarmingBody": "Setups werden gerankt.",
+    "signals.sectionTopBuy": "Top BUY",
+    "signals.sectionTopSell": "Top SELL",
+    "signals.sectionHighConf": "Hohe Konfidenz",
+    "signals.emptySetups": "Keine Setups.",
+    "signals.bestLong": "Bestes Long.",
+    "signals.bestShort": "Bestes Short.",
+    "signals.clearestSetup": "Klarstes Setup.",
+    "signals.topPick": "Top {rec}",
+    "signals.scoreLabel": "Score {label}",
+    "learning.offline": "Learning offline",
+    "learning.noStats": "Keine Stats",
+    "learning.cached": "Zwischengespeichert",
+    "learning.noClosedTrades": "Keine geschlossenen Trades",
+    "learning.statsLater": "Stats folgen.",
+    "learning.tryAgain": "Erneut versuchen.",
+    "learning.status.waiting": "Warten",
+    "learning.status.on": "An",
+    "learning.status.noTrades": "Keine Trades",
+    "learning.status.progress": "{current}/{required} Trades",
+    "learning.loadFailed": "Laden fehlgeschlagen.",
+    "alerts.retryGeneric": "Alerts werden erneut geladen...",
+    "signals.retrying": "Chancen werden erneut geladen...",
+    "metric.noData": "Keine Daten",
+    "overview.liveUnavailable": "Live-Ubersicht nicht verfugbar",
+    "learning.performance": "Performance",
+    "learning.loading": "Laden",
+    "learning.loadingTitle": "Laden",
+    "learning.loadingHint": "Trades werden gelesen.",
+    "learning.rules": "Regeln",
+    "learning.rulesHint": "Startet nach 50 abgeschlossenen Trades.",
+    "portfolio.sheetTitle": "Portfolio",
+    "portfolio.allocation": "Allokation",
+    "portfolio.close": "Schliessen",
+  },
+  en: {
+    "auth.builtBy": "Built by Gaurav Lochan",
+    "auth.privateAccess": "PRIVATE ACCESS • FOUNDER SYSTEM",
+    "auth.subtitle": "Real-time signals. AI-driven decisions.",
+    "auth.description":
+      "A private trading terminal built for fast market reads, clean execution logic and high-conviction signal monitoring.",
+    "auth.accessCodeLabel": "Access code",
+    "auth.accessCodePlaceholder": "Enter access code",
+    "auth.enterDashboard": "Enter Dashboard",
+    "auth.viewSignals": "Signals",
+    "auth.hint": "Private system. Access for authorized users only.",
+    "auth.features.liveSignalsTitle": "Live Signals",
+    "auth.features.liveSignalsBody": "Actionable entries and exits with real-time market context.",
+    "auth.features.aiTitle": "AI Strategy Engine",
+    "auth.features.aiBody": "Model-driven decisions built for fast directional reads.",
+    "auth.features.riskTitle": "Risk Analysis",
+    "auth.features.riskBody": "Clear market framing before taking high-conviction trades.",
+    "auth.system.liveSignals": "Live signals",
+    "auth.system.strategyComparison": "Strategy comparison",
+
+    "paywall.kicker": "Pro Access",
+    "paywall.title": "Upgrade to unlock the dashboard",
+    "paywall.body": "Subscribe to access live signals, alerts and watchlists.",
+    "paywall.upgradeCta": "Upgrade €4.99 / month",
+    "paywall.logout": "Logout",
+    "paywall.note": "Apple Pay and Google Pay available in Stripe Checkout.",
+
+    "dashboard.homeAria": "Go to dashboard home",
+    "dashboard.privateSystem": "Private system",
+    "dashboard.searchPlaceholder": "Search",
+    "dashboard.backendConnecting": "Connecting backend...",
+    "dashboard.subscribe": "Subscribe €4.99",
+    "dashboard.refresh": "Refresh",
+    "dashboard.logout": "Logout",
+    "dashboard.kickerLive": "LIVE",
+    "dashboard.kickerStats": "STATS",
+    "dashboard.kickerUpdated": "UPDATED",
+
+    "errors.invalidCode": "Invalid access code.",
+    "auth.loadingLogin": "Loading login...",
+    "paywall.defaultMessage": "Subscribe to access live signals, alerts and watchlists.",
+    "dashboard.tradingViewLoading": "Loading TradingView chart...",
+    "dashboard.alertsRefreshing": "Refreshing alerts...",
+    "dashboard.favoritesUpdateFailed": "Favorite could not update.",
+    "dashboard.selectedSymbolFailed": "Selected symbol could not load yet.",
+    "dashboard.loading": "Loading",
+    "dashboard.saved": "Saved",
+    "dashboard.favorite": "Favorite",
+    "dashboard.refreshing": "Refreshing",
+    "auth.title": "GQ Trading System",
+    "auth.system.inside": "Inside your system",
+    "auth.system.aiDecisions": "AI-based decisions",
+    "auth.stat.winRate": "Win rate",
+    "auth.stat.signals": "Signals",
+    "auth.stat.accuracy": "Accuracy",
+    "auth.miniGame.title": "GQ Pulse",
+    "auth.miniGame.hint": "Tap the glowing cell",
+    "auth.miniGame.aria": "Quick reflex game: tap the glowing cell",
+    "lang.de": "German",
+    "lang.en": "English",
+    "lang.switch": "Language",
+    "dashboard.quickActionsAria": "Quick actions",
+    "dashboard.mobileFavoriteAria": "Toggle favorite",
+    "dashboard.mobileAlertsAria": "Open alerts",
+    "dashboard.mobilePortfolioAria": "Open portfolio",
+    "dashboard.depot": "Portfolio",
+    "dashboard.mobileAlerts": "Alerts",
+    "dashboard.strategyToggleAria": "Trading strategy",
+    "strategy.simple": "Simple",
+    "strategy.ai": "AI",
+    "strategy.hedgefund": "Hedgefund",
+    "limited.kicker": "Limited access",
+    "limited.body":
+      "You can explore the dashboard. Unlock live signals and alerts for full access.",
+    "limited.unlock": "Unlock €4.99",
+    "watchlist.quotes": "Quotes",
+    "watchlist.syncing": "Syncing...",
+    "watchlist.favoritesTitle": "Favorites",
+    "watchlist.favoritesHint": "Star to pin.",
+    "favorites.label": "Favorites",
+    "favorites.pinned": "Pinned symbols",
+    "favorites.meta": "0 saved",
+    "favorites.emptyTitle": "No favorites",
+    "favorites.emptyBody": "Star a stock.",
+    "symbol.selected": "Selected",
+    "symbol.favoriteAria": "Add selected symbol to favorites",
+    "symbol.favoriteButton": "Favorite",
+    "metric.price": "Price",
+    "metric.dayHigh": "Day high",
+    "metric.dayLow": "Day low",
+    "metric.open": "Open",
+    "metric.prevClose": "Prev close",
+    "decision.mainLabel": "MAIN DECISION",
+    "decision.setupTitle": "Current setup",
+    "decision.signalActive": "SIGNAL ACTIVE",
+    "decision.waiting": "Waiting",
+    "decision.recommendation": "Recommendation",
+    "decision.mainDecision": "Main decision",
+    "decision.scan": "Scan",
+    "decision.partialSignal": "Partial signal",
+    "decision.mixedSignals": "Mixed signals",
+    "decision.confidence": "Confidence",
+    "decision.scanning": "Scanning...",
+    "decision.reason": "Reason",
+    "decision.loadingSignal": "Loading signal.",
+    "decision.context": "Context",
+    "decision.balanced": "Balanced signal",
+    "decision.waitingShort": "Waiting.",
+    "decision.riskLevel": "Risk level",
+    "decision.timeframe": "Timeframe",
+    "decision.dataQuality": "Data quality",
+    "decision.positionSize": "Position size",
+    "decision.tradeDetails": "TRADE DETAILS",
+    "decision.executionPlan": "Execution plan",
+    "decision.updated": "Updated",
+    "decision.entry": "Entry",
+    "decision.exit": "Exit",
+    "decision.stopLoss": "Stop loss",
+    "decision.warnings": "Warnings",
+    "chart.label": "Chart",
+    "chart.tradingView": "TradingView",
+    "chart.selectedBadge": "Selected chart",
+    "chart.comparePlaceholder": "Compare with...",
+    "chart.compareAria": "Compare current chart with another symbol",
+    "chart.compare": "Compare",
+    "chart.clear": "Clear",
+    "chart.tapAria": "Activate chart interaction",
+    "chart.tap": "Tap chart",
+    "signals.label": "SIGNALS",
+    "signals.setups": "Setups",
+    "signals.ranking": "Ranking...",
+    "signals.rankingTitle": "Ranking",
+    "signals.rankingHint": "Best moves first.",
+    "alerts.title": "Alerts",
+    "alerts.scanning": "Scanning...",
+    "alerts.scanningTitle": "Scanning",
+    "alerts.scanningHint": "Checking moves.",
+    "company.selectSymbol": "Select a symbol",
+    "company.exchangeHint": "Exchange will appear here",
+    "company.exchangeUnavailable": "Exchange unavailable",
+    "chart.badgeCompared": "{primary} VS {compare}",
+    "chart.badgeSingle": "CHART · {primary}",
+    "chart.compareLegend": "Normalized to 100%",
+    "alerts.metaCount": "{count} live alerts",
+    "alerts.noAlertsTitle": "No alerts",
+    "alerts.noAlertsBody": "Nothing strong.",
+    "alerts.warmingTitle": "Alerts warming",
+    "alerts.warmingBody": "Retry soon.",
+    "alerts.retryTap": "Tap refresh to retry alerts",
+    "alerts.retrying": "Retrying alerts... ({n}/5)",
+    "alerts.cached": "Showing cached alerts",
+    "signals.metaRanked": "{count} ranked · {full} full data",
+    "signals.noSymbols": "No symbols",
+    "signals.noRanked": "No ranked opportunities yet",
+    "signals.panelWarmingTitle": "Panel warming",
+    "signals.panelWarmingBody": "Ranking setups.",
+    "signals.sectionTopBuy": "Top BUY",
+    "signals.sectionTopSell": "Top SELL",
+    "signals.sectionHighConf": "High confidence",
+    "signals.emptySetups": "No setups.",
+    "signals.bestLong": "Best long.",
+    "signals.bestShort": "Best short.",
+    "signals.clearestSetup": "Clearest setup.",
+    "signals.topPick": "Top {rec}",
+    "signals.scoreLabel": "Score {label}",
+    "learning.offline": "Learning offline",
+    "learning.noStats": "No stats",
+    "learning.cached": "Cached",
+    "learning.noClosedTrades": "No closed trades",
+    "learning.statsLater": "Stats appear later.",
+    "learning.tryAgain": "Try again.",
+    "learning.status.waiting": "Waiting",
+    "learning.status.on": "On",
+    "learning.status.noTrades": "No trades",
+    "learning.status.progress": "{current}/{required} trades",
+    "learning.loadFailed": "Load failed.",
+    "alerts.retryGeneric": "Retrying alerts...",
+    "signals.retrying": "Retrying opportunities...",
+    "metric.noData": "No Data",
+    "overview.liveUnavailable": "Live overview unavailable",
+    "learning.performance": "Performance",
+    "learning.loading": "Loading",
+    "learning.loadingTitle": "Loading",
+    "learning.loadingHint": "Reading trades.",
+    "learning.rules": "Rules",
+    "learning.rulesHint": "Starts after 50 closed trades.",
+    "portfolio.sheetTitle": "Portfolio",
+    "portfolio.allocation": "Allocation",
+    "portfolio.close": "Close",
+  },
+};
+
+let currentLang = null;
+
+function detectSystemLang() {
+  const raw = String(navigator.language || navigator.userLanguage || "").toLowerCase();
+  if (raw.startsWith("de")) return "de";
+  return "en";
+}
+
+function t(key) {
+  const lang = currentLang || detectSystemLang();
+  return I18N?.[lang]?.[key] ?? I18N?.en?.[key] ?? key;
+}
+
+function tf(key, vars) {
+  let s = t(key);
+  if (vars && typeof vars === "object") {
+    Object.keys(vars).forEach((k) => {
+      s = s.replaceAll(`{${k}}`, String(vars[k]));
+    });
+  }
+  return s;
+}
+
+function applyI18nToDom() {
+  const lang = currentLang || detectSystemLang();
+
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    const key = el.getAttribute("data-i18n");
+    if (!key) return;
+    el.textContent = t(key);
+  });
+
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+    const key = el.getAttribute("data-i18n-placeholder");
+    if (!key) return;
+    el.setAttribute("placeholder", t(key));
+  });
+
+  document.querySelectorAll("[data-i18n-aria]").forEach((el) => {
+    const key = el.getAttribute("data-i18n-aria");
+    if (!key) return;
+    el.setAttribute("aria-label", t(key));
+  });
+
+  document.querySelectorAll(".auth-lang-button, .dashboard-lang-button").forEach((btn) => {
+    btn.classList.toggle("is-active", btn.getAttribute("data-lang") === lang);
+  });
+}
+
+function setLanguage(next) {
+  const normalized = next === I18N_DEFAULT ? I18N_DEFAULT : String(next || "").toLowerCase();
+  if (normalized === I18N_DEFAULT) {
+    window.localStorage.removeItem(I18N_STORAGE_KEY);
+    currentLang = null;
+  } else if (I18N_SUPPORTED.has(normalized)) {
+    window.localStorage.setItem(I18N_STORAGE_KEY, normalized);
+    currentLang = normalized;
+  }
+  applyI18nToDom();
+  if (typeof renderStrategyButtons === "function") {
+    renderStrategyButtons();
+  }
+  if (typeof renderMobileStrategyCards === "function") {
+    renderMobileStrategyCards();
+  }
+  if (typeof refreshDashboardI18n === "function") {
+    refreshDashboardI18n();
+  }
+}
+
+function initI18n() {
+  const saved = window.localStorage.getItem(I18N_STORAGE_KEY);
+  if (saved && I18N_SUPPORTED.has(saved)) {
+    currentLang = saved;
+  } else {
+    currentLang = null;
+  }
+
+  document.querySelectorAll(".auth-lang-button, .dashboard-lang-button").forEach((btn) => {
+    btn.addEventListener("click", () => setLanguage(btn.getAttribute("data-lang")));
+  });
+
+  applyI18nToDom();
+  if (typeof syncCompanyPlaceholders === "function") {
+    syncCompanyPlaceholders();
+  }
+  if (typeof updateChartCompareUi === "function") {
+    updateChartCompareUi();
+  }
+}
 const DEFAULT_CLERK_PLAN = {
   slug: "pro",
   name: "Investieren Pro Monthly",
@@ -35,11 +513,12 @@ const STORAGE_KEYS = {
   cachedLearningStats: "investieren:cachedLearningStats",
 };
 
-const STRATEGY_LABELS = {
-  simple: "Simple",
-  ai: "AI",
-  hedgefund: "Hedgefund",
-};
+const STRATEGY_KEYS = ["simple", "ai", "hedgefund"];
+
+function getStrategyLabel(key) {
+  const k = String(key || "");
+  return t(`strategy.${k}`) || k;
+}
 
 const STRATEGY_DESCRIPTIONS = {
   simple: {
@@ -107,6 +586,7 @@ const state = {
   favoriteSymbols: new Set(),
   alertsRetryId: null,
   alertsRetryAttempt: 0,
+  alertsUiLoading: false,
   chartRenderId: null,
   chartRetryAttempt: 0,
   chartRequestId: 0,
@@ -120,6 +600,10 @@ const state = {
   latestOverview: null,
   learningStats: null,
   opportunities: [],
+  opportunityUiLoading: false,
+  opportunityPanelMode: "panel",
+  opportunityWarningMessage: "",
+  opportunityPanelHydrated: false,
   auth: {
     enabled: false,
     ready: false,
@@ -462,10 +946,12 @@ function setAuthError(message = "") {
   }
   if (!message) {
     elements.authError.hidden = true;
+    elements.authPassword?.setAttribute("aria-invalid", "false");
     return;
   }
   elements.authError.textContent = message;
   elements.authError.hidden = false;
+  elements.authPassword?.setAttribute("aria-invalid", "true");
 }
 
 async function fetchAuthConfig() {
@@ -654,7 +1140,7 @@ function redirectToPricingPage() {
   window.location.replace("/pricing.html");
 }
 
-function showPaywall(message = "Subscribe to access live signals, alerts and watchlists.") {
+function showPaywall(message = t("paywall.defaultMessage")) {
   elements.authOverlay.classList.add("hidden");
   elements.authOverlay.hidden = true;
   elements.appShell.classList.add("hidden");
@@ -769,7 +1255,7 @@ async function initializeManagedAuth() {
 
 async function loginWithManagedProvider(mode = "login") {
   if (!state.auth.ready) {
-    setAuthLoading(true, "Loading login...");
+    setAuthLoading(true, t("auth.loadingLogin"));
     return;
   }
 
@@ -789,7 +1275,7 @@ async function loginWithManagedProvider(mode = "login") {
 
 async function continueWithOAuth(strategy) {
   if (!state.auth.ready) {
-    setAuthLoading(true, "Loading login...");
+    setAuthLoading(true, t("auth.loadingLogin"));
     return;
   }
 
@@ -1246,27 +1732,30 @@ function learningMetricTone(value, options = {}) {
 function learningStatus(profile) {
   if (!profile) {
     return {
-      label: "Waiting",
+      label: t("learning.status.waiting"),
       tone: "text-slate-400",
       badge: "border-white/10 bg-white/5 text-slate-300",
     };
   }
   if (profile.eligible) {
     return {
-      label: "On",
+      label: t("learning.status.on"),
       tone: "text-emerald-300",
       badge: "border-emerald-400/20 bg-emerald-500/10 text-emerald-200",
     };
   }
   if (profile.trade_count > 0) {
     return {
-      label: `${profile.trade_count}/${profile.min_trades_required} trades`,
+      label: tf("learning.status.progress", {
+        current: profile.trade_count,
+        required: profile.min_trades_required,
+      }),
       tone: "text-amber-300",
       badge: "border-amber-400/20 bg-amber-500/10 text-amber-200",
     };
   }
   return {
-      label: "No trades",
+    label: t("learning.status.noTrades"),
     tone: "text-slate-400",
     badge: "border-white/10 bg-white/5 text-slate-300",
   };
@@ -1280,7 +1769,7 @@ function emptyLearningResponse() {
 }
 
 function sortLearningStrategies(strategies) {
-  const order = Object.keys(STRATEGY_LABELS);
+  const order = STRATEGY_KEYS;
   return [...(Array.isArray(strategies) ? strategies : [])].sort(
     (left, right) => order.indexOf(left.strategy) - order.indexOf(right.strategy),
   );
@@ -1429,10 +1918,10 @@ function renderAnalysisLoading(symbol) {
   setConfidenceBar(0, "NO_DATA");
   elements.confidenceHint.textContent = "⚠️ Scanning";
   elements.analysisSummary.textContent = trimDecisionText(
-    `${STRATEGY_LABELS[state.selectedStrategy]} scan: ${symbol}`,
+    `${getStrategyLabel(state.selectedStrategy)} scan: ${symbol}`,
     110,
   );
-  elements.selectedStrategyBadge.textContent = STRATEGY_LABELS[state.selectedStrategy];
+  elements.selectedStrategyBadge.textContent = getStrategyLabel(state.selectedStrategy);
   elements.analysisGeneratedAt.textContent = "Running";
   elements.biasValue.textContent = "Balanced";
   elements.noTradeReason.textContent = "Waiting.";
@@ -1449,7 +1938,7 @@ function renderAnalysisLoading(symbol) {
   }
   if (elements.mobileAnalysisSummary) {
     elements.mobileAnalysisSummary.textContent = trimDecisionText(
-      `${STRATEGY_LABELS[state.selectedStrategy]} scan: ${symbol}`,
+      `${getStrategyLabel(state.selectedStrategy)} scan: ${symbol}`,
       110,
     );
   }
@@ -1526,7 +2015,8 @@ function alertToneClasses(tone) {
 }
 
 function renderAlertsLoading() {
-  elements.alertsMeta.textContent = "Scanning...";
+  state.alertsUiLoading = true;
+  elements.alertsMeta.textContent = t("alerts.scanning");
   elements.alertsList.innerHTML = Array.from({ length: 3 })
     .map(
       () => `
@@ -1542,16 +2032,17 @@ function renderAlertsLoading() {
 }
 
 function renderAlerts(alerts) {
+  state.alertsUiLoading = false;
   state.alertsRetryAttempt = 0;
   window.clearTimeout(state.alertsRetryId);
   writeCachedJson(STORAGE_KEYS.cachedAlerts, alerts);
-  elements.alertsMeta.textContent = `${alerts.length} live alerts`;
+  elements.alertsMeta.textContent = tf("alerts.metaCount", { count: alerts.length });
 
   if (!alerts.length) {
     elements.alertsList.innerHTML = `
       <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-        <p class="text-sm font-semibold text-white">No alerts</p>
-        <p class="mt-2 text-sm leading-6 text-slate-400">⚠️ Nothing strong.</p>
+        <p class="text-sm font-semibold text-white">${escapeHtml(t("alerts.noAlertsTitle"))}</p>
+        <p class="mt-2 text-sm leading-6 text-slate-400">⚠️ ${escapeHtml(t("alerts.noAlertsBody"))}</p>
       </article>
     `;
     requestAnimationFrame(syncCompanySectionAlignment);
@@ -1569,7 +2060,7 @@ function renderAlerts(alerts) {
               <p class="mt-2 text-sm leading-6 text-slate-300">${alert.message}</p>
             </div>
             <span class="shrink-0 rounded-full px-3 py-2 text-[11px] font-semibold ${tone.badge}">
-              ${STRATEGY_LABELS[alert.strategy] || titleCase(alert.strategy)}
+              ${getStrategyLabel(alert.strategy) || titleCase(alert.strategy)}
             </span>
           </div>
         </article>
@@ -1580,11 +2071,12 @@ function renderAlerts(alerts) {
 }
 
 function renderAlertsWarning(message) {
+  state.alertsUiLoading = false;
   elements.alertsMeta.textContent = message;
   elements.alertsList.innerHTML = `
     <article class="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-      <p class="text-sm font-semibold text-white">Alerts warming</p>
-      <p class="mt-2 text-sm leading-6 text-slate-300">⚠️ Retry soon.</p>
+      <p class="text-sm font-semibold text-white">${escapeHtml(t("alerts.warmingTitle"))}</p>
+      <p class="mt-2 text-sm leading-6 text-slate-300">⚠️ ${escapeHtml(t("alerts.warmingBody"))}</p>
     </article>
   `;
   requestAnimationFrame(syncCompanySectionAlignment);
@@ -1635,7 +2127,9 @@ function renderOpportunityLoading() {
   if (!elements.opportunityList || !elements.opportunityMeta) {
     return;
   }
-  elements.opportunityMeta.textContent = "Ranking...";
+  state.opportunityUiLoading = true;
+  state.opportunityPanelHydrated = false;
+  elements.opportunityMeta.textContent = t("signals.ranking");
   elements.opportunityList.innerHTML = Array.from({ length: 3 })
     .map(
       () => `
@@ -1653,11 +2147,11 @@ function buildOpportunitySection(title, tone, entries, emptyMessage) {
     return `
       <article class="opportunity-group">
         <div class="opportunity-group-head">
-          <p class="opportunity-group-title">${title}</p>
+          <p class="opportunity-group-title">${escapeHtml(title)}</p>
         </div>
         <div class="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-4 text-sm leading-6 text-slate-400">
-          No setups.
-          <span class="block mt-1 text-xs text-slate-500">${emptyMessage}</span>
+          ${escapeHtml(t("signals.emptySetups"))}
+          <span class="block mt-1 text-xs text-slate-500">${escapeHtml(emptyMessage)}</span>
         </div>
       </article>
     `;
@@ -1666,7 +2160,7 @@ function buildOpportunitySection(title, tone, entries, emptyMessage) {
   return `
     <article class="opportunity-group">
       <div class="opportunity-group-head">
-        <p class="opportunity-group-title">${title}</p>
+        <p class="opportunity-group-title">${escapeHtml(title)}</p>
       </div>
       <div class="space-y-2.5">
         ${entries
@@ -1681,13 +2175,13 @@ function buildOpportunitySection(title, tone, entries, emptyMessage) {
                 <div class="min-w-0">
                   <div class="flex items-center justify-between gap-3">
                     <p class="truncate text-sm font-semibold text-white">${entry.symbol}</p>
-                    <span class="opportunity-pill">${index === 0 ? `Top ${entry.recommendation}` : entry.recommendation}</span>
+                    <span class="opportunity-pill">${index === 0 ? escapeHtml(tf("signals.topPick", { rec: entry.recommendation })) : escapeHtml(entry.recommendation)}</span>
                   </div>
                   <p class="mt-1 truncate text-xs text-slate-400">${entry.name}</p>
                 </div>
                 <div class="text-right">
                   <p class="text-sm font-semibold text-white">${Math.round(entry.confidence)}%</p>
-                  <p class="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500">Score ${entry.scoreLabel}</p>
+                  <p class="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500">${escapeHtml(tf("signals.scoreLabel", { label: entry.scoreLabel }))}</p>
                 </div>
               </button>
             `,
@@ -1773,9 +2267,13 @@ function renderOpportunityPanel(entries) {
   if (!elements.opportunityList || !elements.opportunityMeta) {
     return;
   }
+  state.opportunityUiLoading = false;
+  state.opportunityPanelMode = "panel";
+  state.opportunityPanelHydrated = true;
+  state.opportunityWarningMessage = "";
   state.opportunities = entries;
   const fullCount = entries.filter((entry) => entry.dataQuality === "FULL").length;
-  elements.opportunityMeta.textContent = `${entries.length} ranked · ${fullCount} full data`;
+  elements.opportunityMeta.textContent = tf("signals.metaRanked", { count: entries.length, full: fullCount });
   const strongest = [...entries].sort((left, right) => opportunityStrength(right) - opportunityStrength(left))[0] || null;
 
   let topBuy = opportunityBuyCandidates(entries);
@@ -1810,9 +2308,9 @@ function renderOpportunityPanel(entries) {
   }
 
   elements.opportunityList.innerHTML = [
-    buildOpportunitySection("📈 Top BUY", "BUY", topBuy, "Best long."),
-    buildOpportunitySection("📉 Top SELL", "SELL", topSell, "Best short."),
-    buildOpportunitySection("⚠️ High confidence", "HOLD", highConfidence, "Clearest setup."),
+    buildOpportunitySection(`📈 ${t("signals.sectionTopBuy")}`, "BUY", topBuy, t("signals.bestLong")),
+    buildOpportunitySection(`📉 ${t("signals.sectionTopSell")}`, "SELL", topSell, t("signals.bestShort")),
+    buildOpportunitySection(`⚠️ ${t("signals.sectionHighConf")}`, "HOLD", highConfidence, t("signals.clearestSetup")),
   ].join("");
 
   elements.opportunityList.querySelectorAll(".opportunity-card").forEach((button) => {
@@ -1830,11 +2328,15 @@ function renderOpportunityWarning(message) {
   if (!elements.opportunityList || !elements.opportunityMeta) {
     return;
   }
+  state.opportunityUiLoading = false;
+  state.opportunityPanelMode = "warning";
+  state.opportunityPanelHydrated = true;
+  state.opportunityWarningMessage = message;
   elements.opportunityMeta.textContent = message;
   elements.opportunityList.innerHTML = `
     <article class="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-      <p class="text-sm font-semibold text-white">Panel warming</p>
-      <p class="mt-2 text-sm leading-6 text-slate-300">⚠️ Ranking setups.</p>
+      <p class="text-sm font-semibold text-white">${escapeHtml(t("signals.panelWarmingTitle"))}</p>
+      <p class="mt-2 text-sm leading-6 text-slate-300">⚠️ ${escapeHtml(t("signals.panelWarmingBody"))}</p>
     </article>
   `;
 }
@@ -1853,7 +2355,7 @@ async function loadOpportunities(forceRefresh = false) {
   ).slice(0, Math.max(MAX_SIDEBAR_SLOTS, 10));
 
   if (!symbols.length) {
-    renderOpportunityWarning("No symbols");
+    renderOpportunityWarning(t("signals.noSymbols"));
     return [];
   }
 
@@ -1916,7 +2418,7 @@ async function loadOpportunities(forceRefresh = false) {
     if (strongestFallback.length) {
       entries = strongestFallback;
     } else {
-      renderOpportunityWarning("No ranked opportunities yet");
+      renderOpportunityWarning(t("signals.noRanked"));
       return [];
     }
   }
@@ -1928,7 +2430,7 @@ async function loadOpportunities(forceRefresh = false) {
 function queueAlertsRetry(forceRefresh = false, delayMs = 2500) {
   const nextAttempt = state.alertsRetryAttempt + 1;
   if (nextAttempt > 5) {
-    elements.alertsMeta.textContent = "Tap refresh to retry alerts";
+    elements.alertsMeta.textContent = t("alerts.retryTap");
     return;
   }
   state.alertsRetryAttempt = nextAttempt;
@@ -1936,7 +2438,7 @@ function queueAlertsRetry(forceRefresh = false, delayMs = 2500) {
   state.alertsRetryId = window.setTimeout(() => {
     loadAlerts(forceRefresh).catch((error) => {
       console.error("[frontend] alerts retry failed", error);
-      renderAlertsWarning(`Retrying alerts... (${state.alertsRetryAttempt}/5)`);
+      renderAlertsWarning(tf("alerts.retrying", { n: state.alertsRetryAttempt }));
       queueAlertsRetry(forceRefresh, Math.min(delayMs * 1.6, 8000));
     });
   }, delayMs);
@@ -1946,7 +2448,7 @@ function renderLearningStatsLoading() {
   if (!elements.learningList || !elements.learningMeta) {
     return;
   }
-  elements.learningMeta.textContent = "Loading";
+  elements.learningMeta.textContent = t("learning.loading");
   elements.learningMeta.className =
     "rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400";
   elements.learningList.innerHTML = Array.from({ length: 3 })
@@ -1971,13 +2473,13 @@ function renderLearningStatsError(message) {
   if (!elements.learningList || !elements.learningMeta) {
     return;
   }
-  elements.learningMeta.textContent = "Learning offline";
+  elements.learningMeta.textContent = t("learning.offline");
   elements.learningMeta.className =
     "rounded-full border border-amber-400/20 bg-amber-500/10 px-4 py-2 text-xs font-medium text-amber-200";
   elements.learningList.innerHTML = `
     <article class="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-      <p class="text-sm font-semibold text-white">Learning offline</p>
-      <p class="mt-2 text-sm leading-6 text-slate-300">${message || "⚠️ Try again."}</p>
+      <p class="text-sm font-semibold text-white">${escapeHtml(t("learning.offline"))}</p>
+      <p class="mt-2 text-sm leading-6 text-slate-300">${escapeHtml(message || `⚠️ ${t("learning.tryAgain")}`)}</p>
     </article>
   `;
 }
@@ -1993,8 +2495,8 @@ function renderLearningStats(response = emptyLearningResponse()) {
     strategies.find((item) => item.strategy === state.selectedStrategy) || null;
   const selectedStatus = learningStatus(selectedProfile);
   elements.learningMeta.textContent = selectedProfile
-    ? `${STRATEGY_LABELS[state.selectedStrategy]} · ${selectedStatus.label}`
-    : "No stats";
+    ? `${getStrategyLabel(state.selectedStrategy)} · ${selectedStatus.label}`
+    : t("learning.noStats");
   elements.learningMeta.className = `rounded-full border px-4 py-2 text-xs font-medium ${
     selectedProfile?.eligible
       ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-200"
@@ -2006,8 +2508,8 @@ function renderLearningStats(response = emptyLearningResponse()) {
   if (!strategies.length) {
     elements.learningList.innerHTML = `
       <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-        <p class="text-sm font-semibold text-white">No closed trades</p>
-        <p class="mt-2 text-sm leading-6 text-slate-400">Stats appear later.</p>
+        <p class="text-sm font-semibold text-white">${escapeHtml(t("learning.noClosedTrades"))}</p>
+        <p class="mt-2 text-sm leading-6 text-slate-400">${escapeHtml(t("learning.statsLater"))}</p>
       </article>
     `;
     return;
@@ -2034,7 +2536,7 @@ function renderLearningStats(response = emptyLearningResponse()) {
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <div class="flex items-center gap-2">
-                <p class="text-sm font-semibold text-white">${STRATEGY_LABELS[profile.strategy] || titleCase(profile.strategy)}</p>
+                <p class="text-sm font-semibold text-white">${getStrategyLabel(profile.strategy) || titleCase(profile.strategy)}</p>
                 ${
                   active
                     ? '<span class="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-200">Selected</span>'
@@ -2113,7 +2615,7 @@ function renderAnalysis(analysis) {
     };
   }
   const strategy = analysis?.strategy || state.selectedStrategy;
-  elements.selectedStrategyBadge.textContent = STRATEGY_LABELS[strategy] || titleCase(strategy);
+  elements.selectedStrategyBadge.textContent = getStrategyLabel(strategy) || titleCase(strategy);
   renderStrategyDescription(strategy);
   if (analysis && !analysis.no_data) {
     writeCachedJson(STORAGE_KEYS.cachedAnalysis, analysis);
@@ -2278,7 +2780,7 @@ function renderMobileStrategyCardsLoading(symbol) {
   if (!elements.mobileStrategyCards) {
     return;
   }
-  elements.mobileStrategyCards.innerHTML = Object.entries(STRATEGY_LABELS)
+  elements.mobileStrategyCards.innerHTML = STRATEGY_KEYS.map((k) => [k, getStrategyLabel(k)])
     .map(
       ([key, label]) => `
         <button type="button" class="mobile-strategy-card mobile-only rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-left" data-mobile-strategy="${key}">
@@ -2300,7 +2802,7 @@ function renderMobileStrategyCards() {
     return;
   }
   const snapshots = state.strategySnapshots[state.selectedSymbol] || {};
-  elements.mobileStrategyCards.innerHTML = Object.entries(STRATEGY_LABELS)
+  elements.mobileStrategyCards.innerHTML = STRATEGY_KEYS.map((k) => [k, getStrategyLabel(k)])
     .map(([key, label]) => {
       const analysis = snapshots[key];
       const current = key === state.selectedStrategy;
@@ -2354,7 +2856,7 @@ function syncMobileFavoriteButton() {
   const active = isFavoriteSymbol(state.selectedSymbol);
   elements.mobileFavoriteButton.innerHTML = `
     <span class="text-lg">${active ? "★" : "☆"}</span>
-    <span>${active ? "Saved" : "Favorite"}</span>
+    <span>${active ? t("dashboard.saved") || "Saved" : t("dashboard.favorite") || "Favorite"}</span>
   `;
   elements.mobileFavoriteButton.classList.toggle("mobile-quick-action-active", active);
 }
@@ -2658,7 +3160,7 @@ async function toggleFavorite(symbol) {
     renderFavorites();
     syncMobileFavoriteButton();
     syncSelectedFavoriteButton();
-    showError(error.message || "Favorite could not update.");
+    showError(error.message || t("dashboard.favoritesUpdateFailed"));
   }
 }
 
@@ -2773,7 +3275,7 @@ async function loadLearningStats(forceRefresh = false) {
     renderLearningStatsLoading();
   } else {
     renderLearningStats(cachedLearningStats);
-    elements.learningMeta.textContent = "Refreshing";
+    elements.learningMeta.textContent = t("dashboard.refreshing");
     elements.learningMeta.className =
       "rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400";
   }
@@ -2788,12 +3290,12 @@ async function loadLearningStats(forceRefresh = false) {
   } catch (error) {
     if (cachedLearningStats) {
       renderLearningStats(cachedLearningStats);
-      elements.learningMeta.textContent = "Cached";
+      elements.learningMeta.textContent = t("learning.cached");
       elements.learningMeta.className =
         "rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400";
       return cachedLearningStats;
     }
-    renderLearningStatsError(error.message || "⚠️ Load failed.");
+    renderLearningStatsError(error.message || `⚠️ ${t("learning.loadFailed")}`);
     throw error;
   }
 }
@@ -2808,13 +3310,17 @@ function renderStrategyButtons() {
   }
   elements.strategyButtons.forEach((button) => {
     const active = button.dataset.strategy === state.selectedStrategy;
+    const strat = button.dataset.strategy;
+    if (strat) {
+      button.textContent = getStrategyLabel(strat);
+    }
     button.className = [
       "strategy-button rounded-xl px-3 py-2 text-xs font-semibold transition",
       active ? "strategy-button-active" : "strategy-button-idle",
     ].join(" ");
   });
   if (elements.selectedStrategyBadge) {
-    elements.selectedStrategyBadge.textContent = STRATEGY_LABELS[state.selectedStrategy];
+    elements.selectedStrategyBadge.textContent = getStrategyLabel(state.selectedStrategy);
   }
   renderStrategyDescription(state.selectedStrategy);
 }
@@ -2857,7 +3363,7 @@ function showLoginOverlay() {
   elements.authOverlay.hidden = false;
   elements.mobileQuickActions?.classList.add("hidden");
   closePortfolioSheet();
-  elements.authError.hidden = true;
+  setAuthError("");
   elements.authForm?.reset();
   resetAuthOverlayPosition();
   state.auth.showManagedAuth = false;
@@ -3041,7 +3547,7 @@ async function loadAlerts(forceRefresh = false) {
   if (forceRefresh || !Array.isArray(cachedAlerts) || !cachedAlerts.length) {
     renderAlertsLoading();
   } else {
-    elements.alertsMeta.textContent = "Refreshing alerts...";
+    elements.alertsMeta.textContent = t("dashboard.alertsRefreshing");
   }
   const params = new URLSearchParams({
     strategy: state.selectedStrategy,
@@ -3200,7 +3706,9 @@ function normalizeTickerSymbol(value) {
 function updateChartCompareUi() {
   const primary = normalizeTickerSymbol(state.selectedSymbol);
   const compare = normalizeTickerSymbol(state.compareSymbol);
-  elements.chartSymbolBadge.textContent = compare ? `${primary} VS ${compare}` : `CHART · ${primary}`;
+  elements.chartSymbolBadge.textContent = compare
+    ? tf("chart.badgeCompared", { primary, compare })
+    : tf("chart.badgeSingle", { primary });
   if (elements.chartCompareInput && document.activeElement !== elements.chartCompareInput) {
     elements.chartCompareInput.value = compare;
   }
@@ -3214,7 +3722,7 @@ function updateChartCompareUi() {
     return;
   }
   elements.chartCompareLegend.innerHTML = `
-    <span class="chart-compare-note">Normalized to 100%</span>
+    <span class="chart-compare-note">${escapeHtml(t("chart.compareLegend"))}</span>
     <span class="chart-compare-pill">
       <span class="chart-compare-swatch" style="background:#22c55e"></span>
       ${escapeHtml(primary)}
@@ -3225,6 +3733,55 @@ function updateChartCompareUi() {
     </span>
   `;
   elements.chartCompareLegend.classList.remove("hidden");
+}
+
+function syncCompanyPlaceholders() {
+  if (!elements.companyHeadline || !elements.companyExchange) {
+    return;
+  }
+  const sel = normalizeTickerSymbol(state.selectedSymbol);
+  if (state.latestOverview && normalizeTickerSymbol(state.latestOverview.symbol) === sel) {
+    elements.companyHeadline.textContent = state.latestOverview.name;
+    elements.companyExchange.textContent = state.latestOverview.exchange || t("company.exchangeUnavailable");
+    return;
+  }
+  const headline = elements.companyHeadline.textContent.trim();
+  if (headline === sel) {
+    elements.companyExchange.textContent = t("company.exchangeUnavailable");
+    return;
+  }
+  elements.companyHeadline.textContent = t("company.selectSymbol");
+  elements.companyExchange.textContent = t("company.exchangeHint");
+}
+
+function refreshDashboardI18n() {
+  if (typeof updateChartCompareUi === "function") {
+    updateChartCompareUi();
+  }
+  syncCompanyPlaceholders();
+  if (state.alertsUiLoading && typeof renderAlertsLoading === "function") {
+    renderAlertsLoading();
+  } else {
+    const cachedAlerts = readCachedJson(STORAGE_KEYS.cachedAlerts);
+    if (Array.isArray(cachedAlerts) && typeof renderAlerts === "function") {
+      renderAlerts(cachedAlerts);
+    }
+  }
+  if (
+    state.opportunityPanelHydrated &&
+    !state.opportunityUiLoading &&
+    typeof renderOpportunityPanel === "function" &&
+    typeof renderOpportunityWarning === "function"
+  ) {
+    if (state.opportunityPanelMode === "panel") {
+      renderOpportunityPanel(state.opportunities);
+    } else if (state.opportunityPanelMode === "warning") {
+      renderOpportunityWarning(state.opportunityWarningMessage);
+    }
+  }
+  if (state.learningStats && typeof renderLearningStats === "function") {
+    renderLearningStats(state.learningStats);
+  }
 }
 
 function setCompareSymbol(symbol = "") {
@@ -3393,7 +3950,7 @@ function renderOverview(overview) {
   const positive = Number(overview.change_percent || 0) >= 0;
   elements.changeBadge.textContent = hasPrice
     ? `${overview.stale ? "⚠️ " : ""}${percent(overview.change_percent)}`
-    : "No Data";
+    : t("metric.noData");
   elements.changeBadge.className = [
     "inline-flex w-fit rounded-full px-4 py-2 text-sm font-semibold",
     hasPrice
@@ -3404,7 +3961,7 @@ function renderOverview(overview) {
   ].join(" ");
 
   elements.companyHeadline.textContent = overview.name;
-  elements.companyExchange.textContent = overview.exchange || "Exchange unavailable";
+  elements.companyExchange.textContent = overview.exchange || t("company.exchangeUnavailable");
 
   if (overview.logo) {
     elements.companyLogo.src = overview.logo;
@@ -3425,17 +3982,17 @@ function renderOverview(overview) {
 
 function renderOverviewFallback(symbol) {
   elements.selectedSymbolName.textContent = symbol;
-  elements.selectedCompanyName.textContent = "Live overview unavailable";
-  elements.changeBadge.textContent = "No Data";
+  elements.selectedCompanyName.textContent = t("overview.liveUnavailable");
+  elements.changeBadge.textContent = t("metric.noData");
   elements.changeBadge.className =
     "inline-flex w-fit rounded-full bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300";
-  elements.metricPrice.textContent = "No Data";
-  elements.metricHigh.textContent = "No Data";
-  elements.metricLow.textContent = "No Data";
-  elements.metricOpen.textContent = "No Data";
-  elements.metricPrevClose.textContent = "No Data";
+  elements.metricPrice.textContent = t("metric.noData");
+  elements.metricHigh.textContent = t("metric.noData");
+  elements.metricLow.textContent = t("metric.noData");
+  elements.metricOpen.textContent = t("metric.noData");
+  elements.metricPrevClose.textContent = t("metric.noData");
   elements.companyHeadline.textContent = symbol;
-  elements.companyExchange.textContent = "Exchange unavailable";
+  elements.companyExchange.textContent = t("company.exchangeUnavailable");
   elements.companyLogo.classList.add("hidden");
   elements.companyLogo.removeAttribute("src");
   renderCompanyDetails({
@@ -3541,7 +4098,7 @@ function ensureTradingView() {
   return state.tvScriptPromise;
 }
 
-function showTradingViewLoader(message = "Loading TradingView chart...") {
+function showTradingViewLoader(message = t("dashboard.tradingViewLoading")) {
   elements.tradingviewChart.innerHTML = `<div class="tv-loader">${message}</div>`;
 }
 
@@ -3614,7 +4171,7 @@ function canRenderTradingViewNow() {
 
 function getDeferredChartMessage() {
   if (!isMobileViewport()) {
-    return "Loading TradingView chart...";
+    return t("dashboard.tradingViewLoading");
   }
   if (!state.mobileChartPrimed) {
     return "Scroll to load chart.";
@@ -3895,7 +4452,7 @@ async function loadSymbol(symbol, forceRefresh = false) {
 }
 
 async function loadStrategySnapshots(symbol, forceRefresh = false) {
-  const strategies = Object.keys(STRATEGY_LABELS);
+  const strategies = STRATEGY_KEYS;
   const existing = state.strategySnapshots[symbol] || {};
   const params = new URLSearchParams();
   if (forceRefresh) {
@@ -3925,7 +4482,7 @@ async function loadStrategySnapshots(symbol, forceRefresh = false) {
 
 async function bootDashboard(forceRefresh = false) {
   if (state.auth.enabled && isAuthenticated() && !hasActiveSubscription()) {
-    showPaywall("Subscribe to access live signals, alerts and watchlists.");
+    showPaywall(t("paywall.defaultMessage"));
     return;
   }
   clearError();
@@ -3935,7 +4492,7 @@ async function bootDashboard(forceRefresh = false) {
   }
   renderAlertsLoading();
   try {
-    setBackendStatus("Connecting backend...", "loading");
+    setBackendStatus(t("dashboard.backendConnecting"), "loading");
     loadBackendHealth().catch((error) => {
       console.error("[frontend] health load failed", error);
     });
@@ -3964,9 +4521,9 @@ async function bootDashboard(forceRefresh = false) {
         const cachedAlerts = readCachedJson(STORAGE_KEYS.cachedAlerts);
         if (Array.isArray(cachedAlerts) && cachedAlerts.length) {
           renderAlerts(cachedAlerts);
-          elements.alertsMeta.textContent = "Showing cached alerts";
+          elements.alertsMeta.textContent = t("alerts.cached");
         } else {
-          renderAlertsWarning("Retrying alerts...");
+          renderAlertsWarning(t("alerts.retryGeneric"));
         }
         queueAlertsRetry(forceRefresh);
       });
@@ -3975,7 +4532,7 @@ async function bootDashboard(forceRefresh = false) {
     scheduleLowPriorityTask(() => {
       loadOpportunities(forceRefresh).catch((error) => {
         console.error("[frontend] opportunity load failed", error);
-        renderOpportunityWarning("Retrying opportunities...");
+        renderOpportunityWarning(t("signals.retrying"));
       });
     }, 220);
 
@@ -3994,7 +4551,7 @@ async function bootDashboard(forceRefresh = false) {
       if (fallback !== state.selectedSymbol) {
         await loadSymbol(fallback, forceRefresh);
       } else if (symbolResult.status === "rejected") {
-        showError(symbolResult.reason?.message || "Selected symbol could not load yet.");
+        showError(symbolResult.reason?.message || t("dashboard.selectedSymbolFailed"));
       }
     }
   } catch (error) {
@@ -4036,7 +4593,7 @@ function bindAuth() {
     event.preventDefault();
     const code = elements.authPassword.value.trim();
     if (code !== SIMPLE_ACCESS_CODE) {
-      setAuthError("Invalid access code");
+      setAuthError(t("errors.invalidCode"));
       elements.authPassword.select();
       return;
     }
@@ -4057,7 +4614,7 @@ function bindAuth() {
       await bootDashboard();
     } catch (error) {
       setAuthenticated(false);
-      setAuthError(error.message || "Invalid access code.");
+      setAuthError(error.message || t("errors.invalidCode"));
       elements.authPassword.select();
     }
   });
@@ -4082,15 +4639,15 @@ function bindApp() {
         const cachedAlerts = readCachedJson(STORAGE_KEYS.cachedAlerts);
         if (Array.isArray(cachedAlerts) && cachedAlerts.length) {
           renderAlerts(cachedAlerts);
-          elements.alertsMeta.textContent = "Showing cached alerts";
+          elements.alertsMeta.textContent = t("alerts.cached");
         } else {
-          renderAlertsWarning("Retrying alerts...");
+          renderAlertsWarning(t("alerts.retryGeneric"));
         }
         queueAlertsRetry(true);
       });
       loadOpportunities(true).catch((error) => {
         console.error("[frontend] opportunity refresh failed", error);
-        renderOpportunityWarning("Retrying opportunities...");
+        renderOpportunityWarning(t("signals.retrying"));
       });
       await loadSymbol(state.selectedSymbol, true);
     }
@@ -4265,6 +4822,7 @@ function bindApp() {
 }
 
 async function initializeApp() {
+  initI18n();
   try {
     await initializeManagedAuth();
     await restoreAdminSessionUser();

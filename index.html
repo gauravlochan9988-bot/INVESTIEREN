@@ -32,7 +32,7 @@
             id="authHeroImage"
             src="/auth-hero-hq.png"
             alt=""
-            class="h-full w-full object-cover opacity-45"
+            class="h-full w-full object-cover opacity-[0.52]"
           />
         </picture>
         <div id="authOverlayShade" class="absolute inset-0 login-overlay bg-[radial-gradient(circle_at_top_left,_rgba(15,23,42,0.35),_transparent_32%),linear-gradient(90deg,rgba(2,6,23,0.96)_0%,rgba(2,6,23,0.82)_36%,rgba(2,6,23,0.54)_60%,rgba(2,6,23,0.18)_100%)]"></div>
@@ -44,53 +44,81 @@
             <div class="auth-landing-topline">
               <div class="auth-brand-mark auth-landing-mark" aria-hidden="true">GQ</div>
               <div>
-                <p class="auth-landing-mini">Built by Gaurav Lochan</p>
-                <div class="auth-status-pill auth-landing-pill">PRIVATE ACCESS • FOUNDER SYSTEM</div>
+                <p class="auth-landing-mini" data-i18n="auth.builtBy">Entwickelt von Gaurav Lochan</p>
+                <div class="auth-status-pill auth-landing-pill" data-i18n="auth.privateAccess">PRIVATER ZUGANG • FOUNDER SYSTEM</div>
+              </div>
+              <div class="auth-lang-switch" data-i18n-aria="lang.switch" aria-label="Sprache">
+                <button type="button" class="auth-lang-button" data-lang="de" data-i18n-aria="lang.de">DE</button>
+                <button type="button" class="auth-lang-button" data-lang="en" data-i18n-aria="lang.en">EN</button>
               </div>
             </div>
 
             <div class="auth-landing-headline-block">
-              <h1 class="auth-landing-title">GQ Trading System</h1>
-              <p class="auth-landing-subtitle">Real-time signals. AI-driven decisions.</p>
-              <p class="auth-landing-description">
-                A private trading terminal built for fast market reads, clean execution logic and high-conviction signal monitoring.
+              <h1 class="auth-landing-title" data-i18n="auth.title">GQ Trading System</h1>
+              <p class="auth-landing-subtitle" data-i18n="auth.subtitle">Echtzeit-Signale. KI-gestützte Entscheidungen.</p>
+              <p class="auth-landing-description" data-i18n="auth.description">
+                Ein privates Trading-Terminal fur schnelle Marktanalysen, klare Ausfuhrungslogik und Signal-Monitoring mit hoher Ueberzeugung.
               </p>
             </div>
 
             <form id="authForm" class="auth-landing-form" novalidate>
-              <label for="authPassword" class="auth-input-label">Private access code</label>
-              <div class="auth-input-shell auth-landing-input-shell">
-                <input
-                  id="authPassword"
-                  name="password"
-                  type="password"
-                  placeholder="Enter private access code"
-                  autocomplete="current-password"
-                  class="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base text-white outline-none transition login-input"
-                />
-              </div>
+              <div class="auth-login-card">
+                <label for="authPassword" class="auth-input-label auth-input-label-row">
+                  <span class="auth-input-label-icon" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        d="M12 14v2M8 11V8a4 4 0 0 1 8 0v3M6 11h12a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2Z"
+                        stroke="currentColor"
+                        stroke-width="1.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </span>
+                  <span data-i18n="auth.accessCodeLabel">Zugangscode</span>
+                </label>
+                <div class="auth-input-shell auth-landing-input-shell">
+                  <input
+                    id="authPassword"
+                    name="password"
+                    type="password"
+                    placeholder="Code eingeben"
+                    data-i18n-placeholder="auth.accessCodePlaceholder"
+                    autocomplete="current-password"
+                    aria-describedby="authPasswordHint"
+                    aria-invalid="false"
+                    class="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base text-white outline-none transition login-input"
+                  />
+                </div>
 
-              <div class="auth-landing-actions">
-                <button type="submit" class="auth-private-button auth-landing-primary login-button">Enter Dashboard</button>
-                <a href="#systemSignals" class="auth-landing-secondary">View Signals</a>
-              </div>
+                <div class="auth-landing-actions">
+                  <button type="submit" class="auth-private-button auth-landing-primary login-button">
+                    <span data-i18n="auth.enterDashboard">Zum Dashboard</span>
+                  </button>
+                  <a href="#systemSignals" class="auth-landing-secondary" data-i18n="auth.viewSignals">Signale</a>
+                </div>
 
-              <p id="authError" class="text-sm text-rose-400" hidden>Invalid access code</p>
-              <p class="auth-password-hint">Private system. Access for authorized users only.</p>
+                <p id="authError" class="auth-error-text" role="alert" aria-live="polite" hidden>
+                  Ungültiger Code
+                </p>
+                <p id="authPasswordHint" class="auth-password-hint">
+                  <span data-i18n="auth.hint">Nur für autorisierte Nutzer. Verbindung ist verschlüsselt.</span>
+                </p>
+              </div>
             </form>
 
             <div class="auth-feature-grid">
               <article class="auth-feature-card">
-                <h2>Live Signals</h2>
-                <p>Actionable entries and exits with real-time market context.</p>
+                <h2 data-i18n="auth.features.liveSignalsTitle">Live-Signale</h2>
+                <p data-i18n="auth.features.liveSignalsBody">Konkrete Einstiegs- und Ausstiegssignale mit Echtzeit-Marktkontext.</p>
               </article>
               <article class="auth-feature-card">
-                <h2>AI Strategy Engine</h2>
-                <p>Model-driven decisions built for fast directional reads.</p>
+                <h2 data-i18n="auth.features.aiTitle">KI-Strategie-Engine</h2>
+                <p data-i18n="auth.features.aiBody">Modellgestutzte Entscheidungen fur schnelle Richtungsanalysen.</p>
               </article>
               <article class="auth-feature-card">
-                <h2>Risk Analysis</h2>
-                <p>Clear market framing before taking high-conviction trades.</p>
+                <h2 data-i18n="auth.features.riskTitle">Risikoanalyse</h2>
+                <p data-i18n="auth.features.riskBody">Klare Markteinschatzung vor Trades mit hoher Ueberzeugung.</p>
               </article>
             </div>
           </div>
@@ -111,28 +139,29 @@
                   class="auth-mini-game"
                   id="authMiniGame"
                   role="region"
+                  data-i18n-aria="auth.miniGame.aria"
                   aria-label="Kurzes Reflexspiel: tippe das leuchtende Feld"
                 >
                   <div class="auth-mini-game-top">
-                    <span class="auth-mini-game-title">GQ Pulse</span>
+                    <span class="auth-mini-game-title" data-i18n="auth.miniGame.title">GQ Pulse</span>
                     <span class="auth-mini-game-score" id="authMiniGameScore">0</span>
                   </div>
                   <div class="auth-mini-game-board" id="authMiniGameBoard"></div>
-                  <p class="auth-mini-game-hint">Tippe das leuchtende Feld</p>
+                  <p class="auth-mini-game-hint" data-i18n="auth.miniGame.hint">Tippe das leuchtende Feld</p>
                 </div>
               </div>
 
               <div class="auth-stat-grid">
                 <article class="auth-stat-card">
-                  <span>Win Rate</span>
+                  <span data-i18n="auth.stat.winRate">Trefferquote</span>
                   <strong>78%</strong>
                 </article>
                 <article class="auth-stat-card">
-                  <span>Signals</span>
+                  <span data-i18n="auth.stat.signals">Signale</span>
                   <strong>230+</strong>
                 </article>
                 <article class="auth-stat-card">
-                  <span>Accuracy</span>
+                  <span data-i18n="auth.stat.accuracy">Genauigkeit</span>
                   <strong>88%</strong>
                 </article>
               </div>
@@ -142,11 +171,11 @@
 
         <div id="systemSignals" class="auth-system-grid">
           <section class="auth-system-box">
-            <p class="auth-system-label">Inside your system</p>
+            <p class="auth-system-label" data-i18n="auth.system.inside">In deinem System</p>
             <ul class="auth-benefit-list auth-system-list">
-              <li>Live signals</li>
-              <li>AI-based decisions</li>
-              <li>Strategy comparison</li>
+              <li data-i18n="auth.system.liveSignals">Live-Signale</li>
+              <li data-i18n="auth.system.aiDecisions">KI-basierte Entscheidungen</li>
+              <li data-i18n="auth.system.strategyComparison">Strategie-Vergleich</li>
             </ul>
           </section>
         </div>
@@ -162,26 +191,26 @@
     >
       <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(45,212,191,0.12),_transparent_35%),linear-gradient(180deg,rgba(2,6,23,0.94)_0%,rgba(2,6,23,0.98)_100%)]"></div>
       <section class="relative z-10 mx-4 w-full max-w-xl rounded-[28px] border border-white/10 bg-slate-900/90 p-8 text-center shadow-2xl shadow-black/40 backdrop-blur">
-        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">Pro Access</p>
-        <h2 class="mt-4 text-3xl font-black tracking-[-0.04em] text-white">Upgrade to unlock the dashboard</h2>
-        <p class="mt-4 text-sm leading-6 text-slate-300">Subscribe to access live signals, alerts and watchlists.</p>
+        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300" data-i18n="paywall.kicker">Pro-Zugang</p>
+        <h2 class="mt-4 text-3xl font-black tracking-[-0.04em] text-white" data-i18n="paywall.title">Upgrade fur vollen Dashboard-Zugriff</h2>
+        <p class="mt-4 text-sm leading-6 text-slate-300" data-i18n="paywall.body">Aktiviere Pro, um Live-Signale, Alerts und Watchlists zu nutzen.</p>
         <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <button
             id="paywallUpgradeButton"
             type="button"
             class="rounded-2xl bg-gradient-to-r from-cyan-300 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px]"
           >
-            Upgrade €4.99 / month
+            <span data-i18n="paywall.upgradeCta">Upgrade €4.99 / Monat</span>
           </button>
           <button
             id="paywallLogoutButton"
             type="button"
             class="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
           >
-            Logout
+            <span data-i18n="paywall.logout">Abmelden</span>
           </button>
         </div>
-        <p id="paywallMessage" class="mt-4 text-xs text-slate-400">Apple Pay and Google Pay available in Stripe Checkout.</p>
+        <p id="paywallMessage" class="mt-4 text-xs text-slate-400" data-i18n="paywall.note">Apple Pay und Google Pay sind im Stripe-Checkout verfugbar.</p>
       </section>
     </div>
 
@@ -190,11 +219,11 @@
         <header
           class="dashboard-topbar mb-4 flex flex-col gap-4 rounded-[24px] border border-white/10 bg-slate-900/85 px-4 py-4 shadow-2xl shadow-black/30 backdrop-blur sm:mb-5 sm:rounded-[28px] sm:px-5 sm:py-5 xl:grid xl:grid-cols-[auto_minmax(420px,1fr)_auto] xl:items-center xl:gap-5"
         >
-          <button id="brandHomeButton" type="button" class="dashboard-brand flex items-center text-left" aria-label="Go to dashboard home">
+          <button id="brandHomeButton" type="button" class="dashboard-brand flex items-center text-left" aria-label="Zur Dashboard-Startseite" data-i18n-aria="dashboard.homeAria">
             <span id="headerMonogram" aria-hidden="true">GQ</span>
             <span class="dashboard-brand-copy">
               <span class="dashboard-brand-name">GQ Trading</span>
-              <span class="dashboard-brand-subtitle">Private system</span>
+              <span class="dashboard-brand-subtitle" data-i18n="dashboard.privateSystem">Privates System</span>
             </span>
           </button>
 
@@ -203,7 +232,8 @@
               <input
                 id="searchInput"
                 type="search"
-                placeholder="Search"
+                placeholder="Suchen"
+                data-i18n-placeholder="dashboard.searchPlaceholder"
                 class="dashboard-search w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3.5 text-base text-white outline-none transition focus:border-cyan-300/50 sm:px-5 sm:py-4"
                 autocomplete="off"
                 aria-autocomplete="list"
@@ -218,9 +248,18 @@
 
           <div class="flex w-full flex-col gap-3 xl:min-w-[352px] xl:w-auto xl:flex-row xl:flex-wrap xl:items-center xl:justify-end">
             <div
+              class="auth-lang-switch order-first w-full justify-center self-center xl:order-none xl:w-auto xl:justify-end"
+              data-i18n-aria="lang.switch"
+              aria-label="Sprache"
+            >
+              <button type="button" class="auth-lang-button dashboard-lang-button" data-lang="de" data-i18n-aria="lang.de">DE</button>
+              <button type="button" class="auth-lang-button dashboard-lang-button" data-lang="en" data-i18n-aria="lang.en">EN</button>
+            </div>
+            <div
               id="strategyToggle"
               class="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/60 p-1"
-              aria-label="Trading strategy"
+              data-i18n-aria="dashboard.strategyToggleAria"
+              aria-label="Handelsstrategie"
             >
               <span id="strategyToggleThumb" aria-hidden="true"></span>
               <button
@@ -249,7 +288,7 @@
               id="backendStatus"
               class="dashboard-chip rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-300"
             >
-              Connecting backend...
+              <span data-i18n="dashboard.backendConnecting">Backend wird verbunden...</span>
             </div>
             <div class="grid grid-cols-2 gap-3">
             <button
@@ -257,21 +296,21 @@
               type="button"
               class="action-secondary rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/15 xl:min-w-[132px]"
             >
-              Subscribe €4.99
+              <span data-i18n="dashboard.subscribe">Upgrade €4.99</span>
             </button>
             <button
               id="refreshButton"
               type="button"
               class="action-secondary rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 xl:min-w-[112px]"
             >
-              Refresh
+              <span data-i18n="dashboard.refresh">Aktualisieren</span>
             </button>
             <button
               id="logoutButton"
               type="button"
               class="action-secondary rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 xl:min-w-[112px]"
             >
-              Logout
+              <span data-i18n="dashboard.logout">Abmelden</span>
             </button>
             </div>
           </div>
@@ -280,20 +319,21 @@
         <nav
           id="mobileQuickActions"
           class="mobile-only hidden mb-3"
-          aria-label="Quick actions"
+          data-i18n-aria="dashboard.quickActionsAria"
+          aria-label="Schnellaktionen"
         >
           <div class="grid grid-cols-3 gap-2 rounded-[18px] border border-white/10 bg-slate-950/82 p-2 shadow-xl shadow-black/20 backdrop-blur-xl">
-            <button id="mobileFavoriteButton" type="button" class="mobile-quick-action" aria-label="Toggle favorite">
+            <button id="mobileFavoriteButton" type="button" class="mobile-quick-action" data-i18n-aria="dashboard.mobileFavoriteAria" aria-label="Favorit umschalten">
               <span class="text-lg">☆</span>
-              <span>Favorite</span>
+              <span data-i18n="dashboard.favorite">Favorit</span>
             </button>
-            <button id="mobileAlertButton" type="button" class="mobile-quick-action" aria-label="Open alerts">
+            <button id="mobileAlertButton" type="button" class="mobile-quick-action" data-i18n-aria="dashboard.mobileAlertsAria" aria-label="Alerts offnen">
               <span class="text-lg">🔔</span>
-              <span>Alerts</span>
+              <span data-i18n="dashboard.mobileAlerts">Alerts</span>
             </button>
-            <button id="mobilePortfolioButton" type="button" class="mobile-quick-action" aria-label="Open portfolio">
+            <button id="mobilePortfolioButton" type="button" class="mobile-quick-action" data-i18n-aria="dashboard.mobilePortfolioAria" aria-label="Depot offnen">
               <span class="text-lg">📊</span>
-              <span>Portfolio</span>
+              <span data-i18n="dashboard.depot">Depot</span>
             </button>
           </div>
         </nav>
@@ -305,15 +345,17 @@
           hidden
         >
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">Limited access</p>
-            <p id="limitedAccessMessage" class="mt-1 text-sm text-emerald-100">You can explore the dashboard. Unlock live signals and alerts for full access.</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300" data-i18n="limited.kicker">Eingeschrankter Zugriff</p>
+            <p id="limitedAccessMessage" class="mt-1 text-sm text-emerald-100" data-i18n="limited.body">
+              Du kannst das Dashboard ansehen. Aktiviere Live-Signale und Alerts fur vollen Zugriff.
+            </p>
           </div>
           <button
             id="limitedAccessUpgradeButton"
             type="button"
             class="shrink-0 rounded-2xl bg-gradient-to-r from-cyan-300 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px]"
           >
-            Unlock €4.99
+            <span data-i18n="limited.unlock">Freischalten €4.99</span>
           </button>
         </section>
 
@@ -321,29 +363,29 @@
           <aside id="watchlistSection" class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
             <div id="watchlistHeader" class="mb-4 flex items-end justify-between">
               <div>
-                <p class="text-xs font-medium text-slate-500">LIVE</p>
-                <h2 class="mt-2 text-xl font-semibold">Quotes</h2>
+                <p class="text-xs font-medium text-slate-500" data-i18n="dashboard.kickerLive">LIVE</p>
+                <h2 class="mt-2 text-xl font-semibold" data-i18n="watchlist.quotes">Kurse</h2>
               </div>
-              <span id="watchlistMeta" class="text-xs text-slate-500">Syncing...</span>
+              <span id="watchlistMeta" class="text-xs text-slate-500" data-i18n="watchlist.syncing">Synchronisiere...</span>
             </div>
             <div id="watchlistBody"></div>
             <div id="watchlistHint" class="rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-3 text-xs text-slate-400">
-              <p class="font-semibold uppercase tracking-[0.18em] text-slate-300">☆ Favorites</p>
-              <p class="mt-2 leading-6">Star to pin.</p>
+              <p class="font-semibold uppercase tracking-[0.18em] text-slate-300" data-i18n="watchlist.favoritesTitle">☆ Favoriten</p>
+              <p class="mt-2 leading-6" data-i18n="watchlist.favoritesHint">Mit Stern anheften.</p>
             </div>
 
             <div id="favoritesSection" class="mt-6 hidden border-t border-white/10 pt-5">
               <div class="mb-4 flex items-end justify-between">
                 <div>
-                  <p class="text-xs font-medium text-slate-500">Favorites</p>
-                  <h3 class="mt-2 text-lg font-semibold">Pinned symbols</h3>
+                  <p class="text-xs font-medium text-slate-500" data-i18n="favorites.label">Favoriten</p>
+                  <h3 class="mt-2 text-lg font-semibold" data-i18n="favorites.pinned">Angeheftete Symbole</h3>
                 </div>
-                <span id="favoritesMeta" class="text-xs text-slate-500">0 saved</span>
+                <span id="favoritesMeta" class="text-xs text-slate-500" data-i18n="favorites.meta">0 gespeichert</span>
               </div>
               <div id="favoritesBody" class="space-y-3">
                 <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-sm font-semibold text-white">No favorites</p>
-                  <p class="mt-2 text-sm leading-6 text-slate-400">Star a stock.</p>
+                  <p class="text-sm font-semibold text-white" data-i18n="favorites.emptyTitle">Keine Favoriten</p>
+                  <p class="mt-2 text-sm leading-6 text-slate-400" data-i18n="favorites.emptyBody">Markiere eine Aktie mit Stern.</p>
                 </article>
               </div>
             </div>
@@ -353,7 +395,7 @@
             <div id="selectedSymbolSection" class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
               <div id="selectedSymbolHero" class="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
-                  <p class="text-xs font-medium text-slate-500">Selected</p>
+                  <p class="text-xs font-medium text-slate-500" data-i18n="symbol.selected">Ausgewahlt</p>
                   <h2 id="selectedSymbolName" class="mt-2 break-words text-2xl font-semibold tracking-tight xl:text-3xl">AAPL</h2>
                   <p id="selectedCompanyName" class="mt-1 break-words text-sm text-slate-400">Apple Inc</p>
                 </div>
@@ -365,32 +407,33 @@
                     id="selectedFavoriteButton"
                     type="button"
                     class="favorite-button rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300"
-                    aria-label="Add selected symbol to favorites"
+                    data-i18n-aria="symbol.favoriteAria"
+                    aria-label="Ausgewahltes Symbol zu Favoriten hinzufugen"
                   >
-                    ☆ Favorite
+                    ☆ <span data-i18n="symbol.favoriteButton">Favorit</span>
                   </button>
                 </div>
               </div>
 
               <div class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5 2xl:gap-5">
                 <article id="metricPriceCard" class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Price</p>
+                  <p class="text-xs uppercase tracking-[0.24em] text-slate-500" data-i18n="metric.price">Preis</p>
                   <p id="metricPrice" class="mt-3 text-3xl font-semibold">$--</p>
                 </article>
                 <article id="metricHighCard" class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Day High</p>
+                  <p class="text-xs uppercase tracking-[0.24em] text-slate-500" data-i18n="metric.dayHigh">Tageshoch</p>
                   <p id="metricHigh" class="mt-3 text-2xl font-semibold">$--</p>
                 </article>
                 <article id="metricLowCard" class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Day Low</p>
+                  <p class="text-xs uppercase tracking-[0.24em] text-slate-500" data-i18n="metric.dayLow">Tagestief</p>
                   <p id="metricLow" class="mt-3 text-2xl font-semibold">$--</p>
                 </article>
                 <article id="metricOpenCard" class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Open</p>
+                  <p class="text-xs uppercase tracking-[0.24em] text-slate-500" data-i18n="metric.open">Eroffnung</p>
                   <p id="metricOpen" class="mt-3 text-2xl font-semibold">$--</p>
                 </article>
                 <article id="metricPrevCloseCard" class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Prev Close</p>
+                  <p class="text-xs uppercase tracking-[0.24em] text-slate-500" data-i18n="metric.prevClose">Vortag Schluss</p>
                   <p id="metricPrevClose" class="mt-3 text-2xl font-semibold">$--</p>
                 </article>
               </div>
@@ -399,12 +442,12 @@
             <section id="tradeDecisionSection" class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
               <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
                 <div class="min-w-0">
-                  <p class="text-xs font-medium text-slate-500">MAIN DECISION</p>
-                  <h3 class="mt-2 text-xl font-semibold">Current setup</h3>
+                  <p class="text-xs font-medium text-slate-500" data-i18n="decision.mainLabel">HAUPTENTSCHEIDUNG</p>
+                  <h3 class="mt-2 text-xl font-semibold" data-i18n="decision.setupTitle">Aktuelles Setup</h3>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
-                  <span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-xs font-semibold text-emerald-200">
-                    SIGNAL ACTIVE
+                  <span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-xs font-semibold text-emerald-200" data-i18n="decision.signalActive">
+                    SIGNAL AKTIV
                   </span>
                   <span
                     id="selectedStrategyBadge"
@@ -430,13 +473,13 @@
                 id="recommendationCard"
                 class="signal-hero min-w-0 rounded-[24px] border border-white/10 bg-slate-950/70 p-4 sm:rounded-[28px] sm:p-5"
               >
-                <p class="text-xs font-medium text-slate-500">Recommendation</p>
+                <p class="text-xs font-medium text-slate-500" data-i18n="decision.recommendation">Empfehlung</p>
                 <div class="mt-4 signal-hero-layout">
                   <div class="signal-hero-top">
                     <div class="signal-primary-block">
                       <span id="recommendationIcon" class="signal-icon tone-muted" aria-hidden="true">•</span>
                       <div class="min-w-0">
-                        <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">Main decision</p>
+                        <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500" data-i18n="decision.mainDecision">Hauptentscheidung</p>
                         <p id="recommendationValue" class="break-words text-5xl font-black tracking-[-0.06em] text-white xl:text-6xl">
                           Scan
                         </p>
@@ -448,14 +491,14 @@
                         class="rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-200"
                         hidden
                       >
-                        Partial Signal
+                        <span data-i18n="decision.partialSignal">Teilsignal</span>
                       </span>
                       <span
                         id="conflictBadge"
                         class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-200"
                         hidden
                       >
-                        Mixed signals
+                        <span data-i18n="decision.mixedSignals">Gemischte Signale</span>
                       </span>
                     </div>
                   </div>
@@ -463,7 +506,7 @@
                   <div class="signal-confidence-shell">
                     <div class="flex items-end justify-between gap-3">
                       <div>
-                        <p class="text-[11px] font-medium text-slate-500">Confidence</p>
+                        <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.confidence">Konfidenz</p>
                         <p id="confidenceValue" class="mt-2 text-3xl font-semibold text-white">--</p>
                       </div>
                       <p id="confidenceHint" class="text-sm font-medium text-slate-300">⚠️ Scanning</p>
@@ -474,7 +517,7 @@
                   </div>
 
                   <div class="signal-reason-block">
-                    <p class="text-[11px] font-medium text-slate-500">Reason</p>
+                    <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.reason">Begrundung</p>
                     <p id="analysisSummary" class="decision-summary mt-3 break-words text-sm leading-6 text-slate-300">
                       Loading signal.
                     </p>
@@ -482,7 +525,7 @@
 
                   <div class="decision-context-box rounded-2xl border border-white/10 bg-white/5 p-4">
                     <div class="flex flex-wrap items-center justify-between gap-3">
-                      <p class="text-[11px] font-medium text-slate-500">Context</p>
+                      <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.context">Kontext</p>
                       <p id="biasValue" class="break-words text-sm font-semibold text-white">Balanced signal</p>
                     </div>
                     <p id="noTradeReason" class="decision-context-copy mt-3 break-words text-sm leading-6 text-slate-400">Waiting.</p>
@@ -496,7 +539,7 @@
                 <article class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <div class="flex items-end justify-between gap-3">
                     <div>
-                      <p class="text-[11px] font-medium text-slate-500">Confidence</p>
+                      <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.confidence">Konfidenz</p>
                       <p id="mobileConfidenceValue" class="mt-2 text-2xl font-semibold text-white">--</p>
                     </div>
                     <p id="mobileConfidenceHint" class="text-sm font-medium text-slate-300">⚠️ Scanning</p>
@@ -507,7 +550,7 @@
                 </article>
 
                 <article class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-[11px] font-medium text-slate-500">Reason</p>
+                  <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.reason">Begrundung</p>
                   <p id="mobileAnalysisSummary" class="mt-3 break-words text-sm leading-6 text-slate-300">
                     Loading signal.
                   </p>
@@ -515,7 +558,7 @@
 
                 <article class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <div class="flex flex-wrap items-center justify-between gap-3">
-                    <p class="text-[11px] font-medium text-slate-500">Context</p>
+                    <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.context">Kontext</p>
                     <p id="mobileBiasValue" class="break-words text-sm font-semibold text-white">Balanced signal</p>
                   </div>
                   <p id="mobileNoTradeReason" class="mt-3 break-words text-sm leading-6 text-slate-400">Waiting.</p>
@@ -524,20 +567,20 @@
 
               <div class="decision-context-grid mt-4 grid gap-3 sm:grid-cols-2">
                 <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-[11px] font-medium text-slate-500">Risk level</p>
+                  <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.riskLevel">Risikostufe</p>
                   <p id="riskValue" class="mt-3 text-2xl font-semibold text-white">--</p>
                 </article>
                 <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-[11px] font-medium text-slate-500">Timeframe</p>
+                  <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.timeframe">Zeitrahmen</p>
                   <p id="timeframeValue" class="mt-3 text-2xl font-semibold text-white">--</p>
                 </article>
                 <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-[11px] font-medium text-slate-500">Data quality</p>
+                  <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.dataQuality">Datenqualitat</p>
                   <p id="coverageValue" class="mt-3 text-2xl font-semibold text-white">--</p>
                   <p id="coverageReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting.</p>
                 </article>
                 <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-[11px] font-medium text-slate-500">Position size</p>
+                  <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.positionSize">Positionsgrosse</p>
                   <p id="positionSizeValue" class="mt-3 text-2xl font-semibold text-white">--</p>
                   <p id="positionSizeReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting.</p>
                 </article>
@@ -546,31 +589,31 @@
               <div class="trade-details-block mt-4">
                 <div class="mb-3 flex items-center justify-between gap-3">
                   <div>
-                    <p class="text-xs font-medium text-slate-500">TRADE DETAILS</p>
-                    <h4 class="mt-2 text-lg font-semibold text-white">Execution plan</h4>
+                    <p class="text-xs font-medium text-slate-500" data-i18n="decision.tradeDetails">TRADE-DETAILS</p>
+                    <h4 class="mt-2 text-lg font-semibold text-white" data-i18n="decision.executionPlan">Ausfuhrungsplan</h4>
                   </div>
-                  <span class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-300">
-                    Updated
+                  <span class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-300" data-i18n="decision.updated">
+                    Aktualisiert
                   </span>
                 </div>
                 <div class="trade-details-grid grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-[11px] font-medium text-slate-500">Entry</p>
+                  <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.entry">Einstieg</p>
                   <p id="entryValue" class="mt-3 text-2xl font-semibold text-white">--</p>
                   <p id="entryReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting.</p>
                 </article>
                 <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-[11px] font-medium text-slate-500">Exit</p>
+                  <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.exit">Ausstieg</p>
                   <p id="exitValue" class="mt-3 text-2xl font-semibold text-white">--</p>
                   <p id="exitReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting.</p>
                 </article>
                 <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-[11px] font-medium text-slate-500">Stop loss</p>
+                  <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.stopLoss">Stop-Loss</p>
                   <p id="stopLossValue" class="mt-3 text-2xl font-semibold text-white">--</p>
                   <p id="stopLossReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting.</p>
                 </article>
                 <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-[11px] font-medium text-slate-500">Warnings</p>
+                  <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.warnings">Warnungen</p>
                   <div id="warningsList" class="mt-3 flex min-h-[44px] flex-wrap gap-2">
                     <span class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-400">Waiting</span>
                   </div>
@@ -582,29 +625,31 @@
             <div id="chartSection" class="dashboard-panel chart-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px]">
               <div class="mb-4 flex flex-wrap items-center justify-between gap-3 px-1">
                 <div class="min-w-0">
-                  <p class="text-xs font-medium text-slate-500">Chart</p>
-                  <h3 class="mt-2 text-xl font-semibold">TradingView</h3>
+                  <p class="text-xs font-medium text-slate-500" data-i18n="chart.label">Chart</p>
+                  <h3 class="mt-2 text-xl font-semibold" data-i18n="chart.tradingView">TradingView</h3>
                 </div>
                 <div class="chart-toolbar">
-                  <span id="chartSymbolBadge" class="rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-semibold tracking-[0.18em] text-slate-400">Selected chart</span>
+                  <span id="chartSymbolBadge" class="rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-semibold tracking-[0.18em] text-slate-400">CHART · AAPL</span>
                   <form id="chartCompareForm" class="chart-compare-form" autocomplete="off">
                     <input
                       id="chartCompareInput"
                       type="search"
-                      placeholder="Compare with..."
+                      placeholder="Vergleichen mit..."
+                      data-i18n-placeholder="chart.comparePlaceholder"
                       class="chart-compare-input"
-                      aria-label="Compare current chart with another symbol"
+                      data-i18n-aria="chart.compareAria"
+                      aria-label="Aktuellen Chart mit anderem Symbol vergleichen"
                     />
-                    <button id="chartCompareSubmit" type="submit" class="chart-compare-button">Compare</button>
-                    <button id="chartCompareClear" type="button" class="chart-compare-clear hidden">Clear</button>
+                    <button id="chartCompareSubmit" type="submit" class="chart-compare-button" data-i18n="chart.compare">Vergleichen</button>
+                    <button id="chartCompareClear" type="button" class="chart-compare-clear hidden" data-i18n="chart.clear">Zurucksetzen</button>
                   </form>
                 </div>
               </div>
               <div id="chartCompareLegend" class="chart-compare-legend hidden" aria-live="polite"></div>
               <div id="tradingviewChartFrame" class="chart-frame chart-locked">
                 <div id="tradingviewChart" class="h-[320px] overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/70 sm:h-[420px] lg:h-[500px] 2xl:h-[560px]"></div>
-                <button id="chartInteractionGuard" type="button" class="chart-interaction-guard" aria-label="Activate chart interaction">
-                  <span>Tap chart</span>
+                <button id="chartInteractionGuard" type="button" class="chart-interaction-guard" data-i18n-aria="chart.tapAria" aria-label="Chart-Interaktion aktivieren">
+                  <span data-i18n="chart.tap">Chart antippen</span>
                 </button>
               </div>
             </div>
@@ -616,15 +661,15 @@
               >
                 <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <p class="text-xs font-medium text-slate-500">SIGNALS</p>
-                    <h2 class="mt-2 text-xl font-semibold">Setups</h2>
+                    <p class="text-xs font-medium text-slate-500" data-i18n="signals.label">SIGNALE</p>
+                    <h2 class="mt-2 text-xl font-semibold" data-i18n="signals.setups">Setups</h2>
                   </div>
-                  <span id="opportunityMeta" class="text-xs text-slate-500">Ranking...</span>
+                  <span id="opportunityMeta" class="text-xs text-slate-500">Rangliste...</span>
                 </div>
                 <div id="opportunityList" class="space-y-3">
                   <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                    <p class="text-sm font-semibold text-white">Ranking</p>
-                    <p class="mt-2 text-sm leading-6 text-slate-400">📈 Best moves first.</p>
+                    <p class="text-sm font-semibold text-white" data-i18n="signals.rankingTitle">Rangliste</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-400" data-i18n="signals.rankingHint">Beste Bewegungen zuerst.</p>
                   </article>
                 </div>
               </aside>
@@ -635,22 +680,22 @@
             <section id="alertsSection" class="dashboard-panel rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
               <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <p class="text-xs font-medium text-slate-500">LIVE</p>
-                  <h2 class="mt-2 text-xl font-semibold">Alerts</h2>
+                  <p class="text-xs font-medium text-slate-500" data-i18n="dashboard.kickerLive">LIVE</p>
+                  <h2 class="mt-2 text-xl font-semibold" data-i18n="alerts.title">Alerts</h2>
                 </div>
-                <span id="alertsMeta" class="text-xs text-slate-500">Scanning...</span>
+                <span id="alertsMeta" class="text-xs text-slate-500">Scannt...</span>
               </div>
               <div id="alertsList" class="grid gap-3">
                 <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-sm font-semibold text-white">Scanning</p>
-                  <p class="mt-2 text-sm leading-6 text-slate-400">📈 Checking moves.</p>
+                  <p class="text-sm font-semibold text-white" data-i18n="alerts.scanningTitle">Scannt</p>
+                  <p class="mt-2 text-sm leading-6 text-slate-400" data-i18n="alerts.scanningHint">Bewegungen werden gepruft.</p>
                 </article>
               </div>
             </section>
 
             <aside id="companySection" class="min-w-0 space-y-5">
             <section class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
-              <p class="text-xs font-medium text-slate-500">STATS</p>
+              <p class="text-xs font-medium text-slate-500" data-i18n="dashboard.kickerStats">STATS</p>
               <div class="mt-5 flex items-center gap-4">
                 <img
                   id="companyLogo"
@@ -659,8 +704,8 @@
                   class="hidden h-14 w-14 rounded-2xl border border-white/10 bg-white object-contain p-2"
                 />
                 <div>
-                  <h3 id="companyHeadline" class="text-xl font-semibold">Select a symbol</h3>
-                  <p id="companyExchange" class="text-sm text-slate-400">Exchange will appear here</p>
+                  <h3 id="companyHeadline" class="text-xl font-semibold">Symbol wahlen</h3>
+                  <p id="companyExchange" class="text-sm text-slate-400">Borse erscheint hier</p>
                 </div>
               </div>
               <dl id="companyDetails" class="mt-6 space-y-4"></dl>
@@ -672,30 +717,30 @@
             >
               <div class="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <p class="text-xs font-medium text-slate-500">UPDATED</p>
-                  <h3 class="mt-2 text-xl font-semibold">Performance</h3>
+                  <p class="text-xs font-medium text-slate-500" data-i18n="dashboard.kickerUpdated">AKTUALISIERT</p>
+                  <h3 class="mt-2 text-xl font-semibold" data-i18n="learning.performance">Performance</h3>
                 </div>
                 <span
                   id="learningMeta"
                   class="rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400"
                 >
-                  Loading
+                  Laden
                 </span>
               </div>
 
               <div id="learningList" class="mt-5 space-y-3">
                 <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-sm font-semibold text-white">Loading</p>
-                  <p class="mt-2 text-sm leading-6 text-slate-400">
-                    Reading trades.
+                  <p class="text-sm font-semibold text-white" data-i18n="learning.loadingTitle">Laden</p>
+                  <p class="mt-2 text-sm leading-6 text-slate-400" data-i18n="learning.loadingHint">
+                    Trades werden gelesen.
                   </p>
                 </article>
               </div>
 
               <div class="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
-                <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-500">Rules</p>
-                <p class="mt-3 text-sm leading-6 text-slate-400">
-                  Starts after 50 closed trades.
+                <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-500" data-i18n="learning.rules">Regeln</p>
+                <p class="mt-3 text-sm leading-6 text-slate-400" data-i18n="learning.rulesHint">
+                  Startet nach 50 abgeschlossenen Trades.
                 </p>
               </div>
             </section>
@@ -709,11 +754,11 @@
     <section id="portfolioSheet" class="mobile-only hidden fixed inset-x-0 bottom-0 z-50 max-h-[78vh] overflow-y-auto rounded-t-[28px] border border-white/10 bg-slate-950/95 p-4 shadow-2xl shadow-black/50">
       <div class="flex items-center justify-between gap-3">
         <div>
-          <p class="text-xs font-medium text-slate-500">Portfolio</p>
-          <h3 class="mt-2 text-xl font-semibold text-white">Allocation</h3>
+          <p class="text-xs font-medium text-slate-500" data-i18n="portfolio.sheetTitle">Portfolio</p>
+          <h3 class="mt-2 text-xl font-semibold text-white" data-i18n="portfolio.allocation">Allokation</h3>
         </div>
-        <button id="portfolioSheetClose" type="button" class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200">
-          Close
+        <button id="portfolioSheetClose" type="button" class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200" data-i18n="portfolio.close">
+          Schliessen
         </button>
       </div>
       <div id="portfolioSheetSummary" class="mt-4 grid gap-3"></div>
