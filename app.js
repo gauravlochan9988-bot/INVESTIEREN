@@ -2,6 +2,12 @@ if (window.location.protocol === "file:") {
   window.location.replace("http://127.0.0.1:8000/");
 }
 
+if ("scrollRestoration" in window.history) {
+  window.history.scrollRestoration = "manual";
+}
+
+window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+
 const DEPLOYED_API_ORIGIN = "https://investieren-production.up.railway.app";
 const LOCAL_API_HOSTS = new Set(["127.0.0.1", "localhost"]);
 const AUTH_TOKEN_CACHE_MS = 45 * 1000;

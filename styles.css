@@ -824,12 +824,13 @@ body {
 }
 
 #authOverlay {
-  align-items: center;
+  align-items: flex-start;
   overflow-y: auto;
   overscroll-behavior-y: contain;
   overflow-anchor: none;
+  overflow-x: hidden;
   scrollbar-gutter: stable both-edges;
-  padding: 1.5rem 0;
+  padding: 1.25rem 0 1.75rem;
   background:
     radial-gradient(circle at top center, rgba(20, 184, 166, 0.08), transparent 32%),
     linear-gradient(180deg, rgba(15, 23, 36, 1) 0%, rgba(11, 15, 26, 1) 100%);
@@ -874,9 +875,9 @@ body {
   width: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .login-header {
@@ -1445,16 +1446,16 @@ body {
   min-height: max(100svh, 48rem);
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 2.5rem;
-  padding: 4.5rem 0 3rem;
+  padding: 0.75rem 0 2.4rem;
 }
 
 .auth-landing-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
   gap: 2rem;
-  align-items: center;
+  align-items: start;
 }
 
 .auth-landing-copy,
@@ -1661,7 +1662,7 @@ body {
   transform-style: preserve-3d;
   transition: transform 180ms ease, box-shadow 180ms ease;
   will-change: transform;
-  touch-action: none;
+  touch-action: pan-y;
 }
 
 .auth-visual-art::after {
@@ -1705,6 +1706,7 @@ body {
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.95), transparent 100%);
   transform: translate(calc(var(--visual-shift-x, 0px) * 0.12), calc(var(--visual-shift-y, 0px) * 0.12));
   transition: transform 180ms ease;
+  animation: authGridFloat 18s linear infinite;
 }
 
 .auth-visual-orb {
@@ -1721,6 +1723,7 @@ body {
     0 0 0 4px rgba(103, 232, 249, 0.08),
     0 0 18px rgba(103, 232, 249, 0.35);
   transition: transform 180ms ease, box-shadow 180ms ease;
+  animation: authNodePulse 4.4s ease-in-out infinite;
 }
 
 .auth-visual-node-one {
@@ -1733,12 +1736,14 @@ body {
   left: 55%;
   top: 54%;
   transform: translate(calc(var(--visual-shift-x, 0px) * 0.12), calc(var(--visual-shift-y, 0px) * 0.08));
+  animation-delay: 0.8s;
 }
 
 .auth-visual-node-three {
   left: 77%;
   top: 68%;
   transform: translate(calc(var(--visual-shift-x, 0px) * 0.2), calc(var(--visual-shift-y, 0px) * 0.16));
+  animation-delay: 1.6s;
 }
 
 .auth-visual-orb-one {
@@ -1769,6 +1774,7 @@ body {
   background: linear-gradient(90deg, transparent, rgba(103, 232, 249, 0.95), transparent);
   box-shadow: 0 0 16px rgba(34, 211, 238, 0.4);
   transform-origin: center;
+  animation: authLinePulse 5.6s ease-in-out infinite;
 }
 
 .auth-visual-line-one {
@@ -1785,6 +1791,7 @@ body {
   top: 62%;
   transform: translate(calc(var(--visual-shift-x, 0px) * -0.2), calc(var(--visual-shift-y, 0px) * 0.16)) rotate(18deg);
   transition: transform 180ms ease;
+  animation-delay: 1.2s;
 }
 
 .auth-stat-grid {
@@ -1857,7 +1864,9 @@ body {
 }
 
 .auth-landing-footer {
-  text-align: center;
+  align-self: flex-end;
+  padding-right: 0.2rem;
+  text-align: right;
   font-size: 0.76rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -1894,6 +1903,46 @@ body {
   }
 }
 
+@keyframes authGridFloat {
+  0% {
+    background-position: 0 0, 0 0;
+  }
+  50% {
+    background-position: 0 1.2rem, 1.2rem 0;
+  }
+  100% {
+    background-position: 0 0, 0 0;
+  }
+}
+
+@keyframes authNodePulse {
+  0%,
+  100% {
+    opacity: 0.72;
+    box-shadow:
+      0 0 0 4px rgba(103, 232, 249, 0.06),
+      0 0 14px rgba(103, 232, 249, 0.22);
+  }
+  50% {
+    opacity: 1;
+    box-shadow:
+      0 0 0 6px rgba(103, 232, 249, 0.1),
+      0 0 22px rgba(103, 232, 249, 0.42);
+  }
+}
+
+@keyframes authLinePulse {
+  0%,
+  100% {
+    opacity: 0.78;
+    box-shadow: 0 0 14px rgba(34, 211, 238, 0.28);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 24px rgba(34, 211, 238, 0.46);
+  }
+}
+
 @media (max-width: 1024px) {
   .auth-landing-grid {
     grid-template-columns: 1fr;
@@ -1907,11 +1956,22 @@ body {
   .auth-visual-panel {
     min-height: auto;
   }
+
+  .auth-landing-footer {
+    align-self: center;
+    text-align: center;
+    padding-right: 0;
+  }
 }
 
 @media (max-width: 640px) {
+  #authOverlay {
+    padding: 0.9rem 0 1.4rem;
+  }
+
   .auth-landing-shell {
-    padding: 2rem 0 2.25rem;
+    min-height: auto;
+    padding: 0.2rem 0 1.6rem;
     gap: 1.6rem;
   }
 
@@ -1919,6 +1979,10 @@ body {
   .auth-visual-panel {
     padding: 1.2rem;
     border-radius: 1.45rem;
+  }
+
+  .auth-landing-copy {
+    position: static;
   }
 
   .auth-landing-topline {
