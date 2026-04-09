@@ -15,6 +15,16 @@
   --glow-buy: rgba(34, 197, 94, 0.12);
   --glow-sell: rgba(239, 68, 68, 0.1);
   --glow-hold: rgba(245, 158, 11, 0.12);
+  /* Liquid glass (reference: translucent panes + backdrop blur + soft color glows) */
+  --glass-blur: 22px;
+  --glass-saturate: 1.5;
+  --glass-bg: rgba(15, 23, 42, 0.38);
+  --glass-bg-strong: rgba(8, 12, 22, 0.52);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-highlight: rgba(255, 255, 255, 0.09);
+  --glass-glow-cyan: rgba(34, 211, 238, 0.12);
+  --glass-glow-violet: rgba(139, 92, 246, 0.14);
+  --glass-glow-rose: rgba(244, 114, 182, 0.09);
 }
 
 html,
@@ -25,9 +35,10 @@ body {
 body {
   margin: 0;
   background:
+    radial-gradient(ellipse 70% 45% at 50% -15%, rgba(139, 92, 246, 0.12), transparent 55%),
     radial-gradient(circle at top left, rgba(20, 184, 166, 0.08), transparent 26%),
-    radial-gradient(circle at 82% 14%, rgba(29, 78, 216, 0.07), transparent 18%),
-    radial-gradient(circle at bottom right, rgba(20, 184, 166, 0.05), transparent 20%),
+    radial-gradient(circle at 82% 18%, rgba(59, 130, 246, 0.08), transparent 22%),
+    radial-gradient(circle at bottom right, rgba(244, 114, 182, 0.06), transparent 28%),
     var(--color-bg);
   color: var(--color-text);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -59,7 +70,10 @@ body {
 
 .chart-interaction-guard {
   position: absolute;
-  inset: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -112,22 +126,6 @@ body {
   letter-spacing: 0.02em;
 }
 
-#appShell {
-  position: relative;
-  overflow-x: hidden;
-}
-
-#appShell::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg, rgba(17, 24, 39, 0.28), transparent 24%),
-    radial-gradient(circle at top center, rgba(20, 184, 166, 0.045), transparent 34%);
-  z-index: 0;
-}
-
 .dashboard-topbar,
 .dashboard-panel,
 .dashboard-card,
@@ -141,6 +139,7 @@ body {
 .signal-hero {
   position: relative;
   overflow: hidden;
+  isolation: isolate;
 }
 
 .dashboard-topbar::before,
@@ -150,7 +149,13 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(135deg, rgba(255,255,255,0.06), transparent 32%);
+  background: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.03) 38%,
+    transparent 52%
+  );
+  border-radius: inherit;
 }
 
 .dashboard-topbar {
@@ -819,8 +824,66 @@ body {
   background-color: var(--color-surface-2);
 }
 
-#authHeroImage {
-  object-position: center center;
+/* Login hero: lounge portrait — crop & vignette so copy stays readable */
+.auth-photo-bg {
+  overflow: hidden;
+}
+
+.auth-photo-picture {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+
+.auth-photo-img {
+  min-height: 100%;
+  min-width: 100%;
+  object-fit: cover;
+  /* Wood wall + upper scene; keeps figure toward right / lower on wide screens */
+  object-position: 54% 22%;
+  opacity: 0.9;
+  filter: saturate(0.9) brightness(0.78) contrast(1.03);
+}
+
+@media (max-width: 768px) {
+  .auth-photo-img {
+    /* Portrait: anchor upper / center so form + headline sit over calmer wall area */
+    object-position: 48% 12%;
+    opacity: 0.85;
+    filter: saturate(0.88) brightness(0.72) contrast(1.02);
+    min-height: 115%;
+    transform: translateY(-4%);
+  }
+}
+
+.auth-photo-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 85% 75% at 0% 18%, rgba(2, 6, 23, 0.94) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 60% at 85% 85%, rgba(2, 6, 23, 0.45) 0%, transparent 50%),
+    linear-gradient(
+      104deg,
+      rgba(2, 6, 23, 0.97) 0%,
+      rgba(11, 15, 26, 0.78) 28%,
+      rgba(15, 23, 42, 0.22) 52%,
+      rgba(2, 6, 23, 0.12) 100%
+    ),
+    linear-gradient(180deg, rgba(8, 12, 22, 0.35) 0%, transparent 42%, rgba(2, 6, 23, 0.55) 100%);
+  backdrop-filter: blur(1.5px);
+  -webkit-backdrop-filter: blur(1.5px);
+}
+
+@media (max-width: 768px) {
+  .auth-photo-vignette {
+    background:
+      radial-gradient(ellipse 120% 80% at 50% 0%, rgba(2, 6, 23, 0.88) 0%, transparent 45%),
+      linear-gradient(180deg, rgba(2, 6, 23, 0.82) 0%, rgba(2, 6, 23, 0.35) 45%, rgba(2, 6, 23, 0.88) 100%);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
 }
 
 #authOverlay {
@@ -1481,8 +1544,10 @@ body {
 
 .auth-landing-topline {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem 1rem;
+  row-gap: 0.75rem;
 }
 
 .auth-lang-switch {
@@ -1665,6 +1730,17 @@ body {
   border-color: rgba(103, 232, 249, 0.28);
   background: rgba(255, 255, 255, 0.07);
   box-shadow: 0 16px 36px rgba(2, 6, 23, 0.18);
+}
+
+.auth-landing-secondary:focus-visible {
+  outline: 2px solid rgba(103, 232, 249, 0.65);
+  outline-offset: 3px;
+}
+
+.auth-private-button:focus-visible,
+.auth-landing-primary:focus-visible {
+  outline: 2px solid rgba(20, 184, 166, 0.85);
+  outline-offset: 3px;
 }
 
 .auth-feature-grid {
@@ -2137,12 +2213,17 @@ body {
   }
 }
 
+@media (min-width: 641px) and (max-width: 1024px) {
+  .auth-feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 1024px) {
   .auth-landing-grid {
     grid-template-columns: 1fr;
   }
 
-  .auth-feature-grid,
   .auth-system-list {
     grid-template-columns: 1fr;
   }
@@ -2159,8 +2240,15 @@ body {
 }
 
 @media (max-width: 640px) {
+  .auth-feature-grid {
+    grid-template-columns: 1fr;
+  }
+
   #authOverlay {
-    padding: 0.9rem 0 1.4rem;
+    padding-top: max(0.9rem, env(safe-area-inset-top));
+    padding-bottom: max(1.4rem, env(safe-area-inset-bottom));
+    padding-left: 0;
+    padding-right: 0;
   }
 
   .auth-landing-shell {
@@ -2455,7 +2543,7 @@ body {
 
   #dashboardWorkspace {
     min-width: 1100px;
-    grid-template-columns: 280px minmax(0, 1fr) 360px !important;
+    grid-template-columns: 360px minmax(0, 1fr) 280px !important;
     grid-auto-rows: auto;
     align-items: start;
     column-gap: 0.9rem;
@@ -2469,19 +2557,18 @@ body {
   }
 
   #watchlistSection {
-    grid-column: 1;
+    grid-column: 3;
     grid-row: 1 / span 4;
     position: sticky;
     top: 0.9rem;
     align-self: start;
-    display: grid;
-    grid-template-rows: auto auto auto;
-    align-content: start;
-    row-gap: 0.32rem;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    row-gap: 0.5rem;
     overflow: hidden;
     padding: 1rem !important;
-    min-height: 0;
-    max-height: none;
+    max-height: min(90vh, 40rem);
     background:
       linear-gradient(180deg, rgba(17, 24, 39, 0.92), rgba(15, 23, 36, 0.82));
     width: 280px;
@@ -2524,7 +2611,7 @@ body {
   }
 
   #decisionRail {
-    grid-column: 3;
+    grid-column: 1;
     grid-row: 1 / span 4;
     display: flex;
     flex-direction: column;
@@ -2534,10 +2621,6 @@ body {
     top: 0.9rem;
     align-self: start;
     margin-top: 0;
-  }
-
-  #companySection {
-    margin-top: var(--company-align-offset, 0px);
   }
 
   #companySection {
@@ -2658,7 +2741,6 @@ body {
     white-space: nowrap;
   }
 
-  #watchlistBody,
   #favoritesBody {
     display: grid;
     grid-template-rows: repeat(10, minmax(56px, 56px));
@@ -2667,8 +2749,15 @@ body {
   }
 
   #watchlistBody {
+    display: grid;
+    grid-auto-rows: minmax(56px, auto);
     align-content: start;
-    flex: 0 0 auto;
+    gap: 0.45rem;
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
   }
 
   #watchlistSection .mt-6 {
@@ -3181,8 +3270,7 @@ body {
     padding: 0.35rem !important;
   }
 
-  #strategyToggle,
-  .dashboard-topbar .grid {
+  .dashboard-topbar .grid:not(.dashboard-topbar-cta-grid) {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -3351,7 +3439,11 @@ body {
     padding: 0.78rem 1rem !important;
   }
 
-  .dashboard-topbar .grid {
+  .dashboard-topbar .grid:not(.dashboard-topbar-cta-grid) {
+    gap: 0.6rem;
+  }
+
+  .dashboard-topbar-cta-grid {
     gap: 0.6rem;
   }
 
@@ -4158,13 +4250,13 @@ body {
 
   #dashboardWorkspace {
     display: grid !important;
-    grid-template-columns: 280px minmax(0, 1fr) 340px !important;
+    grid-template-columns: 340px minmax(0, 1fr) 280px !important;
     gap: 1rem !important;
     align-items: start;
   }
 
   #watchlistSection {
-    grid-column: 1;
+    grid-column: 3;
     grid-row: 1;
     display: block !important;
     position: sticky !important;
@@ -4183,7 +4275,7 @@ body {
   }
 
   #decisionRail {
-    grid-column: 3;
+    grid-column: 1;
     grid-row: 1;
     display: flex !important;
     flex-direction: column;
@@ -4303,6 +4395,8 @@ body {
 
   #dashboardWorkspace {
     grid-template-columns: minmax(0, 1fr) minmax(15rem, 30vw);
+    column-gap: 1rem !important;
+    row-gap: 1.5rem !important;
   }
 
   #analysisCenterColumn {
@@ -4323,7 +4417,7 @@ body {
     grid-row: 2;
     display: flex !important;
     flex-direction: column;
-    gap: clamp(0.75rem, 2vw, 1rem);
+    gap: clamp(1rem, 2vw, 1.35rem);
   }
 
   #selectedSymbolSection {
@@ -4364,13 +4458,13 @@ body {
 
   #dashboardWorkspace {
     grid-template-columns:
-      minmax(15rem, 20vw)
+      minmax(17rem, 24vw)
       minmax(0, 1fr)
-      minmax(17rem, 24vw);
+      minmax(15rem, 20vw);
   }
 
   #watchlistSection {
-    grid-column: 1;
+    grid-column: 3;
     grid-row: 1;
     position: sticky !important;
     top: 1rem !important;
@@ -4383,7 +4477,7 @@ body {
   }
 
   #decisionRail {
-    grid-column: 3;
+    grid-column: 1;
     grid-row: 1;
     position: sticky !important;
     top: 1rem !important;
@@ -4493,24 +4587,29 @@ body {
   }
 }
 
-/* Futuristic terminal theme */
+/* Futuristic terminal + liquid glass (translucent surfaces, soft violet/cyan glow) */
 #appShell {
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(circle at top center, rgba(34, 211, 238, 0.08), transparent 26%),
-    radial-gradient(circle at 78% 18%, rgba(74, 222, 128, 0.07), transparent 22%),
+    radial-gradient(ellipse 90% 55% at 50% -25%, rgba(139, 92, 246, 0.18), transparent 52%),
+    radial-gradient(ellipse 70% 50% at 100% 30%, rgba(34, 211, 238, 0.1), transparent 48%),
+    radial-gradient(ellipse 55% 45% at 0% 70%, rgba(244, 114, 182, 0.08), transparent 50%),
+    radial-gradient(circle at 78% 18%, rgba(74, 222, 128, 0.06), transparent 24%),
     linear-gradient(180deg, #050814 0%, #030610 100%);
 }
 
 #appShell::before {
   content: "";
-  position: absolute;
+  position: fixed;
   inset: 0;
   pointer-events: none;
+  z-index: 0;
   background:
-    radial-gradient(circle at 50% 0%, rgba(103, 232, 249, 0.06), transparent 30%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.01), transparent 16%);
+    linear-gradient(180deg, rgba(17, 24, 39, 0.24), transparent 26%),
+    radial-gradient(circle at top center, rgba(20, 184, 166, 0.05), transparent 36%),
+    radial-gradient(circle at 50% 0%, rgba(103, 232, 249, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 20%);
 }
 
 #appShell > div {
@@ -4530,13 +4629,15 @@ body {
 #learningList article,
 #portfolioSheetSummary > *,
 #portfolioSheetPositions > * {
-  border-color: rgba(125, 211, 252, 0.12) !important;
-  background:
-    linear-gradient(180deg, rgba(9, 14, 26, 0.9), rgba(5, 10, 20, 0.84)) !important;
+  border-color: var(--glass-border) !important;
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 26px 60px rgba(2, 6, 23, 0.28),
-    0 0 26px rgba(34, 211, 238, 0.06) !important;
+    inset 0 1px 0 var(--glass-highlight),
+    0 28px 64px rgba(2, 6, 23, 0.38),
+    0 0 36px var(--glass-glow-cyan),
+    0 0 72px var(--glass-glow-violet) !important;
 }
 
 .dashboard-topbar {
@@ -4544,8 +4645,9 @@ body {
   overflow: hidden;
   padding: 1.15rem 1.25rem !important;
   border-radius: 1.85rem !important;
-  background:
-    linear-gradient(180deg, rgba(8, 12, 22, 0.94), rgba(4, 8, 18, 0.9)) !important;
+  background: var(--glass-bg-strong) !important;
+  backdrop-filter: blur(calc(var(--glass-blur) + 4px)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 4px)) saturate(var(--glass-saturate));
 }
 
 .dashboard-topbar::after {
@@ -4589,7 +4691,7 @@ body {
   font-size: 0.72rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(148, 163, 184, 0.68);
+  color: #cbd5e1;
 }
 
 #searchForm {
@@ -4606,11 +4708,14 @@ body {
 .dashboard-chip,
 .mobile-quick-action,
 #watchlistHint,
-.decision-context-box,
-#strategyDescription {
-  border-color: rgba(125, 211, 252, 0.1) !important;
-  background: rgba(255, 255, 255, 0.04) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+.decision-context-box {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(14px) saturate(1.35);
+  -webkit-backdrop-filter: blur(14px) saturate(1.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 32px rgba(2, 6, 23, 0.2);
 }
 
 .dashboard-search,
@@ -4673,7 +4778,75 @@ body {
 }
 
 .strategy-button-idle {
-  color: rgba(148, 163, 184, 0.88);
+  color: #cbd5e1;
+}
+
+/* Dashboard topbar: tablet / small laptop stacking */
+@media (min-width: 768px) and (max-width: 1279px) {
+  .dashboard-topbar-trailing {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem 0.9rem;
+    align-items: center;
+  }
+
+  .dashboard-topbar-trailing .auth-lang-switch {
+    grid-column: 2;
+    grid-row: 1;
+    width: auto;
+    justify-self: end;
+    margin: 0;
+  }
+
+  .dashboard-topbar-trailing #strategyToggle {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    justify-self: stretch;
+  }
+
+  .dashboard-topbar-trailing #backendStatus {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: center;
+    text-align: center;
+    max-width: 100%;
+  }
+
+  .dashboard-topbar-trailing .dashboard-topbar-cta-grid {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+}
+
+@media (max-width: 767px) {
+  .dashboard-topbar-trailing #strategyToggle {
+    justify-content: center;
+  }
+}
+
+/* WCAG-oriented contrast + keyboard focus (dashboard) */
+#backendStatus,
+.dashboard-chip {
+  color: #e2e8f0 !important;
+}
+
+.dashboard-search::placeholder {
+  color: #94a3b8;
+}
+
+.dashboard-search:focus-visible {
+  outline: 2px solid rgba(103, 232, 249, 0.75);
+  outline-offset: 2px;
+}
+
+.action-secondary:focus-visible,
+.strategy-button:focus-visible,
+#brandHomeButton:focus-visible,
+.auth-lang-button:focus-visible,
+.dashboard-lang-button:focus-visible {
+  outline: 2px solid rgba(103, 232, 249, 0.75);
+  outline-offset: 2px;
 }
 
 #watchlistSection,
@@ -4777,7 +4950,6 @@ body {
   gap: 0.75rem;
 }
 
-#chartSymbolBadge,
 #analysisGeneratedAt,
 #learningMeta {
   border-color: rgba(125, 211, 252, 0.12) !important;
@@ -4825,7 +4997,7 @@ body {
 }
 
 .auth-landing-title {
-  max-width: 10ch;
+  max-width: min(26ch, 100%);
 }
 
 .auth-landing-subtitle {
@@ -4881,7 +5053,7 @@ body {
 }
 
 .auth-landing-title {
-  max-width: 8ch;
+  max-width: min(26ch, 100%);
   font-size: clamp(4rem, 7vw, 6.2rem);
 }
 
@@ -4918,6 +5090,12 @@ body {
 
   .auth-stat-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .auth-stat-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -5046,22 +5224,31 @@ body {
   }
 }
 
-#watchlistSection,
+#watchlistSection {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: calc(100vh - 8rem);
+  overflow: hidden;
+}
+
 #alertsSection {
   max-height: calc(100vh - 8rem);
   overflow: hidden;
 }
 
-#watchlistBody,
+#watchlistSection #watchlistBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none !important;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 #alertsList {
   overflow-y: auto;
-}
-
-#watchlistBody {
-  max-height: calc(100vh - 18rem);
-}
-
-#alertsList {
   max-height: calc(100vh - 14rem);
   padding-right: 0.2rem;
 }
@@ -5072,13 +5259,6 @@ body {
 
 #tradeDecisionSection > .mb-5:first-child {
   margin-bottom: 1.1rem !important;
-}
-
-#strategyDescription {
-  margin-bottom: 1rem !important;
-  padding: 1rem 1.05rem !important;
-  font-size: 0.8rem !important;
-  line-height: 1.7 !important;
 }
 
 #recommendationCard {
@@ -5225,4 +5405,162 @@ body {
   #tradingviewChart {
     min-height: 360px;
   }
+}
+
+/* Home (auth): scroll + safe areas + reduced motion */
+#authOverlay {
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  #mobileQuickActions {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-feature-card:hover,
+  .auth-stat-card:hover,
+  .auth-system-box:hover,
+  .auth-landing-copy:hover,
+  .auth-visual-panel:hover {
+    transform: none;
+  }
+
+  #authOverlay {
+    scroll-behavior: auto;
+  }
+}
+
+/* —— Layout v2 (ab 1200px): Sidebar links (Watchlist + Kontext), Hauptspalte rechts —— */
+@media (min-width: 1200px) {
+  #dashboardWorkspace {
+    display: grid !important;
+    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr) !important;
+    grid-template-rows: auto auto !important;
+    column-gap: 1.25rem !important;
+    row-gap: 1.85rem !important;
+    align-items: start !important;
+    min-width: 0 !important;
+  }
+
+  #analysisCenterColumn {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.15rem !important;
+    grid-column: 2 !important;
+    grid-row: 1 / -1 !important;
+    min-width: 0 !important;
+  }
+
+  #watchlistSection {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    position: sticky !important;
+    top: 1rem !important;
+    align-self: start !important;
+    width: auto !important;
+    max-height: min(52vh, 28rem) !important;
+    overflow: hidden !important;
+  }
+
+  #watchlistSection #watchlistBody {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  #decisionRail {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.35rem !important;
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    position: sticky !important;
+    top: 1rem !important;
+    align-self: start !important;
+    min-width: 0 !important;
+    max-height: none !important;
+  }
+
+  #selectedSymbolSection,
+  #tradeDecisionSection,
+  #chartSection,
+  #signalsOverviewRow {
+    grid-column: unset !important;
+    grid-row: unset !important;
+    width: 100% !important;
+  }
+
+  #signalsOverviewRow {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 1.15rem !important;
+  }
+}
+
+/* Zwei-Zeilen-Topbar: Abstand & Tablet-Trailing */
+.dashboard-topbar-row-1 {
+  width: 100%;
+}
+
+.dashboard-topbar-row-2 {
+  width: 100%;
+}
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  .dashboard-topbar-trailing {
+    justify-content: flex-start !important;
+  }
+}
+
+/* Lesbare Meta-Labels + Meta-Zeilen (Kontrast) */
+#dashboardWorkspace p.text-slate-500 {
+  color: #a8b4c7 !important;
+}
+
+#watchlistMeta,
+#opportunityMeta,
+#alertsMeta,
+#learningMeta,
+#favoritesMeta {
+  color: #cbd5e1 !important;
+}
+
+/* Eine lineare Panel-Oberfläche: Watchlist, Symbol-Header, Firmen-STATS, Learning */
+#watchlistSection,
+#selectedSymbolSection,
+#companySection > section.dashboard-panel,
+#learningSection {
+  background: linear-gradient(
+    180deg,
+    rgba(15, 23, 42, 0.4) 0%,
+    rgba(10, 15, 28, 0.55) 40%,
+    rgba(5, 9, 18, 0.82) 100%
+  ) !important;
+  border-color: rgba(255, 255, 255, 0.11) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 22px 56px rgba(2, 6, 23, 0.34),
+    0 0 36px rgba(34, 211, 238, 0.07) !important;
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+
+#watchlistSection::before,
+#selectedSymbolSection::before,
+#companySection > section.dashboard-panel::before,
+#learningSection::before {
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.11) 0%,
+    rgba(255, 255, 255, 0.04) 32%,
+    transparent 52%
+  );
+  opacity: 0.95;
 }

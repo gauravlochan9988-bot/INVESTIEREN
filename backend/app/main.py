@@ -201,6 +201,10 @@ def create_app() -> FastAPI:
     def root_auth_hero() -> FileResponse:
         return FileResponse(FRONTEND_DIR / "auth-hero.png", media_type="image/png")
 
+    @app.get("/auth-hero-lounge.png")
+    def root_auth_hero_lounge() -> FileResponse:
+        return FileResponse(FRONTEND_DIR / "auth-hero-lounge.png", media_type="image/png")
+
     @app.get("/api/health")
     def healthcheck() -> dict:
         return {

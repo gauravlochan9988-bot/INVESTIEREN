@@ -141,7 +141,6 @@ const I18N = {
     "decision.warnings": "Warnungen",
     "chart.label": "Chart",
     "chart.tradingView": "TradingView",
-    "chart.selectedBadge": "Ausgewahlter Chart",
     "chart.comparePlaceholder": "Vergleichen mit...",
     "chart.compareAria": "Aktuellen Chart mit anderem Symbol vergleichen",
     "chart.compare": "Vergleichen",
@@ -160,8 +159,6 @@ const I18N = {
     "company.selectSymbol": "Symbol wahlen",
     "company.exchangeHint": "Borse erscheint hier",
     "company.exchangeUnavailable": "Borse nicht verfugbar",
-    "chart.badgeCompared": "{primary} VS {compare}",
-    "chart.badgeSingle": "CHART · {primary}",
     "chart.compareLegend": "Auf 100% normiert",
     "alerts.metaCount": "{count} Live-Alerts",
     "alerts.noAlertsTitle": "Keine Alerts",
@@ -331,7 +328,6 @@ const I18N = {
     "decision.warnings": "Warnings",
     "chart.label": "Chart",
     "chart.tradingView": "TradingView",
-    "chart.selectedBadge": "Selected chart",
     "chart.comparePlaceholder": "Compare with...",
     "chart.compareAria": "Compare current chart with another symbol",
     "chart.compare": "Compare",
@@ -350,8 +346,6 @@ const I18N = {
     "company.selectSymbol": "Select a symbol",
     "company.exchangeHint": "Exchange will appear here",
     "company.exchangeUnavailable": "Exchange unavailable",
-    "chart.badgeCompared": "{primary} VS {compare}",
-    "chart.badgeSingle": "CHART · {primary}",
     "chart.compareLegend": "Normalized to 100%",
     "alerts.metaCount": "{count} live alerts",
     "alerts.noAlertsTitle": "No alerts",
@@ -520,39 +514,6 @@ function getStrategyLabel(key) {
   return t(`strategy.${k}`) || k;
 }
 
-const STRATEGY_DESCRIPTIONS = {
-  simple: {
-    title: "SIMPLE (FINAL)",
-    lines: [
-      "Analysiere Trend, RSI, Momentum, News und Volatilität.",
-      "BUY, wenn die positiven Signale klar überwiegen.",
-      "SELL, wenn die negativen Signale klar überwiegen.",
-      "HOLD, wenn Signale gemischt, schwach oder unsicher sind.",
-      "Stabil und konservativ mit kurzer Begründung.",
-    ],
-  },
-  ai: {
-    title: "AI (FINAL)",
-    lines: [
-      "Analysiere Trend, RSI, Momentum, News und Volatilität.",
-      "Entscheide früh und sensibel auf kleine Veränderungen.",
-      "Stark positiv: BUY. Leicht positiv: BUY mit geringerer Sicherheit.",
-      "Neutral oder unsicher: HOLD.",
-      "Leicht negativ: SELL mit geringerer Sicherheit. Stark negativ: SELL.",
-    ],
-  },
-  hedgefund: {
-    title: "HEDGEFUND (FINAL)",
-    lines: [
-      "Analysiere Trend, Momentum, Volatilität und die allgemeine Marktrichtung.",
-      "BUY nur bei stark positivem Trend, positivem Momentum und stabilem Markt.",
-      "SELL nur bei stark negativem Trend und negativem Momentum.",
-      "Bei Unsicherheit, Konflikten oder gemischten Signalen: HOLD.",
-      "Strikt, risikoorientiert und mit möglichst wenigen unnötigen Trades.",
-    ],
-  },
-};
-
 const MAX_SIDEBAR_SLOTS = 10;
 const OPPORTUNITY_LIMIT = 3;
 const DEFAULT_SIDEBAR_ITEMS = [
@@ -691,7 +652,6 @@ const elements = {
   mobileConfidenceHint: document.getElementById("mobileConfidenceHint"),
   mobileAnalysisSummary: document.getElementById("mobileAnalysisSummary"),
   selectedStrategyBadge: document.getElementById("selectedStrategyBadge"),
-  strategyDescription: document.getElementById("strategyDescription"),
   mobileStrategyCards: document.getElementById("mobileStrategyCards"),
   analysisGeneratedAt: document.getElementById("analysisGeneratedAt"),
   biasValue: document.getElementById("biasValue"),
@@ -713,13 +673,13 @@ const elements = {
   warningsList: document.getElementById("warningsList"),
   chartSection: document.getElementById("chartSection"),
   tradingviewChartFrame: document.getElementById("tradingviewChartFrame"),
-  chartSymbolBadge: document.getElementById("chartSymbolBadge"),
   chartCompareForm: document.getElementById("chartCompareForm"),
   chartCompareInput: document.getElementById("chartCompareInput"),
   chartCompareSubmit: document.getElementById("chartCompareSubmit"),
   chartCompareClear: document.getElementById("chartCompareClear"),
   chartCompareLegend: document.getElementById("chartCompareLegend"),
   tradingviewChart: document.getElementById("tradingviewChart"),
+  chartSymbolBadge: document.getElementById("chartSymbolBadge"),
   chartInteractionGuard: document.getElementById("chartInteractionGuard"),
   companyLogo: document.getElementById("companyLogo"),
   companyHeadline: document.getElementById("companyHeadline"),
@@ -1553,24 +1513,6 @@ function recommendationIcon(label) {
     return "⊘";
   }
   return "●";
-}
-
-function renderStrategyDescription(strategy = state.selectedStrategy) {
-  if (!elements.strategyDescription) {
-    return;
-  }
-  const config = STRATEGY_DESCRIPTIONS[strategy] || STRATEGY_DESCRIPTIONS.simple;
-  elements.strategyDescription.innerHTML = `
-    <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">${config.title}</p>
-    <div class="mt-3 space-y-2">
-      ${config.lines
-        .map(
-          (line) =>
-            `<p class="text-sm leading-6 text-slate-300">${line}</p>`,
-        )
-        .join("")}
-    </div>
-  `;
 }
 
 function trimDecisionText(text, maxLength = 120) {
@@ -2616,7 +2558,6 @@ function renderAnalysis(analysis) {
   }
   const strategy = analysis?.strategy || state.selectedStrategy;
   elements.selectedStrategyBadge.textContent = getStrategyLabel(strategy) || titleCase(strategy);
-  renderStrategyDescription(strategy);
   if (analysis && !analysis.no_data) {
     writeCachedJson(STORAGE_KEYS.cachedAnalysis, analysis);
   }
@@ -3322,7 +3263,6 @@ function renderStrategyButtons() {
   if (elements.selectedStrategyBadge) {
     elements.selectedStrategyBadge.textContent = getStrategyLabel(state.selectedStrategy);
   }
-  renderStrategyDescription(state.selectedStrategy);
 }
 
 function resetAuthOverlayPosition() {
@@ -3681,10 +3621,10 @@ function renderWatchlist(items) {
 function renderCompanyDetails(overview) {
   const rows = [
     ["Exchange", overview.exchange || "--"],
-    ["Industry", overview.finnhub_industry || "--"],
     ["IPO", overview.ipo || "--"],
     ["Market Cap", formatMarketCap(overview.market_capitalization)],
     ["Shares Out", overview.share_outstanding ? compactNumber(overview.share_outstanding) : "--"],
+    ["Industry", overview.finnhub_industry || "--"],
   ];
 
   elements.companyDetails.innerHTML = rows
@@ -3705,10 +3645,10 @@ function normalizeTickerSymbol(value) {
 
 function updateChartCompareUi() {
   const primary = normalizeTickerSymbol(state.selectedSymbol);
+  if (elements.chartSymbolBadge) {
+    elements.chartSymbolBadge.textContent = `${String(t("chart.label")).toUpperCase()} · ${primary}`;
+  }
   const compare = normalizeTickerSymbol(state.compareSymbol);
-  elements.chartSymbolBadge.textContent = compare
-    ? tf("chart.badgeCompared", { primary, compare })
-    : tf("chart.badgeSingle", { primary });
   if (elements.chartCompareInput && document.activeElement !== elements.chartCompareInput) {
     elements.chartCompareInput.value = compare;
   }

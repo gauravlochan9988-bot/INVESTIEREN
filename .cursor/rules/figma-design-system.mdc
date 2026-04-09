@@ -1,0 +1,74 @@
+---
+description: Figma-zu-Code für GQ Trading (INVESTIEREN). Tailwind + styles.css, responsiv Mobile/Tablet/Desktop, MCP-Workflow und Asset-Regeln.
+globs: "**/*.{html,css,js}"
+alwaysApply: false
+---
+
+# Figma Design System — INVESTIEREN / GQ Trading
+
+## Projekt-Stack (verbindlich)
+
+- **Markup:** `index.html` (ein Dashboard-Shell, keine Komponenten-Bibliothek).
+- **Styling:** Tailwind über **CDN** (`cdn.tailwindcss.com`) **plus** globale Regeln in `styles.css` (überschreibt/ergänzt Utilities).
+- **Logik:** `app.js` (Vanilla JS). Kein React/Vue/Svelte.
+- **Max-Breite Shell:** `#appShell > div` nutzt `width: min(100%, 1720px)` — neue Layouts **innerhalb** dieser Kappe denken.
+
+## Responsive Layout — Mobile, Tablet, Desktop
+
+Implementierungen aus Figma **müssen** alle drei Bereiche abdecken. Orientierung an **Tailwind-Defaults** (align mit `styles.css`):
+
+| Bereich | ungefähre Viewport | Typische Tailwind-Prefixe |
+|--------|---------------------|---------------------------|
+| **Handy** | &lt; 640px | Standard (mobile-first), `max-sm:` wenn nötig |
+| **Tablet** | 640px–1023px | `sm:`, `md:` |
+| **Desktop** | ≥ 1024px | `lg:`, `xl:`, `2xl:` |
+
+**Zusätzlich** nutzt `styles.css` eigene Breakpoints (z. B. `@media (min-width: 768px)`, `(min-width: 1280px)`). Bei Konflikten: **bestehende `#dashboardWorkspace`- / `#analysisCenterColumn`-Logik nicht zerstören** — entweder gleiche Breakpoints verwenden oder bewusst in `styles.css` eine Media Query ergänzen.
+
+### Layout-Prinzipien für dieses Repo
+
+1. **Mobile-first:** Basis-Styles für schmale Viewports; größere Screens mit `sm:`/`md:`/`lg:` anreichern.
+2. **Einspaltig → Mehrspaltig:** `#dashboardWorkspace` schaltet per Media Query von einer Spalte auf 2–3 Spalten um — neue Sektionen **in dieselbe Grid-/Order-Logik** einpassen (`order`, `min-width: 0` für Overflow).
+3. **Touch / Safe Area:** Abstand unten mit `pb-[max(0.75rem,env(safe-area-inset-bottom))]` o. ä. beibehalten; klickbare Flächen mindestens ~44px Höhe.
+4. **Keine festen Pixel-Breiten** für ganze Spalten ohne `minmax(0, 1fr)` / `min-w-0`, sonst bricht das Grid bei Tablet nicht.
+
+## Styling-Regeln
+
+- **Tailwind:** Utility-Klassen im HTML für Layout, Abstand, Typo; konsistent mit bestehenden Patterns (`rounded-[24px]`, `border-white/10`, `bg-slate-900/85`, …).
+- **Globale Feinheiten:** Kontrast, Scroll, Chart, Dashboard-Panels oft in `styles.css` — neue Komponenten **zuerst** per Tailwind; nur bei Wiederholung oder Konflikt mit bestehenden Selektoren (`#chartSection`, `.dashboard-panel`, …) nachziehen.
+- **Farben:** Bestehende Palette (Slate/Cyan/Emerald, halbtransparente Borders). Keine isolierten Neon-Farben ohne Bezug zum Rest-Dashboard.
+- **Design-Tokens:** Es gibt **keine** zentrale `tokens.css` — Farben/Radius aus bestehenden Klassen und `styles.css` ableiten.
+
+## Figma MCP Integration (wenn Server verbunden)
+
+### Pflichtablauf (nicht überspringen)
+
+1. `get_design_context` für die exakten Node-ID(s) ausführen.
+2. Bei zu großer Antwort: `get_metadata`, dann gezielt einzelne Nodes erneut mit `get_design_context`.
+3. `get_screenshot` für visuelle Referenz (Variante/State).
+4. Assets über Figma MCP laden, **dann** implementieren.
+5. MCP liefert oft **React + Tailwind** — hier auf **HTML + gleiche Tailwind-Klassen + ggf. `styles.css`** mappen, nicht React übernehmen.
+6. Gegen Screenshot prüfen (Abstände, Typo, States).
+
+### Umsetzung
+
+- Figma-Output ist **Design-Referenz**, nicht Dateistruktur dieses Repos.
+- Bestehende IDs (`#dashboardWorkspace`, `#chartSection`, …) und A11y (`data-i18n-*`, `aria-*`) respektieren.
+- Keine neuen npm-Icon-Pakete; Icons aus Figma-Payload oder bestehende SVGs/Unicode im Projekt.
+
+## Asset-Handling
+
+- Bilder/SVG aus Figma MCP: vorgegebene Quellen nutzen (auch `localhost` aus MCP **direkt** verwenden, keine Platzhalter).
+- Statische Assets unter Projekt-Root ablegen (z. B. bestehende `public/`-Struktur oder wie im Repo üblich referenziert).
+
+## Dateien anfassen
+
+- **Struktur/HTML:** `index.html`
+- **Globale Styles / Breakpoints:** `styles.css`
+- **Interaktion / i18n:** `app.js` (Texte über bestehendes `t()` / `data-i18n`).
+
+## Wichtig
+
+- **IMPORTANT:** Kein Framework einführen (kein React/Vue), solange das Produkt Vanilla bleibt.
+- **IMPORTANT:** Responsive Verhalten für **mindestens** drei Stufen (Handy / Tablet / Desktop) testen oder per Media Query absichern.
+- **IMPORTANT:** `min-w-0` auf flex/grid-Kindern, wo Text/Charts overflowen könnten.

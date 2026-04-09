@@ -23,22 +23,29 @@
   <body class="min-h-screen bg-slate-950 text-slate-100">
     <div
       id="authOverlay"
-      class="fixed inset-0 z-30 flex min-h-screen items-center justify-center overflow-hidden bg-slate-950/90"
+      class="fixed inset-0 z-30 flex min-h-[100dvh] flex-col items-stretch justify-start overflow-x-hidden overflow-y-auto overscroll-y-contain bg-slate-950/90 pt-[env(safe-area-inset-top)] pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center sm:justify-center"
     >
-      <div class="absolute inset-0 login-bg">
-        <picture class="block h-full w-full">
-          <source media="(max-width: 768px)" srcset="/auth-hero-mobile-gaurav.jpg" />
+      <div class="absolute inset-0 login-bg auth-photo-bg">
+        <picture class="auth-photo-picture">
+          <source media="(max-width: 768px)" srcset="/auth-hero-lounge.png" />
           <img
             id="authHeroImage"
-            src="/auth-hero-hq.png"
+            src="/auth-hero-lounge.png"
             alt=""
-            class="h-full w-full object-cover opacity-[0.52]"
+            class="auth-photo-img h-full w-full object-cover"
+            width="1600"
+            height="2400"
+            decoding="async"
+            fetchpriority="high"
           />
         </picture>
-        <div id="authOverlayShade" class="absolute inset-0 login-overlay bg-[radial-gradient(circle_at_top_left,_rgba(15,23,42,0.35),_transparent_32%),linear-gradient(90deg,rgba(2,6,23,0.96)_0%,rgba(2,6,23,0.82)_36%,rgba(2,6,23,0.54)_60%,rgba(2,6,23,0.18)_100%)]"></div>
+        <div id="authOverlayShade" class="auth-photo-vignette" aria-hidden="true"></div>
       </div>
 
-      <section class="relative z-10 mx-4 w-full max-w-6xl sm:mx-6 auth-landing-shell login-container">
+      <section
+        class="relative z-10 mx-auto w-full max-w-6xl px-4 sm:mx-6 sm:px-6 auth-landing-shell login-container"
+        aria-label="Login"
+      >
         <div class="auth-landing-grid">
           <div class="auth-landing-copy">
             <div class="auth-landing-topline">
@@ -169,7 +176,7 @@
           </div>
         </div>
 
-        <div id="systemSignals" class="auth-system-grid">
+        <div id="systemSignals" class="auth-system-grid scroll-mt-8">
           <section class="auth-system-box">
             <p class="auth-system-label" data-i18n="auth.system.inside">In deinem System</p>
             <ul class="auth-benefit-list auth-system-list">
@@ -214,12 +221,13 @@
       </section>
     </div>
 
-    <div id="appShell" class="hidden min-h-screen">
-      <div class="mx-auto flex min-h-screen w-full max-w-[1720px] flex-col px-3 py-3 sm:px-5 sm:py-4 lg:px-6 xl:px-8 2xl:px-10">
+    <div id="appShell" class="hidden min-h-[100dvh]">
+      <div class="mx-auto flex min-h-[100dvh] w-full max-w-[1720px] flex-col px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:py-4 lg:px-6 xl:px-8 2xl:px-10">
         <header
-          class="dashboard-topbar mb-4 flex flex-col gap-4 rounded-[24px] border border-white/10 bg-slate-900/85 px-4 py-4 shadow-2xl shadow-black/30 backdrop-blur sm:mb-5 sm:rounded-[28px] sm:px-5 sm:py-5 xl:grid xl:grid-cols-[auto_minmax(420px,1fr)_auto] xl:items-center xl:gap-5"
+          class="dashboard-topbar mb-4 flex flex-col gap-4 rounded-[24px] border border-white/10 bg-slate-900/85 px-4 py-4 shadow-2xl shadow-black/30 backdrop-blur sm:mb-5 sm:rounded-[28px] sm:px-5 sm:py-5"
         >
-          <button id="brandHomeButton" type="button" class="dashboard-brand flex items-center text-left" aria-label="Zur Dashboard-Startseite" data-i18n-aria="dashboard.homeAria">
+          <div class="dashboard-topbar-row-1 flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
+          <button id="brandHomeButton" type="button" class="dashboard-brand flex shrink-0 items-center text-left" aria-label="Zur Dashboard-Startseite" data-i18n-aria="dashboard.homeAria">
             <span id="headerMonogram" aria-hidden="true">GQ</span>
             <span class="dashboard-brand-copy">
               <span class="dashboard-brand-name">GQ Trading</span>
@@ -227,8 +235,12 @@
             </span>
           </button>
 
-          <form id="searchForm" class="relative z-30 flex w-full max-w-none flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+          <form id="searchForm" class="relative z-30 flex min-w-0 w-full flex-1 flex-col items-stretch gap-3 sm:flex-row sm:items-center">
             <div class="relative flex-1">
+              <div
+                id="searchSuggestions"
+                class="absolute left-0 right-0 top-[calc(100%+10px)] z-[70] hidden max-h-80 overflow-y-auto rounded-3xl border border-white/10 bg-slate-950/95 p-2 shadow-2xl shadow-black/40 backdrop-blur"
+              ></div>
               <input
                 id="searchInput"
                 type="search"
@@ -239,14 +251,13 @@
                 aria-autocomplete="list"
                 aria-controls="searchSuggestions"
               />
-              <div
-                id="searchSuggestions"
-                class="absolute left-0 right-0 top-[calc(100%+10px)] z-[70] hidden max-h-80 overflow-y-auto rounded-3xl border border-white/10 bg-slate-950/95 p-2 shadow-2xl shadow-black/40 backdrop-blur"
-              ></div>
             </div>
           </form>
+          </div>
 
-          <div class="flex w-full flex-col gap-3 xl:min-w-[352px] xl:w-auto xl:flex-row xl:flex-wrap xl:items-center xl:justify-end">
+          <div
+            class="dashboard-topbar-row-2 dashboard-topbar-trailing flex w-full flex-col gap-3 border-t border-white/[0.06] pt-4 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between lg:gap-4 lg:border-t-0 lg:pt-0"
+          >
             <div
               class="auth-lang-switch order-first w-full justify-center self-center xl:order-none xl:w-auto xl:justify-end"
               data-i18n-aria="lang.switch"
@@ -262,56 +273,23 @@
               aria-label="Handelsstrategie"
             >
               <span id="strategyToggleThumb" aria-hidden="true"></span>
-              <button
-                type="button"
-                class="strategy-button rounded-xl px-3 py-2 text-xs font-semibold text-slate-300 transition"
-                data-strategy="simple"
-              >
-                Simple
-              </button>
-              <button
-                type="button"
-                class="strategy-button rounded-xl px-3 py-2 text-xs font-semibold text-slate-300 transition"
-                data-strategy="ai"
-              >
-                AI
-              </button>
-              <button
-                type="button"
-                class="strategy-button rounded-xl px-3 py-2 text-xs font-semibold text-slate-300 transition"
-                data-strategy="hedgefund"
-              >
-                Hedgefund
-              </button>
+              <button type="button" class="strategy-button rounded-xl px-3 py-2 text-xs font-semibold text-slate-300 transition" data-strategy="simple">Simple</button>
+              <button type="button" class="strategy-button rounded-xl px-3 py-2 text-xs font-semibold text-slate-300 transition" data-strategy="ai">AI</button>
+              <button type="button" class="strategy-button rounded-xl px-3 py-2 text-xs font-semibold text-slate-300 transition" data-strategy="hedgefund">Hedgefund</button>
             </div>
-            <div
-              id="backendStatus"
-              class="dashboard-chip rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-300"
-            >
+            <div id="backendStatus" class="dashboard-chip rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-300">
               <span data-i18n="dashboard.backendConnecting">Backend wird verbunden...</span>
             </div>
-            <div class="grid grid-cols-2 gap-3">
-            <button
-              id="subscribeButton"
-              type="button"
-              class="action-secondary rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/15 xl:min-w-[132px]"
-            >
-              <span data-i18n="dashboard.subscribe">Upgrade €4.99</span>
-            </button>
-            <button
-              id="refreshButton"
-              type="button"
-              class="action-secondary rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 xl:min-w-[112px]"
-            >
-              <span data-i18n="dashboard.refresh">Aktualisieren</span>
-            </button>
-            <button
-              id="logoutButton"
-              type="button"
-              class="action-secondary rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 xl:min-w-[112px]"
-            >
-              <span data-i18n="dashboard.logout">Abmelden</span>
-            </button>
+            <div class="dashboard-topbar-cta-grid grid grid-cols-2 gap-3 min-[420px]:grid-cols-3">
+              <button id="subscribeButton" type="button" class="action-secondary rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/15 xl:min-w-[132px]">
+                <span data-i18n="dashboard.subscribe">Upgrade €4.99</span>
+              </button>
+              <button id="refreshButton" type="button" class="action-secondary rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 xl:min-w-[112px]">
+                <span data-i18n="dashboard.refresh">Aktualisieren</span>
+              </button>
+              <button id="logoutButton" type="button" class="action-secondary rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 xl:min-w-[112px]">
+                <span data-i18n="dashboard.logout">Abmelden</span>
+              </button>
             </div>
           </div>
         </header>
@@ -338,7 +316,7 @@
           </div>
         </nav>
 
-        <div id="errorBanner" class="mb-4 hidden rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
+        <div id="errorBanner" class="mb-4 hidden rounded-2xl border border-rose-400/45 bg-rose-950/50 px-4 py-3 text-sm font-medium leading-relaxed text-rose-100"></div>
         <section
           id="limitedAccessBanner"
           class="mb-4 hidden items-center justify-between gap-4 rounded-[24px] border border-emerald-400/20 bg-emerald-400/10 px-4 py-4 text-sm text-emerald-100 sm:px-5"
@@ -359,22 +337,25 @@
           </button>
         </section>
 
-        <main id="dashboardWorkspace" class="grid flex-1 items-start gap-5 xl:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_minmax(280px,340px)] 2xl:grid-cols-[minmax(280px,340px)_minmax(0,1fr)_minmax(300px,360px)]">
-          <aside id="watchlistSection" class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
-            <div id="watchlistHeader" class="mb-4 flex items-end justify-between">
+        <main id="dashboardWorkspace" class="grid flex-1 items-start gap-5 xl:grid-cols-[minmax(280px,340px)_minmax(0,1fr)_minmax(260px,320px)] 2xl:grid-cols-[minmax(300px,360px)_minmax(0,1fr)_minmax(280px,340px)]">
+          <aside
+            id="watchlistSection"
+            class="dashboard-panel flex min-h-0 min-w-0 flex-col rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5"
+          >
+            <div id="watchlistHeader" class="mb-4 flex shrink-0 items-end justify-between">
               <div>
                 <p class="text-xs font-medium text-slate-500" data-i18n="dashboard.kickerLive">LIVE</p>
                 <h2 class="mt-2 text-xl font-semibold" data-i18n="watchlist.quotes">Kurse</h2>
               </div>
               <span id="watchlistMeta" class="text-xs text-slate-500" data-i18n="watchlist.syncing">Synchronisiere...</span>
             </div>
-            <div id="watchlistBody"></div>
-            <div id="watchlistHint" class="rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-3 text-xs text-slate-400">
+            <div id="watchlistBody" class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"></div>
+            <div id="watchlistHint" class="shrink-0 rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-3 text-xs text-slate-400">
               <p class="font-semibold uppercase tracking-[0.18em] text-slate-300" data-i18n="watchlist.favoritesTitle">☆ Favoriten</p>
               <p class="mt-2 leading-6" data-i18n="watchlist.favoritesHint">Mit Stern anheften.</p>
             </div>
 
-            <div id="favoritesSection" class="mt-6 hidden border-t border-white/10 pt-5">
+            <div id="favoritesSection" class="mt-6 hidden shrink-0 border-t border-white/10 pt-5">
               <div class="mb-4 flex items-end justify-between">
                 <div>
                   <p class="text-xs font-medium text-slate-500" data-i18n="favorites.label">Favoriten</p>
@@ -415,7 +396,7 @@
                 </div>
               </div>
 
-              <div class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5 2xl:gap-5">
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-5 2xl:gap-5">
                 <article id="metricPriceCard" class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <p class="text-xs uppercase tracking-[0.24em] text-slate-500" data-i18n="metric.price">Preis</p>
                   <p id="metricPrice" class="mt-3 text-3xl font-semibold">$--</p>
@@ -463,11 +444,6 @@
                   </span>
                 </div>
               </div>
-
-              <div
-                id="strategyDescription"
-                class="mb-5 rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-4 text-sm leading-6 text-slate-300"
-              ></div>
 
               <article
                 id="recommendationCard"
@@ -622,6 +598,11 @@
               </div>
             </section>
 
+            <span
+              id="chartSymbolBadge"
+              class="inline-flex w-fit items-center rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-semibold tracking-[0.18em] text-slate-400"
+              >CHART · AAPL</span>
+
             <div id="chartSection" class="dashboard-panel chart-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px]">
               <div class="mb-4 flex flex-wrap items-center justify-between gap-3 px-1">
                 <div class="min-w-0">
@@ -629,7 +610,6 @@
                   <h3 class="mt-2 text-xl font-semibold" data-i18n="chart.tradingView">TradingView</h3>
                 </div>
                 <div class="chart-toolbar">
-                  <span id="chartSymbolBadge" class="rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-semibold tracking-[0.18em] text-slate-400">CHART · AAPL</span>
                   <form id="chartCompareForm" class="chart-compare-form" autocomplete="off">
                     <input
                       id="chartCompareInput"
@@ -676,7 +656,7 @@
             </div>
           </section>
 
-          <aside id="decisionRail" class="min-w-0 space-y-5">
+          <aside id="decisionRail" class="flex min-w-0 flex-col gap-6">
             <section id="alertsSection" class="dashboard-panel rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
               <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
@@ -693,7 +673,7 @@
               </div>
             </section>
 
-            <aside id="companySection" class="min-w-0 space-y-5">
+            <aside id="companySection" class="flex min-w-0 flex-col gap-6">
             <section class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
               <p class="text-xs font-medium text-slate-500" data-i18n="dashboard.kickerStats">STATS</p>
               <div class="mt-5 flex items-center gap-4">
@@ -720,28 +700,17 @@
                   <p class="text-xs font-medium text-slate-500" data-i18n="dashboard.kickerUpdated">AKTUALISIERT</p>
                   <h3 class="mt-2 text-xl font-semibold" data-i18n="learning.performance">Performance</h3>
                 </div>
-                <span
-                  id="learningMeta"
-                  class="rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400"
-                >
-                  Laden
-                </span>
+                <span id="learningMeta" class="rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400">Laden</span>
               </div>
-
               <div id="learningList" class="mt-5 space-y-3">
                 <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <p class="text-sm font-semibold text-white" data-i18n="learning.loadingTitle">Laden</p>
-                  <p class="mt-2 text-sm leading-6 text-slate-400" data-i18n="learning.loadingHint">
-                    Trades werden gelesen.
-                  </p>
+                  <p class="mt-2 text-sm leading-6 text-slate-400" data-i18n="learning.loadingHint">Trades werden gelesen.</p>
                 </article>
               </div>
-
               <div class="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
                 <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-500" data-i18n="learning.rules">Regeln</p>
-                <p class="mt-3 text-sm leading-6 text-slate-400" data-i18n="learning.rulesHint">
-                  Startet nach 50 abgeschlossenen Trades.
-                </p>
+                <p class="mt-3 text-sm leading-6 text-slate-400" data-i18n="learning.rulesHint">Startet nach 50 abgeschlossenen Trades.</p>
               </div>
             </section>
             </aside>
