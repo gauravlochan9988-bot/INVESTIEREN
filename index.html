@@ -20,7 +20,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body class="min-h-screen bg-slate-950 text-slate-100">
+  <body class="min-h-screen max-w-full overflow-x-hidden bg-slate-950 text-slate-100 antialiased">
     <div
       id="authOverlay"
       class="fixed inset-0 z-30 flex min-h-[100dvh] flex-col items-stretch justify-start overflow-x-hidden overflow-y-auto overscroll-y-contain bg-slate-950/90 pt-[env(safe-area-inset-top)] pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center sm:justify-center"
@@ -43,7 +43,7 @@
       </div>
 
       <section
-        class="relative z-10 mx-auto w-full max-w-6xl px-4 sm:mx-6 sm:px-6 auth-landing-shell login-container"
+        class="relative z-10 mx-auto w-full min-w-0 auth-landing-shell login-container"
         aria-label="Login"
       >
         <div class="auth-landing-grid">
@@ -222,7 +222,7 @@
     </div>
 
     <div id="appShell" class="hidden min-h-[100dvh]">
-      <div class="mx-auto flex min-h-[100dvh] w-full max-w-[1720px] flex-col px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:py-4 lg:px-6 xl:px-8 2xl:px-10">
+      <div class="mx-auto flex min-h-[100dvh] w-full max-w-[1720px] flex-col px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:py-4 lg:px-6 xl:px-8 2xl:px-12 min-[1800px]:px-14">
         <header
           class="dashboard-topbar mb-4 flex flex-col gap-4 rounded-[24px] border border-white/10 bg-slate-900/85 px-4 py-4 shadow-2xl shadow-black/30 backdrop-blur sm:mb-5 sm:rounded-[28px] sm:px-5 sm:py-5"
         >
@@ -319,7 +319,7 @@
         <div id="errorBanner" class="mb-4 hidden rounded-2xl border border-rose-400/45 bg-rose-950/50 px-4 py-3 text-sm font-medium leading-relaxed text-rose-100"></div>
         <section
           id="limitedAccessBanner"
-          class="mb-4 hidden items-center justify-between gap-4 rounded-[24px] border border-emerald-400/20 bg-emerald-400/10 px-4 py-4 text-sm text-emerald-100 sm:px-5"
+          class="mb-4 hidden flex-col gap-4 rounded-[24px] border border-emerald-400/20 bg-emerald-400/10 px-4 py-4 text-sm text-emerald-100 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5"
           hidden
         >
           <div>
@@ -337,7 +337,7 @@
           </button>
         </section>
 
-        <main id="dashboardWorkspace" class="grid flex-1 items-start gap-5 xl:grid-cols-[minmax(280px,340px)_minmax(0,1fr)_minmax(260px,320px)] 2xl:grid-cols-[minmax(300px,360px)_minmax(0,1fr)_minmax(280px,340px)]">
+        <main id="dashboardWorkspace" class="grid flex-1 items-start gap-7 xl:gap-9 xl:grid-cols-[minmax(280px,340px)_minmax(0,1fr)_minmax(260px,320px)] 2xl:grid-cols-[minmax(300px,360px)_minmax(0,1fr)_minmax(280px,340px)]">
           <aside
             id="watchlistSection"
             class="dashboard-panel flex min-h-0 min-w-0 flex-col rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5"
@@ -349,7 +349,10 @@
               </div>
               <span id="watchlistMeta" class="text-xs text-slate-500" data-i18n="watchlist.syncing">Synchronisiere...</span>
             </div>
-            <div id="watchlistBody" class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"></div>
+            <div
+              id="watchlistBody"
+              class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain min-[1200px]:flex-none min-[1200px]:overflow-y-visible min-[1200px]:overscroll-auto"
+            ></div>
             <div id="watchlistHint" class="shrink-0 rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-3 text-xs text-slate-400">
               <p class="font-semibold uppercase tracking-[0.18em] text-slate-300" data-i18n="watchlist.favoritesTitle">☆ Favoriten</p>
               <p class="mt-2 leading-6" data-i18n="watchlist.favoritesHint">Mit Stern anheften.</p>
@@ -598,11 +601,6 @@
               </div>
             </section>
 
-            <span
-              id="chartSymbolBadge"
-              class="inline-flex w-fit items-center rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-semibold tracking-[0.18em] text-slate-400"
-              >CHART · AAPL</span>
-
             <div id="chartSection" class="dashboard-panel chart-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px]">
               <div class="mb-4 flex flex-wrap items-center justify-between gap-3 px-1">
                 <div class="min-w-0">
@@ -656,7 +654,7 @@
             </div>
           </section>
 
-          <aside id="decisionRail" class="flex min-w-0 flex-col gap-6">
+          <aside id="decisionRail" class="flex min-w-0 flex-col gap-8">
             <section id="alertsSection" class="dashboard-panel rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
               <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
@@ -673,7 +671,7 @@
               </div>
             </section>
 
-            <aside id="companySection" class="flex min-w-0 flex-col gap-6">
+            <aside id="companySection" class="flex min-w-0 flex-col gap-8">
             <section class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
               <p class="text-xs font-medium text-slate-500" data-i18n="dashboard.kickerStats">STATS</p>
               <div class="mt-5 flex items-center gap-4">
@@ -688,21 +686,24 @@
                   <p id="companyExchange" class="text-sm text-slate-400">Borse erscheint hier</p>
                 </div>
               </div>
-              <dl id="companyDetails" class="mt-6 space-y-4"></dl>
+              <dl id="companyDetails" class="mt-6 min-w-0 max-w-full"></dl>
             </section>
 
             <section
               id="learningSection"
-              class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5"
+              class="dashboard-panel min-w-0 max-w-full rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5"
             >
-              <div class="flex flex-wrap items-end justify-between gap-3">
-                <div>
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <div class="min-w-0 flex-1">
                   <p class="text-xs font-medium text-slate-500" data-i18n="dashboard.kickerUpdated">AKTUALISIERT</p>
                   <h3 class="mt-2 text-xl font-semibold" data-i18n="learning.performance">Performance</h3>
                 </div>
-                <span id="learningMeta" class="rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400">Laden</span>
+                <span
+                  id="learningMeta"
+                  class="min-w-0 max-w-full shrink rounded-full border border-white/10 bg-slate-950/60 px-3 py-2 text-right text-[0.68rem] font-medium leading-snug text-slate-400 sm:max-w-[min(100%,14rem)]"
+                  >Laden</span>
               </div>
-              <div id="learningList" class="mt-5 space-y-3">
+              <div id="learningList" class="mt-5 min-w-0 space-y-3">
                 <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                   <p class="text-sm font-semibold text-white" data-i18n="learning.loadingTitle">Laden</p>
                   <p class="mt-2 text-sm leading-6 text-slate-400" data-i18n="learning.loadingHint">Trades werden gelesen.</p>

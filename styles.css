@@ -27,13 +27,16 @@
   --glass-glow-rose: rgba(244, 114, 182, 0.09);
 }
 
-html,
-body {
+html {
   min-height: 100%;
+  overflow-x: hidden;
 }
 
 body {
+  min-height: 100%;
+  max-width: 100%;
   margin: 0;
+  overflow-x: hidden;
   background:
     radial-gradient(ellipse 70% 45% at 50% -15%, rgba(139, 92, 246, 0.12), transparent 55%),
     radial-gradient(circle at top left, rgba(20, 184, 166, 0.08), transparent 26%),
@@ -886,6 +889,14 @@ body {
   }
 }
 
+@media (max-width: 390px) {
+  .auth-photo-vignette {
+    background:
+      radial-gradient(ellipse 130% 85% at 50% 0%, rgba(2, 6, 23, 0.92) 0%, transparent 42%),
+      linear-gradient(180deg, rgba(2, 6, 23, 0.9) 0%, rgba(2, 6, 23, 0.5) 38%, rgba(2, 6, 23, 0.94) 100%);
+  }
+}
+
 #authOverlay {
   align-items: flex-start;
   overflow-y: auto;
@@ -1502,19 +1513,34 @@ body {
 
 .auth-landing-shell {
   position: relative;
+  width: 100%;
+  max-width: min(100%, 1280px);
+  margin-inline: auto;
+  box-sizing: border-box;
   min-height: max(100svh, 48rem);
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 2.5rem;
-  padding: 0.75rem 0 2.4rem;
+  gap: clamp(1.25rem, 3vw, 2.5rem);
+  padding-top: clamp(0.75rem, 2.5vw, 3.4rem);
+  padding-bottom: clamp(1.25rem, 2.5vw, 2.8rem);
+  padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+  padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+}
+
+@media (min-width: 1024px) {
+  .auth-landing-shell {
+    max-width: min(100%, 1400px);
+  }
 }
 
 .auth-landing-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
-  gap: 2rem;
+  grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+  gap: clamp(1.25rem, 2.5vw, 2rem);
   align-items: start;
+  width: 100%;
+  min-width: 0;
 }
 
 .auth-landing-copy,
@@ -1538,8 +1564,10 @@ body {
 }
 
 .auth-landing-copy {
-  padding: 2.5rem;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
   border-radius: 2rem;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .auth-landing-topline {
@@ -1745,9 +1773,16 @@ body {
 
 .auth-feature-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.95rem;
-  margin-top: 2rem;
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
+  margin-top: clamp(1.25rem, 5vw, 2rem);
+}
+
+@media (min-width: 1024px) {
+  .auth-feature-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.95rem;
+  }
 }
 
 .auth-feature-card {
@@ -1787,6 +1822,8 @@ body {
 .auth-visual-panel {
   position: relative;
   overflow: hidden;
+  min-width: 0;
+  max-width: 100%;
   min-height: 36rem;
   border-radius: 2rem;
   padding: 1.4rem;
@@ -2066,8 +2103,16 @@ body {
 
 .auth-stat-grid {
   display: grid;
-  gap: 0.9rem;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
   margin-top: 1rem;
+}
+
+@media (min-width: 768px) {
+  .auth-stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.9rem;
+  }
 }
 
 .auth-stat-card {
@@ -2213,13 +2258,11 @@ body {
   }
 }
 
-@media (min-width: 641px) and (max-width: 1024px) {
-  .auth-feature-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 1024px) {
+  .auth-landing-shell {
+    min-height: auto;
+  }
+
   .auth-landing-grid {
     grid-template-columns: 1fr;
   }
@@ -2240,10 +2283,6 @@ body {
 }
 
 @media (max-width: 640px) {
-  .auth-feature-grid {
-    grid-template-columns: 1fr;
-  }
-
   #authOverlay {
     padding-top: max(0.9rem, env(safe-area-inset-top));
     padding-bottom: max(1.4rem, env(safe-area-inset-bottom));
@@ -2253,8 +2292,11 @@ body {
 
   .auth-landing-shell {
     min-height: auto;
-    padding: 0.2rem 0 1.6rem;
-    gap: 1.6rem;
+    padding-top: 0.35rem;
+    padding-bottom: 1.5rem;
+    padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+    padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+    gap: 1.35rem;
   }
 
   .auth-landing-copy,
@@ -2265,23 +2307,48 @@ body {
 
   .auth-landing-copy {
     position: static;
+    background:
+      linear-gradient(180deg, rgba(2, 6, 23, 0.42) 0%, rgba(7, 12, 24, 0.72) 100%),
+      linear-gradient(180deg, rgba(7, 12, 24, 0.78), rgba(5, 10, 20, 0.62));
   }
 
   .auth-landing-topline {
     align-items: flex-start;
   }
 
+  .auth-landing-headline-block {
+    margin-top: 1.35rem;
+  }
+
+  .auth-landing-form {
+    margin-top: 1.45rem;
+  }
+
+  .auth-feature-grid {
+    margin-top: 1.35rem;
+  }
+
   .auth-landing-title {
-    font-size: clamp(2.35rem, 12vw, 3rem);
+    font-size: clamp(2.45rem, 10.5vw, 3.35rem);
+    line-height: 0.96;
+    letter-spacing: -0.055em;
+  }
+
+  .auth-landing-subtitle {
+    font-size: clamp(1.02rem, 3.8vw, 1.2rem);
+    line-height: 1.45;
   }
 
   .auth-landing-description {
     font-size: 0.94rem;
+    line-height: 1.72;
   }
 
   .auth-landing-actions {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.75rem;
+    margin-top: 0.85rem;
   }
 
   .auth-login-card {
@@ -2294,11 +2361,28 @@ body {
   }
 
   .auth-visual-art {
-    height: 16rem;
+    height: clamp(13rem, 38vmin, 17.5rem);
+    min-height: unset;
   }
 
   .auth-stat-card strong {
     font-size: 1.45rem;
+  }
+}
+
+@media (max-width: 389px) {
+  .auth-landing-copy,
+  .auth-visual-panel {
+    padding: 1rem;
+    border-radius: 1.25rem;
+  }
+
+  .auth-login-card {
+    padding: 1rem 1rem 1.1rem;
+  }
+
+  .auth-landing-mini {
+    font-size: 0.7rem;
   }
 }
 
@@ -2313,10 +2397,22 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
+#companyDetails {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
 #companyDetails > div {
   background:
     linear-gradient(180deg, rgba(2, 6, 23, 0.7), rgba(2, 6, 23, 0.5));
   border-color: rgba(148, 163, 184, 0.1);
+}
+
+.company-detail-row dd {
+  overflow-wrap: anywhere;
 }
 
 #appShell article,
@@ -2483,14 +2579,15 @@ body {
     gap: 0.55rem;
   }
 
+  /* Eine Spalte: 2-Spalten-Grid drückte Zellen auf ~50% Rail-Breite → Overflow */
   #companyDetails {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.9rem;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
   }
 
   #companyDetails > div {
-    height: 100%;
+    min-height: 0;
   }
 
   #analysisSummary {
@@ -2769,9 +2866,10 @@ body {
   #favoritesBody button {
     width: 100%;
     min-width: 0;
-    padding: 0.48rem 0.62rem;
+    padding: 0.85rem 1rem;
     border-radius: 1rem;
-    height: 100%;
+    height: auto;
+    min-height: 4.75rem;
   }
 
   .watchlist-slot {
@@ -2779,22 +2877,24 @@ body {
   }
 
   #watchlistBody button,
-  #watchlistBody button *,
+  #watchlistBody button *:not(.watchlist-name),
   #watchlistHint,
   #watchlistHint * {
     overflow-wrap: normal !important;
     word-break: normal !important;
   }
 
+  .watchlist-name {
+    letter-spacing: 0.01em;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
+
   .watchlist-symbol,
-  .watchlist-name,
   .watchlist-price,
   .watchlist-change {
     white-space: nowrap;
-  }
-
-  .watchlist-name {
-    letter-spacing: 0.01em;
   }
 
   #watchlistBody button > div,
@@ -3790,7 +3890,8 @@ body {
 @media (min-width: 769px) and (max-width: 1279px) {
   #dashboardWorkspace {
     grid-template-columns: minmax(248px, 288px) minmax(0, 1fr) !important;
-    gap: 1rem !important;
+    column-gap: 1.35rem !important;
+    row-gap: 1.35rem !important;
     align-items: start;
   }
 
@@ -3804,12 +3905,12 @@ body {
 
   #analysisCenterColumn {
     grid-column: 2;
-    gap: 1rem;
+    gap: 1.25rem;
   }
 
   #signalsOverviewRow {
     grid-template-columns: 1fr !important;
-    gap: 1rem !important;
+    gap: 1.25rem !important;
   }
 
   #decisionRail {
@@ -3817,7 +3918,7 @@ body {
     position: static !important;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
+    gap: 1.25rem;
     margin-top: 0;
   }
 
@@ -4319,7 +4420,7 @@ body {
 #dashboardWorkspace {
   display: grid !important;
   grid-template-columns: minmax(0, 1fr);
-  gap: clamp(0.75rem, 2vw, 1.15rem);
+  gap: clamp(0.85rem, 2vw, 1.5rem);
   align-items: start;
   min-width: 0;
 }
@@ -4332,13 +4433,13 @@ body {
 #analysisCenterColumn {
   display: flex;
   flex-direction: column;
-  gap: clamp(0.75rem, 2vw, 1rem);
+  gap: clamp(0.85rem, 2vw, 1.35rem);
 }
 
 #signalsOverviewRow {
   display: grid !important;
   grid-template-columns: minmax(0, 1fr);
-  gap: clamp(0.75rem, 2vw, 1rem);
+  gap: clamp(0.85rem, 2vw, 1.35rem);
   align-items: stretch;
 }
 
@@ -4461,6 +4562,8 @@ body {
       minmax(17rem, 24vw)
       minmax(0, 1fr)
       minmax(15rem, 20vw);
+    column-gap: clamp(1rem, 2vw, 1.75rem);
+    row-gap: clamp(1rem, 1.5vw, 1.5rem);
   }
 
   #watchlistSection {
@@ -4590,7 +4693,9 @@ body {
 /* Futuristic terminal + liquid glass (translucent surfaces, soft violet/cyan glow) */
 #appShell {
   position: relative;
-  overflow: hidden;
+  /* Nur horizontal begrenzen — volle Spaltenhöhe nicht abschneiden */
+  overflow-x: hidden;
+  overflow-y: visible;
   background:
     radial-gradient(ellipse 90% 55% at 50% -25%, rgba(139, 92, 246, 0.18), transparent 52%),
     radial-gradient(ellipse 70% 50% at 100% 30%, rgba(34, 211, 238, 0.1), transparent 48%),
@@ -4615,7 +4720,9 @@ body {
 #appShell > div {
   position: relative;
   z-index: 1;
-  max-width: 1440px;
+  width: 100%;
+  max-width: min(100%, 1720px);
+  box-sizing: border-box;
 }
 
 .dashboard-topbar,
@@ -4878,12 +4985,22 @@ body {
 
 #watchlistBody {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.9rem;
+  align-content: start;
+}
+
+/* Firmenname: 2 Zeilen, auch wenn .line-clamp-2 nur mobil in Tailwind-Scan liegt */
+#watchlistBody .watchlist-name.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 #watchlistBody button {
   border-radius: 1.2rem !important;
-  min-height: 5rem;
+  min-height: 5.25rem;
+  height: auto;
 }
 
 .watchlist-symbol,
@@ -4981,10 +5098,6 @@ body {
     0 0 34px rgba(34, 211, 238, 0.08) !important;
 }
 
-.auth-landing-shell {
-  max-width: 1280px !important;
-}
-
 .auth-landing-copy,
 .auth-visual-panel,
 .auth-feature-card,
@@ -5033,45 +5146,40 @@ body {
   }
 }
 
-/* Layout repair from screenshot feedback */
+/* Layout repair from screenshot feedback — mit index.html max-w-[1720px] abgleichen */
 #appShell > div {
-  max-width: 1680px;
+  max-width: min(100%, 1720px);
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.auth-landing-shell {
-  max-width: 1380px !important;
-  padding: 3.4rem 0 2.8rem;
-}
+/* Auth landing: large-desktop polish (base + shell padding lives earlier) */
+@media (min-width: 1280px) {
+  .auth-landing-grid {
+    grid-template-columns: minmax(0, 1.24fr) minmax(300px, 0.9fr);
+    gap: 2.75rem;
+  }
 
-.auth-landing-grid {
-  grid-template-columns: minmax(0, 1.24fr) minmax(380px, 0.9fr);
-  gap: 2.75rem;
-}
+  .auth-landing-copy {
+    padding: clamp(2rem, 2.8vw, 3rem) clamp(1.75rem, 2.5vw, 2.8rem);
+  }
 
-.auth-landing-copy {
-  padding: 3rem 2.8rem;
-}
+  .auth-landing-title {
+    font-size: clamp(4rem, 7vw, 6.2rem);
+  }
 
-.auth-landing-title {
-  max-width: min(26ch, 100%);
-  font-size: clamp(4rem, 7vw, 6.2rem);
-}
+  .auth-landing-description {
+    max-width: 36rem;
+    font-size: 1.04rem;
+  }
 
-.auth-landing-description {
-  max-width: 36rem;
-  font-size: 1.04rem;
-}
+  .auth-visual-panel {
+    min-height: 40rem;
+  }
 
-.auth-visual-panel {
-  min-height: 40rem;
-}
-
-.auth-visual-art {
-  height: 24rem;
-}
-
-.auth-stat-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  .auth-visual-art {
+    height: 24rem;
+  }
 }
 
 .auth-stat-card {
@@ -5087,61 +5195,62 @@ body {
   .auth-visual-panel {
     min-height: auto;
   }
-
-  .auth-stat-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 640px) {
-  .auth-stat-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (min-width: 1200px) {
   #dashboardWorkspace {
     display: grid !important;
-    grid-template-columns: minmax(220px, 260px) minmax(0, 1.5fr) minmax(250px, 320px) !important;
-    gap: 1.15rem !important;
+    /* min 0: Seitenleisten dürfen schrumpfen — verhindert horizontales Abschneiden */
+    grid-template-columns: minmax(0, 360px) minmax(0, 1fr) minmax(0, 360px) !important;
+    column-gap: clamp(1.75rem, 3.2vw, 4rem) !important;
+    row-gap: clamp(1.5rem, 2.2vw, 3rem) !important;
     align-items: start !important;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   #watchlistSection {
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
     grid-column: 1 !important;
     grid-row: 1 !important;
     position: sticky !important;
     top: 1rem !important;
     align-self: start !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   #analysisCenterColumn {
     display: flex !important;
     flex-direction: column !important;
-    gap: 1.15rem !important;
+    gap: clamp(1.5rem, 2vw, 2.25rem) !important;
     grid-column: 2 !important;
     grid-row: 1 !important;
     order: initial !important;
   }
 
+  /* order: Mitte-Spalte — Symbol → Entscheidung → Chart, Startlinie mit Seitenleisten */
   #selectedSymbolSection {
     display: block !important;
-    order: 1 !important;
+    order: 0 !important;
   }
 
   #tradeDecisionSection {
-    order: 2 !important;
+    order: 1 !important;
   }
 
   #chartSection {
-    order: 3 !important;
+    order: 2 !important;
   }
 
   #signalsOverviewRow {
     display: grid !important;
     grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr) !important;
-    gap: 1.15rem !important;
+    gap: clamp(1.5rem, 2vw, 2.25rem) !important;
     order: 4 !important;
   }
 
@@ -5153,16 +5262,28 @@ body {
   #decisionRail {
     display: flex !important;
     flex-direction: column !important;
-    gap: 1.15rem !important;
+    gap: clamp(1.5rem, 2.2vw, 2.5rem) !important;
     grid-column: 3 !important;
     grid-row: 1 !important;
     position: sticky !important;
     top: 1rem !important;
     align-self: start !important;
     order: initial !important;
+    min-height: 0 !important;
+    min-width: 0 !important;
+    width: 100%;
+    max-width: 100%;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
-  #companySection,
+  #companySection {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: clamp(1.5rem, 2.2vw, 2.5rem) !important;
+    min-width: 0 !important;
+  }
+
   #learningSection {
     display: block !important;
   }
@@ -5172,7 +5293,7 @@ body {
   #dashboardWorkspace {
     display: grid !important;
     grid-template-columns: minmax(0, 1.2fr) minmax(250px, 320px) !important;
-    gap: 1rem !important;
+    gap: 1.35rem !important;
     align-items: start !important;
   }
 
@@ -5217,40 +5338,73 @@ body {
   }
 }
 
-/* Terminal hierarchy */
-@media (min-width: 1200px) {
-  #signalsOverviewRow {
-    grid-template-columns: 1fr !important;
-  }
-}
-
 #watchlistSection {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  max-height: calc(100vh - 8rem);
-  overflow: hidden;
 }
 
-#alertsSection {
-  max-height: calc(100vh - 8rem);
-  overflow: hidden;
+/* Innen-Scroll nur <1200px; ab Desktop scrollt die Seite, Leisten zeigen alles */
+@media (max-width: 1199px) {
+  #watchlistSection {
+    max-height: calc(100vh - 8rem);
+    overflow: hidden;
+  }
+
+  #alertsSection {
+    max-height: calc(100vh - 8rem);
+    overflow: hidden;
+  }
+
+  #watchlistSection #watchlistBody {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none !important;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #alertsList {
+    overflow-y: auto;
+    max-height: calc(100vh - 14rem);
+    padding-right: 0.2rem;
+  }
 }
 
 #watchlistSection #watchlistBody {
   flex: 1 1 auto;
   min-height: 0;
-  max-height: none !important;
-  overflow-y: auto;
   overflow-x: hidden;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
 }
 
-#alertsList {
-  overflow-y: auto;
-  max-height: calc(100vh - 14rem);
-  padding-right: 0.2rem;
+@media (min-width: 1200px) {
+  #watchlistSection #watchlistBody {
+    flex: 0 1 auto !important;
+    overflow: visible !important;
+    overflow-x: hidden;
+    min-height: 0;
+  }
+
+  #alertsSection {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  #alertsList {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  #learningList {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  #learningSection {
+    overflow: visible !important;
+  }
 }
 
 #tradeDecisionSection {
@@ -5350,10 +5504,15 @@ body {
   min-height: 0;
 }
 
-#learningList,
+/* Nur Favoriten-Liste begrenzen; Performance/Learning voll sichtbar (Seite scrollt) */
 #favoritesBody {
   max-height: 20rem;
   overflow-y: auto;
+}
+
+#learningList {
+  max-height: none;
+  overflow: visible;
 }
 
 #watchlistHeader,
@@ -5386,14 +5545,6 @@ body {
 }
 
 @media (max-width: 1199px) {
-  #watchlistSection,
-  #alertsSection {
-    max-height: none;
-  }
-
-  #watchlistBody,
-  #alertsList,
-  #learningList,
   #favoritesBody {
     max-height: none;
   }
@@ -5432,77 +5583,6 @@ body {
   }
 }
 
-/* —— Layout v2 (ab 1200px): Sidebar links (Watchlist + Kontext), Hauptspalte rechts —— */
-@media (min-width: 1200px) {
-  #dashboardWorkspace {
-    display: grid !important;
-    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr) !important;
-    grid-template-rows: auto auto !important;
-    column-gap: 1.25rem !important;
-    row-gap: 1.85rem !important;
-    align-items: start !important;
-    min-width: 0 !important;
-  }
-
-  #analysisCenterColumn {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 1.15rem !important;
-    grid-column: 2 !important;
-    grid-row: 1 / -1 !important;
-    min-width: 0 !important;
-  }
-
-  #watchlistSection {
-    display: flex !important;
-    flex-direction: column !important;
-    min-height: 0 !important;
-    grid-column: 1 !important;
-    grid-row: 1 !important;
-    position: sticky !important;
-    top: 1rem !important;
-    align-self: start !important;
-    width: auto !important;
-    max-height: min(52vh, 28rem) !important;
-    overflow: hidden !important;
-  }
-
-  #watchlistSection #watchlistBody {
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-  }
-
-  #decisionRail {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 1.35rem !important;
-    grid-column: 1 !important;
-    grid-row: 2 !important;
-    position: sticky !important;
-    top: 1rem !important;
-    align-self: start !important;
-    min-width: 0 !important;
-    max-height: none !important;
-  }
-
-  #selectedSymbolSection,
-  #tradeDecisionSection,
-  #chartSection,
-  #signalsOverviewRow {
-    grid-column: unset !important;
-    grid-row: unset !important;
-    width: 100% !important;
-  }
-
-  #signalsOverviewRow {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-    gap: 1.15rem !important;
-  }
-}
-
 /* Zwei-Zeilen-Topbar: Abstand & Tablet-Trailing */
 .dashboard-topbar-row-1 {
   width: 100%;
@@ -5529,6 +5609,13 @@ body {
 #learningMeta,
 #favoritesMeta {
   color: #cbd5e1 !important;
+}
+
+#learningSection,
+#learningList,
+#learningList article {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Eine lineare Panel-Oberfläche: Watchlist, Symbol-Header, Firmen-STATS, Learning */

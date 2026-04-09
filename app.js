@@ -203,6 +203,19 @@ const I18N = {
     "learning.loadingHint": "Trades werden gelesen.",
     "learning.rules": "Regeln",
     "learning.rulesHint": "Startet nach 50 abgeschlossenen Trades.",
+    "learning.selected": "Aktiv",
+    "learning.metric.winRate": "Win-Rate",
+    "learning.metric.avgPl": "Ø P/L",
+    "learning.metric.drawdown": "Drawdown",
+    "learning.metric.version": "Version",
+    "learning.tradesCount": "{n} Trades",
+    "learning.note.none": "Kein Hinweis.",
+    "learning.note.noRealized":
+      "Für {strategy} sind noch keine realisierten Trades erfasst. Learning bleibt neutral.",
+    "learning.note.neutralMin":
+      "Learning bleibt neutral, bis mindestens {min} geschlossene Trades mit realisiertem Gewinn oder Verlust vorliegen.",
+    "learning.note.progressPartial":
+      "{count} realisierte Trades erfasst. Learning bleibt neutral, bis {min} Trades vorliegen.",
     "portfolio.sheetTitle": "Portfolio",
     "portfolio.allocation": "Allokation",
     "portfolio.close": "Schliessen",
@@ -390,6 +403,19 @@ const I18N = {
     "learning.loadingHint": "Reading trades.",
     "learning.rules": "Rules",
     "learning.rulesHint": "Starts after 50 closed trades.",
+    "learning.selected": "Active",
+    "learning.metric.winRate": "Win rate",
+    "learning.metric.avgPl": "Avg P/L",
+    "learning.metric.drawdown": "Drawdown",
+    "learning.metric.version": "Version",
+    "learning.tradesCount": "{n} trades",
+    "learning.note.none": "No note.",
+    "learning.note.noRealized":
+      "No realized trades are logged for {strategy} yet. Learning stays neutral.",
+    "learning.note.neutralMin":
+      "Learning stays neutral until at least {min} closed trades with realized profit or loss are available.",
+    "learning.note.progressPartial":
+      "{count} realized trades logged. Learning stays neutral until {min} trades are available.",
     "portfolio.sheetTitle": "Portfolio",
     "portfolio.allocation": "Allocation",
     "portfolio.close": "Close",
@@ -679,7 +705,6 @@ const elements = {
   chartCompareClear: document.getElementById("chartCompareClear"),
   chartCompareLegend: document.getElementById("chartCompareLegend"),
   tradingviewChart: document.getElementById("tradingviewChart"),
-  chartSymbolBadge: document.getElementById("chartSymbolBadge"),
   chartInteractionGuard: document.getElementById("chartInteractionGuard"),
   companyLogo: document.getElementById("companyLogo"),
   companyHeadline: document.getElementById("companyHeadline"),
@@ -2386,13 +2411,60 @@ function queueAlertsRetry(forceRefresh = false, delayMs = 2500) {
   }, delayMs);
 }
 
+/** Maps known English backend notes to the current UI language. */
+function formatLearningNote(note) {
+  if (note == null || !String(note).trim()) {
+    return "";
+  }
+  const s = String(note).trim();
+
+  let m = s.match(
+    /^No realized trades are logged for strategy (\w+) yet, so learning stays neutral\.$/i,
+  );
+  if (m) {
+    const key = m[1].toLowerCase();
+    return tf("learning.note.noRealized", { strategy: getStrategyLabel(key) });
+  }
+
+  m = s.match(/^No realized trades are logged for (\w+) yet, so learning stays neutral\.$/i);
+  if (m) {
+    const key = m[1].toLowerCase();
+    return tf("learning.note.noRealized", { strategy: getStrategyLabel(key) });
+  }
+
+  m = s.match(
+    /^Learning stays neutral until at least (\d+) closed trades with realized profit or loss are available\.$/,
+  );
+  if (m) {
+    return tf("learning.note.neutralMin", { min: m[1] });
+  }
+
+  m = s.match(
+    /^(\d+) realized trades are logged\. Learning stays neutral until (\d+) trades are available\.$/,
+  );
+  if (m) {
+    return tf("learning.note.progressPartial", { count: m[1], min: m[2] });
+  }
+
+  return s;
+}
+
+function formatLearningVersion(raw) {
+  if (raw == null || raw === "") {
+    return "--";
+  }
+  const str = String(raw);
+  const m = str.match(/(?:^|-)v(\d+)$/i);
+  return m ? `v${m[1]}` : str;
+}
+
 function renderLearningStatsLoading() {
   if (!elements.learningList || !elements.learningMeta) {
     return;
   }
   elements.learningMeta.textContent = t("learning.loading");
   elements.learningMeta.className =
-    "rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400";
+    "min-w-0 max-w-full shrink whitespace-normal rounded-full border border-white/10 bg-slate-950/60 px-3 py-2 text-right text-[0.68rem] font-medium leading-snug text-slate-400 sm:max-w-[min(100%,14rem)]";
   elements.learningList.innerHTML = Array.from({ length: 3 })
     .map(
       () => `
@@ -2417,7 +2489,7 @@ function renderLearningStatsError(message) {
   }
   elements.learningMeta.textContent = t("learning.offline");
   elements.learningMeta.className =
-    "rounded-full border border-amber-400/20 bg-amber-500/10 px-4 py-2 text-xs font-medium text-amber-200";
+    "min-w-0 max-w-full shrink whitespace-normal rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-right text-[0.68rem] font-medium leading-snug text-amber-200 sm:max-w-[min(100%,14rem)]";
   elements.learningList.innerHTML = `
     <article class="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
       <p class="text-sm font-semibold text-white">${escapeHtml(t("learning.offline"))}</p>
@@ -2439,7 +2511,7 @@ function renderLearningStats(response = emptyLearningResponse()) {
   elements.learningMeta.textContent = selectedProfile
     ? `${getStrategyLabel(state.selectedStrategy)} · ${selectedStatus.label}`
     : t("learning.noStats");
-  elements.learningMeta.className = `rounded-full border px-4 py-2 text-xs font-medium ${
+  elements.learningMeta.className = `min-w-0 max-w-full shrink whitespace-normal rounded-full border px-3 py-2 text-right text-[0.68rem] font-medium leading-snug sm:max-w-[min(100%,14rem)] ${
     selectedProfile?.eligible
       ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-200"
       : selectedProfile
@@ -2469,6 +2541,11 @@ function renderLearningStats(response = emptyLearningResponse()) {
           : profile.win_rate > 0 && profile.win_rate <= 0.45
             ? "text-rose-300"
             : "text-slate-200";
+      const noteText = profile.note ? formatLearningNote(profile.note) : "";
+      const noteHtml = noteText
+        ? `<p class="mt-4 text-sm leading-relaxed text-slate-400">${escapeHtml(noteText)}</p>`
+        : "";
+
       return `
         <article class="rounded-2xl border p-4 ${
           active
@@ -2477,41 +2554,41 @@ function renderLearningStats(response = emptyLearningResponse()) {
         }">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
-              <div class="flex items-center gap-2">
+              <div class="flex flex-wrap items-center gap-2">
                 <p class="text-sm font-semibold text-white">${getStrategyLabel(profile.strategy) || titleCase(profile.strategy)}</p>
                 ${
                   active
-                    ? '<span class="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-200">Selected</span>'
+                    ? `<span class="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-200">${escapeHtml(t("learning.selected"))}</span>`
                     : ""
                 }
               </div>
               <p class="mt-2 text-xs ${status.tone}">${status.label}</p>
             </div>
-            <span class="rounded-full border px-3 py-2 text-[11px] font-semibold ${status.badge}">
-              ${profile.trade_count} trades
+            <span class="shrink-0 rounded-full border px-3 py-2 text-[11px] font-semibold ${status.badge}">
+              ${escapeHtml(tf("learning.tradesCount", { n: profile.trade_count }))}
             </span>
           </div>
 
-          <div class="mt-4 grid grid-cols-2 gap-3">
-            <div class="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">Win rate</p>
-              <p class="mt-2 text-lg font-semibold ${winRateTone}">${ratioPercent(profile.win_rate)}</p>
+          <div class="mt-4 grid min-w-0 grid-cols-2 gap-2 sm:gap-3">
+            <div class="min-w-0 rounded-2xl border border-white/10 bg-white/5 px-2.5 py-2.5 sm:px-3 sm:py-3">
+              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">${escapeHtml(t("learning.metric.winRate"))}</p>
+              <p class="mt-2 text-lg font-semibold tabular-nums ${winRateTone}">${ratioPercent(profile.win_rate)}</p>
             </div>
-            <div class="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">Avg P/L</p>
-              <p class="mt-2 text-lg font-semibold ${avgPnlTone}">${signedCurrency(profile.average_profit_loss)}</p>
+            <div class="min-w-0 rounded-2xl border border-white/10 bg-white/5 px-2.5 py-2.5 sm:px-3 sm:py-3">
+              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">${escapeHtml(t("learning.metric.avgPl"))}</p>
+              <p class="mt-2 text-lg font-semibold tabular-nums ${avgPnlTone}">${signedCurrency(profile.average_profit_loss)}</p>
             </div>
-            <div class="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">Drawdown</p>
-              <p class="mt-2 text-lg font-semibold ${drawdownTone}">${currency(profile.drawdown || 0)}</p>
+            <div class="min-w-0 rounded-2xl border border-white/10 bg-white/5 px-2.5 py-2.5 sm:px-3 sm:py-3">
+              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">${escapeHtml(t("learning.metric.drawdown"))}</p>
+              <p class="mt-2 text-lg font-semibold tabular-nums ${drawdownTone}">${currency(profile.drawdown || 0)}</p>
             </div>
-            <div class="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">Version</p>
-              <p class="mt-2 text-sm font-semibold text-slate-200">${profile.learning_version || response.version || "--"}</p>
+            <div class="min-w-0 rounded-2xl border border-white/10 bg-white/5 px-2.5 py-2.5 sm:px-3 sm:py-3">
+              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">${escapeHtml(t("learning.metric.version"))}</p>
+              <p class="mt-2 text-sm font-semibold tabular-nums text-slate-200">${escapeHtml(formatLearningVersion(profile.learning_version || response.version))}</p>
             </div>
           </div>
 
-          <p class="mt-4 text-sm leading-6 text-slate-400">${profile.note || "No note."}</p>
+          ${noteHtml}
         </article>
       `;
     })
@@ -3218,7 +3295,7 @@ async function loadLearningStats(forceRefresh = false) {
     renderLearningStats(cachedLearningStats);
     elements.learningMeta.textContent = t("dashboard.refreshing");
     elements.learningMeta.className =
-      "rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400";
+      "min-w-0 max-w-full shrink whitespace-normal rounded-full border border-white/10 bg-slate-950/60 px-3 py-2 text-right text-[0.68rem] font-medium leading-snug text-slate-400 sm:max-w-[min(100%,14rem)]";
   }
 
   try {
@@ -3233,7 +3310,7 @@ async function loadLearningStats(forceRefresh = false) {
       renderLearningStats(cachedLearningStats);
       elements.learningMeta.textContent = t("learning.cached");
       elements.learningMeta.className =
-        "rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400";
+        "min-w-0 max-w-full shrink whitespace-normal rounded-full border border-white/10 bg-slate-950/60 px-3 py-2 text-right text-[0.68rem] font-medium leading-snug text-slate-400 sm:max-w-[min(100%,14rem)]";
       return cachedLearningStats;
     }
     renderLearningStatsError(error.message || `⚠️ ${t("learning.loadFailed")}`);
@@ -3511,14 +3588,14 @@ function renderLoadingWatchlist() {
       ${Array.from({ length: MAX_SIDEBAR_SLOTS })
         .map(
           () => `
-            <div class="animate-pulse rounded-2xl border border-white/10 bg-slate-950/50 px-3 py-3">
-              <div class="flex items-center gap-3">
-                <div class="h-9 w-9 rounded-2xl bg-white/10"></div>
-                <div class="min-w-0 flex-1">
-                  <div class="h-3 w-16 rounded bg-white/10"></div>
-                  <div class="mt-2 h-3 w-24 rounded bg-white/10"></div>
+            <div class="animate-pulse rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-4">
+              <div class="flex items-start gap-4">
+                <div class="h-10 w-10 shrink-0 rounded-2xl bg-white/10"></div>
+                <div class="min-w-0 flex-1 space-y-2">
+                  <div class="h-4 w-20 rounded bg-white/10"></div>
+                  <div class="h-3 w-full max-w-[8rem] rounded bg-white/10"></div>
                 </div>
-                <div class="h-8 w-8 rounded-2xl bg-white/10"></div>
+                <div class="h-8 w-8 shrink-0 rounded-2xl bg-white/10"></div>
               </div>
             </div>
           `,
@@ -3545,19 +3622,19 @@ function renderWatchlist(items) {
 
   if (!visibleItems.length) {
     elements.watchlistBody.innerHTML = `
-      <div class="rounded-2xl border border-white/10 bg-slate-950/50 px-3 py-4">
-        <div class="flex items-center gap-3">
-          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-xs font-bold text-white/90">
+      <div class="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-4">
+        <div class="flex items-start gap-4">
+          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-[0.7rem] font-bold leading-none text-white/90">
             ${String(state.selectedSymbol || "WL").slice(0, 2)}
           </div>
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center justify-between gap-3">
-              <p class="truncate text-sm font-semibold tracking-tight text-white">${state.selectedSymbol || "Watchlist"}</p>
-              <p class="text-xs font-medium text-slate-400">${percent(0)}</p>
+          <div class="flex min-w-0 flex-1 flex-col gap-2">
+            <div class="flex items-start justify-between gap-3">
+              <p class="truncate text-base font-semibold leading-tight tracking-tight text-white">${state.selectedSymbol || "Watchlist"}</p>
+              <p class="shrink-0 tabular-nums text-xs font-semibold text-slate-400">${percent(0)}</p>
             </div>
-            <div class="mt-1 flex items-center justify-between gap-3">
-              <p class="truncate text-[11px] text-slate-400">Market data syncing</p>
-              <p class="text-sm font-semibold text-white">No Data</p>
+            <div class="flex items-start justify-between gap-3">
+              <p class="line-clamp-2 min-w-0 flex-1 text-xs leading-snug text-slate-400">Market data syncing</p>
+              <p class="shrink-0 tabular-nums text-sm font-semibold text-white">No Data</p>
             </div>
           </div>
         </div>
@@ -3581,30 +3658,30 @@ function renderWatchlist(items) {
     card.type = "button";
     card.dataset.symbol = item.symbol;
     card.className = [
-      "watchlist-slot w-full rounded-2xl border px-3 py-3 text-left transition",
+      "watchlist-slot w-full rounded-2xl border px-4 py-4 text-left transition",
       active
         ? "border-cyan-300/40 bg-cyan-300/10 shadow-lg shadow-cyan-500/10"
         : "border-white/10 bg-slate-950/50 hover:bg-slate-900/90",
     ].join(" ");
     card.innerHTML = `
-      <div class="flex items-center gap-3">
-        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-xs font-bold text-white/90">
-              ${item.symbol.slice(0, 2)}
+      <div class="flex items-start gap-4">
+        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-[0.7rem] font-bold leading-none tracking-tight text-white/90">
+          ${item.symbol.slice(0, 2)}
         </div>
-        <div class="min-w-0 flex-1">
-          <div class="flex items-center justify-between gap-3">
-            <p class="watchlist-symbol truncate text-sm font-semibold tracking-tight text-white">${item.symbol}</p>
-            <p class="watchlist-change text-xs font-medium ${tone}">${percent(changeValue)}</p>
+        <div class="flex min-w-0 flex-1 flex-col gap-2">
+          <div class="flex items-start justify-between gap-3">
+            <p class="watchlist-symbol min-w-0 truncate text-base font-semibold leading-tight tracking-tight text-white">${item.symbol}</p>
+            <p class="watchlist-change shrink-0 tabular-nums text-xs font-semibold leading-tight ${tone}">${percent(changeValue)}</p>
           </div>
-            <div class="mt-1 flex items-center justify-between gap-3">
-              <p class="watchlist-name truncate text-[11px] text-slate-400">${item.name}</p>
-              <div class="flex items-center gap-2">
+          <div class="flex items-start justify-between gap-3">
+            <p class="watchlist-name line-clamp-2 min-w-0 flex-1 text-xs leading-snug text-slate-400">${item.name}</p>
+            <div class="flex shrink-0 items-center gap-1.5 self-start pt-0.5">
               ${stale ? '<span class="text-[10px] font-medium text-amber-300" title="Last known price">⚠️</span>' : ""}
-              <p class="watchlist-price text-sm font-semibold text-white">${displayMarketPrice(priceValue)}</p>
+              <p class="watchlist-price tabular-nums text-sm font-semibold leading-none text-white">${displayMarketPrice(priceValue)}</p>
             </div>
           </div>
         </div>
-        <div class="shrink-0">
+        <div class="flex shrink-0 self-start pt-0.5">
           ${renderFavoriteButton(item.symbol)}
         </div>
       </div>
@@ -3628,14 +3705,15 @@ function renderCompanyDetails(overview) {
   ];
 
   elements.companyDetails.innerHTML = rows
-    .map(
-      ([label, value]) => `
-        <div class="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-3">
-          <dt class="text-sm text-slate-400">${label}</dt>
-          <dd class="text-sm font-medium text-white">${value}</dd>
-        </div>
-      `,
-    )
+    .map(([label, value]) => {
+      const l = escapeHtml(String(label));
+      const v = escapeHtml(String(value));
+      return `
+        <div class="company-detail-row flex min-w-0 flex-col gap-1 rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-3 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+          <dt class="shrink-0 text-sm text-slate-400">${l}</dt>
+          <dd class="min-w-0 flex-1 text-sm font-medium leading-snug text-white sm:text-right">${v}</dd>
+        </div>`;
+    })
     .join("");
 }
 
@@ -3645,9 +3723,6 @@ function normalizeTickerSymbol(value) {
 
 function updateChartCompareUi() {
   const primary = normalizeTickerSymbol(state.selectedSymbol);
-  if (elements.chartSymbolBadge) {
-    elements.chartSymbolBadge.textContent = `${String(t("chart.label")).toUpperCase()} · ${primary}`;
-  }
   const compare = normalizeTickerSymbol(state.compareSymbol);
   if (elements.chartCompareInput && document.activeElement !== elements.chartCompareInput) {
     elements.chartCompareInput.value = compare;
