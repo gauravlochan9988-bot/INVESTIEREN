@@ -1553,20 +1553,6 @@ body.booting *::after {
     -webkit-backdrop-filter: none;
     box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
   }
-
-  .auth-purchase-option,
-  .auth-feature-grid,
-  .auth-landing-footer {
-    content-visibility: auto;
-  }
-
-  .auth-purchase-option {
-    contain-intrinsic-size: 340px;
-  }
-
-  .auth-feature-grid {
-    contain-intrinsic-size: 420px;
-  }
 }
 
 .auth-info-panel {
