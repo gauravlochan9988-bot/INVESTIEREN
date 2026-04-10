@@ -1761,6 +1761,49 @@ body.booting *::after {
   margin-top: 1rem;
 }
 
+.auth-social-row {
+  justify-content: center;
+  gap: 0.85rem;
+}
+
+.auth-social-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.95rem;
+  height: 3.95rem;
+  min-width: 3.95rem;
+  min-height: 3.95rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--color-peach-border);
+  background: rgba(255, 255, 255, 0.98);
+  color: var(--color-text) !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+  flex: 0 0 auto;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.auth-social-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(0, 92, 57, 0.35);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+.auth-social-button:focus-visible {
+  outline: 2px solid rgba(201, 184, 150, 0.65);
+  outline-offset: 3px;
+}
+
+.auth-social-button svg {
+  width: 20px;
+  height: 20px;
+}
+
 .auth-landing-primary {
   width: auto;
   min-width: 13.5rem;
@@ -2443,6 +2486,12 @@ body.booting *::after {
     align-items: stretch;
     gap: 0.75rem;
     margin-top: 0.85rem;
+  }
+
+  .auth-social-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
   }
 
   .auth-login-card {
