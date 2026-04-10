@@ -1969,6 +1969,7 @@ body.booting *::after {
 .auth-benefits-strip {
   width: 100%;
   align-items: stretch;
+  position: relative;
 }
 
 .auth-feature-card {
@@ -1978,6 +1979,65 @@ body.booting *::after {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle left-to-right organic flow animation across feature cards */
+.auth-benefits-strip::before {
+  content: "";
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  top: 50%;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    rgba(245, 130, 32, 0),
+    rgba(245, 130, 32, 0.22),
+    rgba(0, 92, 57, 0.22),
+    rgba(245, 130, 32, 0)
+  );
+  transform: translateY(-50%);
+  opacity: 0.35;
+  pointer-events: none;
+  animation: authFlowLinePulse 7.2s ease-in-out infinite;
+}
+
+.auth-benefits-strip .auth-feature-card {
+  animation: authCardFloat 6.8s ease-in-out infinite;
+}
+
+.auth-benefits-strip .auth-feature-card::after {
+  content: "";
+  position: absolute;
+  inset: -28% -48%;
+  background: radial-gradient(
+    circle at center,
+    rgba(245, 130, 32, 0.18) 0%,
+    rgba(0, 92, 57, 0.08) 32%,
+    rgba(255, 255, 255, 0) 68%
+  );
+  transform: translateX(-72%);
+  opacity: 0;
+  pointer-events: none;
+  animation: authCardSweep 7.2s ease-in-out infinite;
+}
+
+.auth-benefits-strip .auth-feature-card:nth-child(2) {
+  animation-delay: 0.9s;
+}
+
+.auth-benefits-strip .auth-feature-card:nth-child(2)::after {
+  animation-delay: 0.9s;
+}
+
+.auth-benefits-strip .auth-feature-card:nth-child(3) {
+  animation-delay: 1.8s;
+}
+
+.auth-benefits-strip .auth-feature-card:nth-child(3)::after {
+  animation-delay: 1.8s;
 }
 
 .auth-feature-card:hover,
@@ -2013,6 +2073,45 @@ body.booting *::after {
 .auth-feature-card-highlight h2,
 .auth-feature-card-highlight p {
   color: rgba(255, 255, 255, 0.95);
+}
+
+@keyframes authCardFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes authCardSweep {
+  0%,
+  18% {
+    transform: translateX(-74%);
+    opacity: 0;
+  }
+  36% {
+    opacity: 0.58;
+  }
+  54% {
+    transform: translateX(74%);
+    opacity: 0.08;
+  }
+  100% {
+    transform: translateX(74%);
+    opacity: 0;
+  }
+}
+
+@keyframes authFlowLinePulse {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.52;
+  }
 }
 
 .auth-visual-column {
@@ -6236,6 +6335,12 @@ body.booting *::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .auth-benefits-strip::before,
+  .auth-benefits-strip .auth-feature-card,
+  .auth-benefits-strip .auth-feature-card::after {
+    animation: none !important;
+  }
+
   .auth-feature-card:hover,
   .auth-stat-card:hover,
   .auth-landing-copy:hover,
