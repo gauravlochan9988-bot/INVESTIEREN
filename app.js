@@ -14,6 +14,8 @@ const LOCAL_API_HOSTS = new Set(["127.0.0.1", "localhost"]);
 const LOCAL_API_PORT = "8003";
 const AUTH_TOKEN_CACHE_MS = 45 * 1000;
 const SIMPLE_ACCESS_CODE = "9988";
+const BOOT_ANIMATION_FREEZE_MS = 900;
+const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const I18N_STORAGE_KEY = "investieren:lang";
 const I18N_DEFAULT = "auto";
@@ -658,6 +660,7 @@ const state = {
     subscription: null,
     adminSession: window.localStorage.getItem(STORAGE_KEYS.adminSession) || "",
   },
+  appBindingsReady: false,
 };
 
 const elements = {
@@ -825,15 +828,34 @@ function updateAuthVisualMotion(clientX, clientY) {
   elements.authVisualArt.style.setProperty("--visual-glow-opacity", "1");
 }
 
-function bindAuthVisualMotion() {
-  if (!elements.authVisualArt) {
+let authVisualMotionRaf = null;
+let pendingAuthVisualPoint = null;
+let authVisualMotionBound = false;
+
+function flushAuthVisualMotion() {
+  authVisualMotionRaf = null;
+  const point = pendingAuthVisualPoint;
+  if (!point) {
     return;
   }
+  pendingAuthVisualPoint = null;
+  updateAuthVisualMotion(point.x, point.y);
+}
+
+function bindAuthVisualMotion() {
+  if (!elements.authVisualArt || authVisualMotionBound || prefersReducedMotion) {
+    return;
+  }
+  authVisualMotionBound = true;
 
   resetAuthVisualMotion();
 
   elements.authVisualArt.addEventListener("pointermove", (event) => {
-    updateAuthVisualMotion(event.clientX, event.clientY);
+    pendingAuthVisualPoint = { x: event.clientX, y: event.clientY };
+    if (authVisualMotionRaf !== null) {
+      return;
+    }
+    authVisualMotionRaf = window.requestAnimationFrame(flushAuthVisualMotion);
   });
 
   elements.authVisualArt.addEventListener("pointerleave", () => {
@@ -847,7 +869,11 @@ function bindAuthVisualMotion() {
       if (!touch) {
         return;
       }
-      updateAuthVisualMotion(touch.clientX, touch.clientY);
+      pendingAuthVisualPoint = { x: touch.clientX, y: touch.clientY };
+      if (authVisualMotionRaf !== null) {
+        return;
+      }
+      authVisualMotionRaf = window.requestAnimationFrame(flushAuthVisualMotion);
     },
     { passive: true }
   );
@@ -3461,6 +3487,7 @@ function resetAuthOverlayPosition() {
 }
 
 function showAppShell() {
+  ensureAppBindings();
   stopAuthMiniGame();
   elements.authOverlay.classList.add("hidden");
   elements.authOverlay.hidden = true;
@@ -3493,7 +3520,10 @@ function showLoginOverlay() {
   if (state.auth.enabled) {
     setAuthLoading(false);
   }
-  window.requestAnimationFrame(() => initAuthMiniGame());
+  bindAuthVisualMotion();
+  if (!prefersReducedMotion) {
+    scheduleLowPriorityTask(() => initAuthMiniGame(), 120);
+  }
 }
 
 async function api(path, options = {}) {
@@ -5054,8 +5084,26 @@ function bindApp() {
   }, { passive: true });
 }
 
+function ensureAppBindings() {
+  if (state.appBindingsReady) {
+    return;
+  }
+  bindApp();
+  state.appBindingsReady = true;
+}
+
+function releaseBootAnimationFreeze() {
+  if (!document.body.classList.contains("booting")) {
+    return;
+  }
+  window.setTimeout(() => {
+    document.body.classList.remove("booting");
+  }, BOOT_ANIMATION_FREEZE_MS);
+}
+
 async function initializeApp() {
   initI18n();
+  releaseBootAnimationFreeze();
   try {
     await initializeManagedAuth();
     await restoreAdminSessionUser();
@@ -5069,10 +5117,9 @@ async function initializeApp() {
   }
 
   bindAuth();
-  bindApp();
-  bindAuthVisualMotion();
 
   if (isAuthenticated()) {
+    ensureAppBindings();
     await loadSubscriptionStatus();
     showAppShell();
     void bootDashboard();
