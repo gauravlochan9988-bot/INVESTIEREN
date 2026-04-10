@@ -1137,6 +1137,109 @@ function getClientAuthConfigFallback() {
   };
 }
 
+function resolveOAuthRedirectBaseUrl() {
+  const path = String(window.location.pathname || "/");
+  if (/\/login\/?$/i.test(path)) {
+    return `${window.location.origin}/`;
+  }
+  return `${window.location.origin}${path}`;
+}
+
+function hasClerkCallbackParams() {
+  const params = new URLSearchParams(window.location.search);
+  for (const key of params.keys()) {
+    const lower = String(key || "").toLowerCase();
+    if (lower === "oauth_callback" || lower.startsWith("__clerk_") || lower.includes("clerk")) {
+      return true;
+    }
+  }
+  const hash = String(window.location.hash || "").toLowerCase();
+  if (hash.includes("clerk") || hash.includes("oauth_callback")) {
+    return true;
+  }
+  return false;
+}
+
+function removeClerkCallbackParamsFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  let changed = false;
+  const keys = Array.from(params.keys());
+  keys.forEach((key) => {
+    const lower = String(key || "").toLowerCase();
+    if (lower === "oauth_callback" || lower.startsWith("__clerk_") || lower.includes("clerk")) {
+      params.delete(key);
+      changed = true;
+    }
+  });
+  if (!changed) {
+    return;
+  }
+  const query = params.toString();
+  const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash || ""}`;
+  window.history.replaceState({}, document.title, nextUrl);
+}
+
+async function handleOAuthRedirectCallbackIfPresent(clerk) {
+  if (!hasClerkCallbackParams()) {
+    return { handled: false, failed: false };
+  }
+  if (typeof clerk?.handleRedirectCallback !== "function") {
+    console.warn("[frontend] Clerk callback params found but handleRedirectCallback is unavailable");
+    removeClerkCallbackParamsFromUrl();
+    return { handled: true, failed: true };
+  }
+
+  try {
+    const callbackResult = await clerk.handleRedirectCallback({
+      signInForceRedirectUrl: resolveOAuthRedirectBaseUrl(),
+      signUpForceRedirectUrl: resolveOAuthRedirectBaseUrl(),
+    });
+    const createdSessionId =
+      callbackResult?.createdSessionId ||
+      callbackResult?.sessionId ||
+      callbackResult?.session?.id ||
+      null;
+    if (createdSessionId && typeof clerk.setActive === "function") {
+      await clerk.setActive({ session: createdSessionId });
+    }
+    return { handled: true, failed: false };
+  } catch (error) {
+    console.error("[frontend] oauth callback handling failed", error);
+    return { handled: true, failed: true };
+  } finally {
+    removeClerkCallbackParamsFromUrl();
+  }
+}
+
+async function waitForClerkSession(clerk, { attempts = 15, intervalMs = 120 } = {}) {
+  for (let attempt = 0; attempt < Math.max(1, attempts); attempt += 1) {
+    if (clerk?.user && clerk?.session) {
+      return true;
+    }
+    await delay(intervalMs);
+  }
+  return Boolean(clerk?.user && clerk?.session);
+}
+
+async function syncAuthenticatedUserWithRetry({
+  forceRefresh = true,
+  attempts = 3,
+  baseDelayMs = 180,
+} = {}) {
+  let lastError = null;
+  for (let attempt = 0; attempt < Math.max(1, attempts); attempt += 1) {
+    try {
+      return await syncAuthenticatedUser(forceRefresh || attempt > 0);
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts - 1) {
+        await delay(baseDelayMs * (attempt + 1));
+      }
+    }
+  }
+  throw lastError || new Error("Auth sync failed.");
+}
+
 function startResendCooldown(seconds = AUTH_RESEND_COOLDOWN_SECONDS) {
   state.auth.resendCooldownUntil = Date.now() + Math.max(1, seconds) * 1000;
   syncResendCooldownButton();
@@ -1490,6 +1593,7 @@ async function restoreAdminSessionUser() {
 }
 
 async function initializeManagedAuth() {
+  state.auth.ready = false;
   state.auth.enabled = false;
   state.auth.client = null;
   state.auth.showManagedAuth = false;
@@ -1504,19 +1608,31 @@ async function initializeManagedAuth() {
     }
     const clerk = await ensureClerkFrontendLoaded(config);
     await clerk.load();
+    const callbackState = await handleOAuthRedirectCallbackIfPresent(clerk);
+    if (callbackState.handled) {
+      await waitForClerkSession(clerk, { attempts: 18, intervalMs: 140 });
+    }
     state.auth.client = clerk;
     state.auth.enabled = true;
     state.auth.ready = true;
 
     if (clerk.user && clerk.session) {
       setAuthenticated(true);
-      await syncAuthenticatedUser(true);
+      await syncAuthenticatedUserWithRetry({ forceRefresh: true, attempts: 4 });
       await loadSubscriptionStatus();
       await handleBillingRedirectState();
+      setAuthError("");
     } else {
       setAuthenticated(false);
       state.auth.subscription = null;
       renderSubscriptionButton();
+      if (callbackState.handled && callbackState.failed) {
+        setAuthError("OAuth callback failed. Please try login again.");
+      } else if (callbackState.handled) {
+        setAuthError("Login could not be finalized. Please try again.");
+      } else {
+        setAuthError("");
+      }
     }
     return true;
   } catch (error) {
@@ -1559,21 +1675,25 @@ async function continueWithOAuth(strategy) {
   setAuthLoading(true);
 
   try {
-    const redirectUrl = `${window.location.origin}${window.location.pathname}`;
+    const redirectBaseUrl = resolveOAuthRedirectBaseUrl();
+    const redirectUrl = `${redirectBaseUrl}?oauth_callback=1`;
     const signIn = state.auth.client.client?.signIn;
 
     if (signIn?.authenticateWithRedirect) {
       await signIn.authenticateWithRedirect({
         strategy,
         redirectUrl,
-        redirectUrlComplete: redirectUrl,
+        redirectUrlComplete: redirectBaseUrl,
+        signInForceRedirectUrl: redirectBaseUrl,
+        signUpForceRedirectUrl: redirectBaseUrl,
       });
       return;
     }
 
     if (typeof state.auth.client.redirectToSignIn === "function") {
       await state.auth.client.redirectToSignIn({
-        forceRedirectUrl: redirectUrl,
+        forceRedirectUrl: redirectBaseUrl,
+        fallbackRedirectUrl: redirectBaseUrl,
       });
       return;
     }
@@ -5606,6 +5726,9 @@ async function initializeApp() {
   bindAuth();
 
   if (isAuthenticated()) {
+    if (/\/login\/?$/i.test(String(window.location.pathname || ""))) {
+      window.history.replaceState({}, document.title, "/");
+    }
     ensureAppBindings();
     await loadSubscriptionStatus();
     if (strategyRequiresPro(state.selectedStrategy) && !hasProAccess()) {
