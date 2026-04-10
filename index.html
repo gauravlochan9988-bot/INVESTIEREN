@@ -8,7 +8,7 @@
       content="Modern trading dashboard with Finnhub market data and TradingView charts."
     />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="light" />
     <meta name="clerk-publishable-key" content="pk_test_cnVsaW5nLWJ1Zy01Ny5jbGVyay5hY2NvdW50cy5kZXYk" />
     <meta
       http-equiv="Content-Security-Policy"
@@ -26,63 +26,316 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body class="booting min-h-screen max-w-full overflow-x-hidden bg-slate-950 text-slate-100 antialiased">
-    <div id="authOverlay" class="fixed inset-0 z-30 flex min-h-screen w-full items-start justify-center">
-      <section class="auth-landing-shell login-container auth-shell-centered px-4">
-        <div class="auth-centered-card auth-overlay-content auth-copy-block">
-          <div class="auth-brand-stack">
-            <span class="auth-brand-mark" aria-hidden="true">GQ</span>
-            <div>
-              <p class="auth-brand-name">GQ Trading</p>
-              <p class="auth-brand-subtitle">Get real trading signals. Not guesses.</p>
+  <body class="booting min-h-screen max-w-full overflow-x-hidden bg-[#F9F9F8] text-neutral-900 antialiased">
+    <div
+      id="authOverlay"
+      class="fixed inset-0 z-30 flex min-h-[100dvh] flex-col items-stretch justify-start overflow-x-hidden overflow-y-auto overscroll-y-contain pt-[env(safe-area-inset-top)] pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center sm:justify-center"
+    >
+      <section
+        class="relative z-10 mx-auto w-full min-w-0 auth-landing-shell login-container"
+        aria-label="Login"
+      >
+        <div class="auth-landing-grid">
+          <div class="auth-landing-copy auth-block-main">
+            <div class="auth-landing-topline">
+              <div class="auth-brand-mark auth-landing-mark" aria-hidden="true">GQ</div>
+              <div>
+                <p class="auth-landing-mini" data-i18n="auth.builtBy">Entwickelt von Gaurav Lochan</p>
+                <div class="auth-status-pill auth-landing-pill" data-i18n="auth.privateAccess">PRIVATER ZUGANG • FOUNDER SYSTEM</div>
+              </div>
+              <div class="auth-lang-switch" data-i18n-aria="lang.switch" aria-label="Sprache">
+                <button type="button" class="auth-lang-button" data-lang="de" data-i18n-aria="lang.de">DE</button>
+                <button type="button" class="auth-lang-button" data-lang="en" data-i18n-aria="lang.en">EN</button>
+              </div>
+            </div>
+
+            <div class="auth-landing-headline-block">
+              <h1 class="auth-landing-title" data-i18n="auth.title">GQ Trading System</h1>
+              <p class="auth-landing-subtitle" data-i18n="auth.subtitle">Echtzeit-Signale. KI-gestützte Entscheidungen.</p>
+              <p class="auth-landing-description" data-i18n="auth.description">
+                Ein privates Trading-Terminal fur schnelle Marktanalysen, klare Ausfuhrungslogik und Signal-Monitoring mit hoher Ueberzeugung.
+              </p>
+            </div>
+
+            <form id="authForm" class="auth-landing-form" novalidate>
+              <div class="auth-login-card">
+                <div class="auth-card-intro">
+                  <p class="auth-card-kicker">Member Login</p>
+                  <p class="auth-card-title">Enter the terminal</p>
+                </div>
+                <div class="auth-landing-actions auth-social-row">
+                  <button
+                    id="authGoogleButton"
+                    type="button"
+                    class="auth-social-button"
+                    aria-label="Continue with Google"
+                  >
+                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M23.49 12.27c0-.79-.07-1.55-.2-2.27H12v4.3h6.45a5.52 5.52 0 0 1-2.39 3.62v3h3.86c2.26-2.08 3.57-5.15 3.57-8.65Z"
+                        fill="#4285F4"
+                      />
+                      <path
+                        d="M12 24c3.24 0 5.96-1.07 7.95-2.9l-3.86-3A7.17 7.17 0 0 1 12 19.3a7.2 7.2 0 0 1-6.77-4.97H1.24v3.09A12 12 0 0 0 12 24Z"
+                        fill="#34A853"
+                      />
+                      <path
+                        d="M5.23 14.33A7.2 7.2 0 0 1 4.83 12c0-.81.14-1.6.4-2.33V6.58H1.24A12 12 0 0 0 0 12c0 1.94.46 3.78 1.24 5.42l3.99-3.09Z"
+                        fill="#FBBC05"
+                      />
+                      <path
+                        d="M12 4.77c1.76 0 3.34.61 4.58 1.82l3.43-3.43C17.96 1.08 15.24 0 12 0A12 12 0 0 0 1.24 6.58l3.99 3.09A7.2 7.2 0 0 1 12 4.77Z"
+                        fill="#EA4335"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    id="authAppleButton"
+                    type="button"
+                    class="auth-social-button"
+                    aria-label="Continue with Apple"
+                  >
+                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                      <path
+                        d="M16.37 12.72c.02 2.11 1.84 2.81 1.86 2.82-.02.05-.29 1-.95 1.98-.57.84-1.16 1.67-2.09 1.69-.91.02-1.2-.54-2.25-.54-1.05 0-1.37.52-2.23.56-.9.03-1.58-.9-2.15-1.74-1.17-1.7-2.07-4.8-.87-6.89.6-1.03 1.68-1.68 2.84-1.7.88-.02 1.72.59 2.26.59.54 0 1.56-.73 2.62-.62.45.02 1.72.18 2.54 1.38-.06.04-1.52.89-1.5 2.47Zm-1.76-6.18c.48-.58.8-1.38.71-2.18-.69.03-1.53.46-2.02 1.03-.45.52-.84 1.34-.73 2.13.77.06 1.56-.39 2.04-.98Z"
+                      />
+                    </svg>
+                  </button>
+                </div>
+
+                <div class="mt-4 flex items-center gap-3 text-xs text-neutral-500">
+                  <span class="h-px flex-1 bg-neutral-200"></span>
+                  <span>or</span>
+                  <span class="h-px flex-1 bg-neutral-200"></span>
+                </div>
+
+                <div class="mt-4 grid grid-cols-2 gap-2">
+                  <button id="authModeLoginButton" type="button" class="rounded-xl border border-neutral-200/90 bg-white px-3 py-2 text-sm font-semibold text-neutral-900">
+                    Login
+                  </button>
+                  <button id="authModeSignupButton" type="button" class="rounded-xl border border-neutral-200/90 bg-white px-3 py-2 text-sm font-semibold text-neutral-900">
+                    Sign Up
+                  </button>
+                </div>
+
+                <label id="authUsernameLabel" for="authUsername" class="mt-4 auth-input-label auth-input-label-row" hidden>
+                  <span class="auth-input-label-icon" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        d="M4 20a8 8 0 1 1 16 0M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
+                        stroke="currentColor"
+                        stroke-width="1.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </span>
+                  <span>Username</span>
+                </label>
+                <div id="authUsernameShell" class="auth-input-shell auth-landing-input-shell" hidden>
+                  <input
+                    id="authUsername"
+                    name="username"
+                    type="text"
+                    placeholder="yourname"
+                    autocomplete="username"
+                    class="w-full rounded-2xl border border-neutral-200/90 bg-white px-5 py-4 text-base text-neutral-900 outline-none transition login-input"
+                  />
+                </div>
+
+                <label for="authEmail" class="mt-4 auth-input-label auth-input-label-row">
+                  <span class="auth-input-label-icon" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        d="M4 6h16v12H4V6Zm0 0 8 6 8-6"
+                        stroke="currentColor"
+                        stroke-width="1.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </span>
+                  <span>Email</span>
+                </label>
+                <div class="auth-input-shell auth-landing-input-shell">
+                  <input
+                    id="authEmail"
+                    name="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    autocomplete="email"
+                    aria-invalid="false"
+                    class="w-full rounded-2xl border border-neutral-200/90 bg-white px-5 py-4 text-base text-neutral-900 outline-none transition login-input"
+                  />
+                </div>
+
+                <label for="authPassword" class="mt-4 auth-input-label auth-input-label-row">
+                  <span class="auth-input-label-icon" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        d="M12 14v2M8 11V8a4 4 0 0 1 8 0v3M6 11h12a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2Z"
+                        stroke="currentColor"
+                        stroke-width="1.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </span>
+                  <span data-i18n="auth.accessCodeLabel">Zugangscode</span>
+                </label>
+                <div class="auth-input-shell auth-landing-input-shell">
+                  <input
+                    id="authPassword"
+                    name="password"
+                    type="password"
+                    placeholder="Password"
+                    autocomplete="current-password"
+                    aria-invalid="false"
+                    class="w-full rounded-2xl border border-neutral-200/90 bg-white px-5 py-4 text-base text-neutral-900 outline-none transition login-input"
+                  />
+                </div>
+                <div class="mt-4 flex items-center justify-between gap-3">
+                  <button id="authForgotPasswordButton" type="button" class="auth-landing-secondary">
+                    Forgot password?
+                  </button>
+                  <button id="authSubmitButton" type="submit" class="auth-private-button auth-landing-primary login-button">
+                    Login
+                  </button>
+                </div>
+                <p id="authLoading" class="mt-2 text-xs text-neutral-500" hidden>Authenticating...</p>
+
+                <div id="authVerifyPanel" class="mt-4 rounded-2xl border border-neutral-200/90 bg-white p-4" hidden>
+                  <p class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-600">Email verification</p>
+                  <p class="mt-2 text-sm text-neutral-700">
+                    Enter the code sent to <span id="authVerifyEmail" class="font-semibold text-neutral-900">your email</span>.
+                  </p>
+                  <div class="mt-3 auth-input-shell auth-landing-input-shell">
+                    <input
+                      id="authVerificationCode"
+                      name="verificationCode"
+                      type="text"
+                      inputmode="numeric"
+                      autocomplete="one-time-code"
+                      placeholder="123456"
+                      aria-invalid="false"
+                      class="w-full rounded-2xl border border-neutral-200/90 bg-white px-5 py-4 text-base text-neutral-900 outline-none transition login-input"
+                    />
+                  </div>
+                  <div id="authResetPasswordShell" class="mt-3 auth-input-shell auth-landing-input-shell" hidden>
+                    <input
+                      id="authResetNewPassword"
+                      name="resetNewPassword"
+                      type="password"
+                      autocomplete="new-password"
+                      placeholder="New password"
+                      aria-invalid="false"
+                      class="w-full rounded-2xl border border-neutral-200/90 bg-white px-5 py-4 text-base text-neutral-900 outline-none transition login-input"
+                    />
+                  </div>
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    <button id="authVerifySubmitButton" type="button" class="auth-private-button auth-landing-primary login-button">
+                      Verify and continue
+                    </button>
+                    <button id="authVerifyResendButton" type="button" class="auth-landing-secondary">
+                      Resend code
+                    </button>
+                    <button id="authVerifyBackButton" type="button" class="auth-landing-secondary">
+                      Back
+                    </button>
+                  </div>
+                </div>
+
+                <p id="authError" class="auth-error-text" role="alert" aria-live="polite" hidden>
+                  Login failed.
+                </p>
+                <p id="authInfo" class="auth-password-hint" role="status" aria-live="polite" hidden></p>
+                <p id="authPasswordHint" class="auth-password-hint">
+                  <span>Use your own branded login. Clerk runs only in the background.</span>
+                </p>
+              </div>
+            </form>
+
+            <div class="auth-purchase-option" aria-labelledby="authPurchaseHeading">
+              <p id="authPurchaseHeading" class="auth-purchase-kicker" data-i18n="auth.purchaseKicker">
+                Access Flow
+              </p>
+              <p class="auth-purchase-text" data-i18n="auth.purchaseBody">
+                1) Get Pro access (€4.99/month) 2) Create account 3) Enter your trading terminal.
+              </p>
+              <a
+                href="pricing.html"
+                class="auth-purchase-cta"
+                data-i18n="auth.purchaseCta"
+                data-i18n-aria="auth.purchaseCtaAria"
+              >
+                Zugang kaufen — €4.99 / Monat
+              </a>
+              <p class="auth-purchase-note" data-i18n="auth.purchaseNote">Apple Pay und Google Pay im Checkout.</p>
+            </div>
+
+          </div>
+
+          <div class="auth-visual-column auth-block-preview">
+            <div class="auth-visual-panel">
+              <div class="auth-visual-art">
+                <span class="auth-visual-focus" aria-hidden="true"></span>
+                <span class="auth-visual-orb auth-visual-orb-one" aria-hidden="true"></span>
+                <span class="auth-visual-orb auth-visual-orb-two" aria-hidden="true"></span>
+                <span class="auth-visual-node auth-visual-node-one" aria-hidden="true"></span>
+                <span class="auth-visual-node auth-visual-node-two" aria-hidden="true"></span>
+                <span class="auth-visual-node auth-visual-node-three" aria-hidden="true"></span>
+                <span class="auth-visual-line auth-visual-line-one" aria-hidden="true"></span>
+                <span class="auth-visual-line auth-visual-line-two" aria-hidden="true"></span>
+                <span class="auth-visual-grid" aria-hidden="true"></span>
+                <div
+                  class="auth-mini-game"
+                  id="authMiniGame"
+                  role="region"
+                  data-i18n-aria="auth.miniGame.aria"
+                  aria-label="Kurzes Reflexspiel: tippe das leuchtende Feld"
+                >
+                  <div class="auth-mini-game-top">
+                    <span class="auth-mini-game-title" data-i18n="auth.miniGame.title">GQ Pulse</span>
+                    <span class="auth-mini-game-score" id="authMiniGameScore">0</span>
+                  </div>
+                  <div class="auth-mini-game-board" id="authMiniGameBoard"></div>
+                  <p class="auth-mini-game-hint" data-i18n="auth.miniGame.hint">Tippe das leuchtende Feld</p>
+                </div>
+              </div>
+              <div class="auth-stat-grid">
+                <article class="auth-stat-card">
+                  <span data-i18n="auth.stat.winRate">Trefferquote</span>
+                  <strong>78%</strong>
+                </article>
+                <article class="auth-stat-card">
+                  <span data-i18n="auth.stat.signals">Signale</span>
+                  <strong>230+</strong>
+                </article>
+                <article class="auth-stat-card">
+                  <span data-i18n="auth.stat.accuracy">Genauigkeit</span>
+                  <strong>88%</strong>
+                </article>
+              </div>
             </div>
           </div>
-
-          <div class="auth-action-stack">
-            <button id="authGoogleButton" type="button" class="auth-social-button">
-              Continue with Google
-            </button>
-            <button id="authAppleButton" type="button" class="auth-social-button">
-              Continue with Apple
-            </button>
-            <button id="authEmailButton" type="button" class="auth-social-button">
-              Email login
-            </button>
-          </div>
-
-          <div class="auth-benefit-copy auth-copy-centered">
-            <p class="auth-benefit-text">Unlock your private trading workspace.</p>
-            <ul class="auth-benefit-list" aria-label="Value highlights">
-              <li>AI-powered trade decisions</li>
-              <li>Live BUY / SELL signals</li>
-              <li>Alerts &amp; favorites</li>
-            </ul>
-          </div>
-
-          <button id="authAdminToggleButton" type="button" class="auth-admin-link auth-password-hint">
-            (Admin only)
-          </button>
-
-          <form id="authForm" class="auth-private-panel auth-action-stack" hidden>
-            <label class="auth-input-label" for="authPassword">Access code</label>
-            <div class="auth-input-shell">
-              <input
-                id="authPassword"
-                type="password"
-                inputmode="numeric"
-                autocomplete="one-time-code"
-                placeholder="Enter access code"
-                class="login-input"
-              />
-            </div>
-            <button id="authSubmitButton" type="submit" class="auth-primary-action auth-private-button">
-              Private Access
-            </button>
-          </form>
-
-          <p id="authLoading" class="auth-password-hint" hidden>Loading...</p>
-          <p id="authError" class="auth-password-hint" hidden></p>
         </div>
+
+        <div id="authFeatures" class="auth-feature-grid auth-benefits-strip scroll-mt-8">
+          <article class="auth-feature-card auth-feature-card-highlight">
+            <h2>Live Signals</h2>
+            <p>Action-ready BUY/SELL decisions with confidence context.</p>
+          </article>
+          <article class="auth-feature-card">
+            <h2>AI + Hedgefund Modes</h2>
+            <p>Switch strategies in one tap with server-side premium gating.</p>
+          </article>
+          <article class="auth-feature-card">
+            <h2>Smart Alerts</h2>
+            <p>Favorites trigger signal-change notifications automatically.</p>
+          </article>
+        </div>
+
+        <footer class="auth-landing-footer">GQ Trading</footer>
       </section>
     </div>
 

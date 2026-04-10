@@ -1008,7 +1008,7 @@ function currentUserKey() {
 
 function renderAuthMode() {
   if (elements.authForm) {
-    elements.authForm.hidden = !state.auth.showAdminAccess;
+    elements.authForm.hidden = false;
   }
   const signup = state.auth.formMode === "signup";
   const verifyStep = Boolean(state.auth.verifyStep);
@@ -1048,16 +1048,6 @@ function renderAuthMode() {
   elements.authModeLoginButton?.classList.toggle("text-white", !signup);
   elements.authModeSignupButton?.classList.toggle("bg-neutral-900", signup);
   elements.authModeSignupButton?.classList.toggle("text-white", signup);
-  const disableButtons = !state.auth.ready;
-  if (elements.authGoogleButton) {
-    elements.authGoogleButton.disabled = disableButtons;
-  }
-  if (elements.authAppleButton) {
-    elements.authAppleButton.disabled = disableButtons;
-  }
-  if (elements.authEmailButton) {
-    elements.authEmailButton.disabled = disableButtons;
-  }
 }
 
 function setAuthLoading(loading, message = "Redirecting…") {
@@ -1153,10 +1143,6 @@ function resolveOAuthRedirectBaseUrl() {
     return `${window.location.origin}/`;
   }
   return `${window.location.origin}${path}`;
-}
-
-function getOAuthCallbackUrl() {
-  return `${window.location.origin}/auth-callback.html`;
 }
 
 function hasClerkCallbackParams() {
@@ -1611,7 +1597,7 @@ async function initializeManagedAuth() {
   state.auth.enabled = false;
   state.auth.client = null;
   state.auth.showManagedAuth = false;
-  state.auth.showAdminAccess = false;
+  state.auth.showAdminAccess = true;
   renderAuthMode();
   try {
     const config = await fetchAuthConfig();
@@ -1636,11 +1622,6 @@ async function initializeManagedAuth() {
       await loadSubscriptionStatus();
       await handleBillingRedirectState();
       setAuthError("");
-      showAppShell();
-      void bootDashboard();
-      if (!hasActiveSubscription()) {
-        showPaywall("Subscribe to access live signals, alerts and watchlists.");
-      }
     } else {
       setAuthenticated(false);
       state.auth.subscription = null;
@@ -1695,7 +1676,7 @@ async function continueWithOAuth(strategy) {
 
   try {
     const redirectBaseUrl = resolveOAuthRedirectBaseUrl();
-    const redirectUrl = getOAuthCallbackUrl();
+    const redirectUrl = `${redirectBaseUrl}?oauth_callback=1`;
     const signIn = state.auth.client.client?.signIn;
 
     if (signIn?.authenticateWithRedirect) {
@@ -1703,52 +1684,21 @@ async function continueWithOAuth(strategy) {
         strategy,
         redirectUrl,
         redirectUrlComplete: redirectBaseUrl,
-        signInForceRedirectUrl: redirectUrl,
-        signUpForceRedirectUrl: redirectUrl,
+        signInForceRedirectUrl: redirectBaseUrl,
+        signUpForceRedirectUrl: redirectBaseUrl,
       });
       return;
     }
 
     if (typeof state.auth.client.redirectToSignIn === "function") {
       await state.auth.client.redirectToSignIn({
-        forceRedirectUrl: redirectUrl,
-        fallbackRedirectUrl: redirectUrl,
+        forceRedirectUrl: redirectBaseUrl,
+        fallbackRedirectUrl: redirectBaseUrl,
       });
       return;
     }
   } catch (error) {
     console.error("[frontend] oauth redirect failed", error);
-  }
-
-  setAuthLoading(false);
-  await loginWithManagedProvider("login");
-}
-
-async function startEmailLoginRedirect() {
-  if (!state.auth.ready) {
-    setAuthLoading(true, t("auth.loadingLogin"));
-    await initializeManagedAuth();
-  }
-
-  if (!(await ensureManagedAuthClient())) {
-    setAuthError("Login is unavailable.");
-    return;
-  }
-
-  setAuthError("");
-  setAuthLoading(true);
-
-  try {
-    const redirectUrl = getOAuthCallbackUrl();
-    if (typeof state.auth.client.redirectToSignIn === "function") {
-      await state.auth.client.redirectToSignIn({
-        forceRedirectUrl: redirectUrl,
-        fallbackRedirectUrl: redirectUrl,
-      });
-      return;
-    }
-  } catch (error) {
-    console.error("[frontend] email redirect failed", error);
   }
 
   setAuthLoading(false);
@@ -4007,7 +3957,9 @@ function showLoginOverlay() {
   state.auth.showManagedAuth = false;
   state.auth.showAdminAccess = false;
   renderAuthMode();
-  setAuthLoading(!state.auth.ready, "Loading login...");
+  if (state.auth.enabled) {
+    setAuthLoading(false);
+  }
   bindAuthVisualMotion();
   if (!prefersReducedMotion) {
     scheduleLowPriorityTask(() => initAuthMiniGame(), 120);
@@ -5322,7 +5274,7 @@ function bindAuth() {
   });
 
   elements.authEmailButton?.addEventListener("click", () => {
-    void startEmailLoginRedirect();
+    void loginWithManagedProvider("login");
   });
 
   elements.authModeLoginButton?.addEventListener("click", () => {
