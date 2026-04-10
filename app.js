@@ -5101,7 +5101,14 @@ function releaseBootAnimationFreeze() {
   }, BOOT_ANIMATION_FREEZE_MS);
 }
 
+function deferToNextFrame() {
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(() => resolve());
+  });
+}
+
 async function initializeApp() {
+  await deferToNextFrame();
   initI18n();
   releaseBootAnimationFreeze();
   try {
@@ -5129,4 +5136,24 @@ async function initializeApp() {
   showLoginOverlay();
 }
 
-void initializeApp();
+function scheduleAppBootstrap() {
+  const run = () => {
+    void initializeApp();
+  };
+
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(
+      () => {
+        window.requestAnimationFrame(run);
+      },
+      { timeout: 1200 }
+    );
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    window.setTimeout(run, 40);
+  });
+}
+
+scheduleAppBootstrap();
