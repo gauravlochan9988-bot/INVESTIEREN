@@ -1145,6 +1145,13 @@ function resolveOAuthRedirectBaseUrl() {
   return `${window.location.origin}${path}`;
 }
 
+function resolveOAuthCallbackUrl() {
+  const returnTo = resolveOAuthRedirectBaseUrl();
+  const callback = new URL("/auth-callback.html", window.location.origin);
+  callback.searchParams.set("return_to", returnTo);
+  return callback.toString();
+}
+
 function hasClerkCallbackParams() {
   const params = new URLSearchParams(window.location.search);
   for (const key of params.keys()) {
@@ -1676,24 +1683,24 @@ async function continueWithOAuth(strategy) {
 
   try {
     const redirectBaseUrl = resolveOAuthRedirectBaseUrl();
-    const redirectUrl = `${redirectBaseUrl}?oauth_callback=1`;
+    const callbackUrl = resolveOAuthCallbackUrl();
     const signIn = state.auth.client.client?.signIn;
 
     if (signIn?.authenticateWithRedirect) {
       await signIn.authenticateWithRedirect({
         strategy,
-        redirectUrl,
+        redirectUrl: callbackUrl,
         redirectUrlComplete: redirectBaseUrl,
-        signInForceRedirectUrl: redirectBaseUrl,
-        signUpForceRedirectUrl: redirectBaseUrl,
+        signInForceRedirectUrl: callbackUrl,
+        signUpForceRedirectUrl: callbackUrl,
       });
       return;
     }
 
     if (typeof state.auth.client.redirectToSignIn === "function") {
       await state.auth.client.redirectToSignIn({
-        forceRedirectUrl: redirectBaseUrl,
-        fallbackRedirectUrl: redirectBaseUrl,
+        forceRedirectUrl: callbackUrl,
+        fallbackRedirectUrl: callbackUrl,
       });
       return;
     }
