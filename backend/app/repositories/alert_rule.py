@@ -25,6 +25,28 @@ class AlertRuleRepository:
         )
         return list(db.scalars(statement).all())
 
+    def list_for_user_strategy_symbols(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        strategy: str,
+        symbols: list[str],
+    ) -> dict[str, AlertRule]:
+        if not symbols:
+            return {}
+        statement = (
+            select(AlertRule)
+            .where(
+                AlertRule.user_id == user_id,
+                AlertRule.strategy == strategy,
+                AlertRule.symbol.in_(symbols),
+            )
+            .order_by(AlertRule.id.asc())
+        )
+        rows = list(db.scalars(statement).all())
+        return {row.symbol: row for row in rows}
+
     def get_for_user(self, db: Session, *, user_id: int, rule_id: int) -> AlertRule | None:
         statement = select(AlertRule).where(AlertRule.id == rule_id, AlertRule.user_id == user_id)
         return db.scalar(statement)

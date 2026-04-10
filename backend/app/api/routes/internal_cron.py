@@ -1,8 +1,10 @@
+from contextlib import contextmanager
 from dataclasses import asdict
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_favorite_signal_monitor_service, get_user_alert_service
@@ -28,6 +30,24 @@ class UserAlertCronResponse(BaseModel):
     notifications_created: int
     baseline_seeded: int
     skipped_no_data: int
+
+
+@contextmanager
+def cron_lock(db: Session, lock_key: int):
+    """Postgres advisory lock to prevent overlapping cron runs."""
+    if db.bind is None or db.bind.dialect.name != "postgresql":
+        yield True
+        return
+    acquired = bool(
+        db.execute(text("SELECT pg_try_advisory_lock(:key)"), {"key": int(lock_key)}).scalar()
+    )
+    if not acquired:
+        yield False
+        return
+    try:
+        yield True
+    finally:
+        db.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": int(lock_key)})
 
 
 def require_cron_secret(
@@ -59,8 +79,14 @@ def run_favorite_signal_cron(
     strategy: Strategy = Query(default="hedgefund"),
     force_refresh: bool = Query(default=True),
 ) -> FavoriteSignalCronResponse:
-    summary = monitor.run_scan(db, strategy=strategy, force_refresh=force_refresh)
-    return FavoriteSignalCronResponse(**asdict(summary))
+    with cron_lock(db, 733001) as acquired:
+        if not acquired:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="favorite-signals cron already running.",
+            )
+        summary = monitor.run_scan(db, strategy=strategy, force_refresh=force_refresh)
+        return FavoriteSignalCronResponse(**asdict(summary))
 
 
 @router.post(
@@ -73,5 +99,11 @@ def run_user_alert_cron(
     user_alert_service: UserAlertService = Depends(get_user_alert_service),
     force_refresh: bool = Query(default=True),
 ) -> UserAlertCronResponse:
-    summary = user_alert_service.run_scan(db, force_refresh=force_refresh)
-    return UserAlertCronResponse(**asdict(summary))
+    with cron_lock(db, 733002) as acquired:
+        if not acquired:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="user-alerts cron already running.",
+            )
+        summary = user_alert_service.run_scan(db, force_refresh=force_refresh)
+        return UserAlertCronResponse(**asdict(summary))

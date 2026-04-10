@@ -52,7 +52,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=settings.get_cors_allowed_origins(),
         allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -153,7 +153,7 @@ def create_app() -> FastAPI:
                 {
                     "status": "ok",
                     "service": "backend",
-                    "message": "Render hosts the FastAPI API. Open the frontend on Vercel.",
+                    "message": "Railway hosts the FastAPI API. Open the frontend on Vercel.",
                     "frontend_url": "https://investieren.vercel.app",
                     "health_url": "/api/health",
                 }

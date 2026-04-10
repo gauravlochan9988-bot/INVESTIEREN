@@ -1,27 +1,26 @@
 # Investieren MVP
 
-FastAPI + static frontend for a modern trading dashboard with Finnhub market data, TradingView charts, and a simple Tailwind UI.
+FastAPI + static frontend for a trading dashboard with Finnhub market data and TradingView charts.
+
+## Platform target state
+- Frontend: Vercel (static files only)
+- Backend API: Railway (FastAPI only)
+- Database: Neon Postgres
+- No mixed backend hosting
 
 ## What is included
 - Live watchlist and symbol snapshots via `Finnhub`
 - Embedded `TradingView` chart widget
-- Tailwind-based trading dashboard frontend
-- FastAPI backend that proxies Finnhub so the API key stays server-side
-- Optional legacy analysis/portfolio routes from the earlier MVP
-
-## Dashboard stack
-- `Finnhub` provides quote, profile, and company news data
-- `TradingView` renders the live chart widget
-- `Tailwind` handles the main UI layout and styling
-- The password gate is frontend-only and currently uses `9988`
+- Tailwind-based dashboard frontend
+- FastAPI backend for auth, analysis, watchlist, favorites, smart alerts, billing, and cron endpoints
 
 ## Project structure
-- `index.html`, `app.js`, `styles.css`: root frontend shipped to Vercel
-- `backend/app`: FastAPI routes, services, schemas, and legacy portfolio/analysis logic
-- `backend/tests`: smoke, API, and service tests
+- `index.html`, `app.js`, `styles.css`, `pricing.html`, `pricing.js`: frontend shipped to Vercel
+- `backend/app`: FastAPI routes, services, schemas, repositories, models
+- `backend/tests`: API and service tests
 
 ## Local setup
-1. Copy `.env.example` to `.env` and set `FINNHUB_API_KEY`.
+1. Copy `.env.example` to `.env` and set required secrets.
 2. Create a virtual environment and install dependencies:
 
 ```bash
@@ -30,7 +29,7 @@ source .venv/bin/activate
 pip install -r backend/requirements-dev.txt
 ```
 
-3. Start the application (from repo root, with `.venv` active):
+3. Start the app from repo root:
 
 ```bash
 uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8003
@@ -38,48 +37,70 @@ uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8003
 
 4. Open [http://127.0.0.1:8003](http://127.0.0.1:8003).
 
-## Vercel deployment
-- Vercel should serve only the root frontend files
-- The backend stays on Render
-- The frontend reads its API base from `app.js` and calls:
-  - `https://investieren-backend-cxvw.onrender.com`
-- Keep `FINNHUB_API_KEY` on Render only, not on Vercel
+## Vercel frontend deployment
+- Vercel serves only static frontend files.
+- Frontend API target is the Railway backend:
+  - `https://investieren-production.up.railway.app`
+- Do not expose backend secrets on Vercel.
 
-## Render deployment
-- The FastAPI app object is available at both:
-  - `backend.app:app`
+## Railway backend deployment
+- App entrypoint:
   - `backend.app.main:app`
-- Recommended Render start command:
+- Start command:
 
 ```bash
-uvicorn backend.app:app --host 0.0.0.0 --port 10000
+uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT}
 ```
 
-- Equivalent explicit command:
+- Healthcheck endpoint:
+  - `GET /api/health`
+- Internal cron endpoints (secured with `X-Cron-Secret`):
+  - `POST /api/internal/cron/favorite-signals`
+  - `POST /api/internal/cron/user-alerts`
+
+### Railway scheduled jobs
+- Configure scheduled calls inside Railway (or an external scheduler) to hit:
+  - `https://investieren-production.up.railway.app/api/internal/cron/favorite-signals`
+  - `https://investieren-production.up.railway.app/api/internal/cron/user-alerts`
+- Always include header:
 
 ```bash
-uvicorn backend.app.main:app --host 0.0.0.0 --port 10000
+X-Cron-Secret: $CRON_SECRET
 ```
 
-## Supabase database
-- Keep FastAPI on Render and point `DATABASE_URL` at your Supabase Postgres instance.
-- Recommended SQLAlchemy URL format:
+## Neon database
+- Set `DATABASE_URL` to Neon Postgres:
 
 ```bash
-DATABASE_URL=postgresql+psycopg2://postgres:YOUR_PASSWORD@db.YOUR_PROJECT_REF.supabase.co:5432/postgres?sslmode=require
+DATABASE_URL=postgresql+psycopg2://USER:PASSWORD@ep-xxxxxx.eu-central-1.aws.neon.tech/neondb?sslmode=require
 ```
 
-- If Supabase gives you a pooled host, use the pooler URL instead of `db.YOUR_PROJECT_REF...`.
-- On Render, add `DATABASE_URL` as an environment variable and redeploy the backend.
-- After switching databases, run the initial migration or let the app create the table on startup for the portfolio feature.
+- Keep `sslmode=require` enabled.
+- App health exposes DB backend/mode in `GET /api/health`.
+
+## Environment variables (backend)
+- `DATABASE_URL`
+- `APP_ENV`
+- `DEBUG`
+- `FINNHUB_API_KEY`
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL`
+- `CLERK_PUBLISHABLE_KEY`
+- `CLERK_FAPI` (or `CLERK_FRONTEND_API_URL`)
+- `CLERK_JWT_KEY`
+- `FRONTEND_ORIGIN`
+- `CORS_ALLOW_ORIGINS` (comma-separated, optional)
+- `CRON_SECRET`
 
 ## API overview
 - `GET /api/health`
 - `GET /api/dashboard/watchlist`
 - `GET /api/dashboard/symbol/{symbol}`
 - `GET /api/dashboard/news/{symbol}`
+- `GET /api/analysis/{symbol}`
+- `GET/POST /api/favorites`
+- `GET /api/alerts`
 
 ## Notes
 - This app is a market dashboard, not an execution platform.
-- Finnhub free plans are rate-limited, so the backend caches watchlist results briefly.
-- The legacy analysis and portfolio code is still in the repo, but the main UI now focuses on quotes, chart, and news.
+- Finnhub free plans are rate-limited; backend uses caching to reduce external calls.

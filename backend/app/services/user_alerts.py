@@ -83,12 +83,23 @@ class UserAlertService:
         force_refresh: bool = True,
     ) -> UserAlertScanSummary:
         rules = self.alert_rule_repository.list_active(db)
+        user_ids = {int(rule.user_id) for rule in rules}
+        favorite_symbols_by_user = self.favorite_repository.list_symbols_for_app_user_ids(
+            db,
+            app_user_ids=user_ids,
+        )
         notifications_created = 0
         baseline_seeded = 0
         skipped_no_data = 0
 
         for rule in rules:
-            created, seeded, skipped = self._process_rule(db, rule=rule, force_refresh=force_refresh)
+            favorite_symbols = favorite_symbols_by_user.get(int(rule.user_id), set())
+            created, seeded, skipped = self._process_rule(
+                db,
+                rule=rule,
+                favorite_symbols=favorite_symbols,
+                force_refresh=force_refresh,
+            )
             notifications_created += created
             baseline_seeded += seeded
             skipped_no_data += skipped
@@ -106,13 +117,10 @@ class UserAlertService:
         db: Session,
         *,
         rule: AlertRule,
+        favorite_symbols: set[str],
         force_refresh: bool,
     ) -> tuple[int, int, int]:
-        if self.favorite_repository.exists_for_app_user_symbol(
-            db,
-            app_user_id=rule.user_id,
-            symbol=rule.symbol,
-        ):
+        if rule.symbol in favorite_symbols:
             return (0, 0, 0)
 
         analysis = self.analysis_service.analyze_symbol(

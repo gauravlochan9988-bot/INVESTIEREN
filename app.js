@@ -3648,8 +3648,8 @@ async function loadBackendHealth() {
       setBackendStatus("Connected · DB fallback", "warning");
       return;
     }
-    if (database.backend === "supabase") {
-      setBackendStatus("Connected · Supabase", "ok");
+    if (database.backend === "neon") {
+      setBackendStatus("Connected · Neon", "ok");
       return;
     }
     if (database.backend === "postgres") {

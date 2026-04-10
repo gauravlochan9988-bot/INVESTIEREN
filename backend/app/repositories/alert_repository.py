@@ -104,6 +104,25 @@ class AlertRepository:
         )
         return db.scalar(statement)
 
+    def list_states_for_symbols(
+        self,
+        db: Session,
+        *,
+        user_key: str,
+        app_user_id: Optional[int] = None,
+        strategy: str,
+        symbols: list[str],
+    ) -> dict[str, AlertState]:
+        if not symbols:
+            return {}
+        statement = select(AlertState).where(
+            self._state_scope(user_key=user_key, app_user_id=app_user_id),
+            AlertState.strategy == strategy,
+            AlertState.symbol.in_(symbols),
+        )
+        rows = list(db.scalars(statement).all())
+        return {row.symbol: row for row in rows}
+
     def save_state(
         self,
         db: Session,

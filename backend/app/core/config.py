@@ -1,7 +1,7 @@
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -83,6 +83,7 @@ class Settings(BaseSettings):
     clerk_plan_slug: str = "pro"
     clerk_plan_name: str = "Investieren Pro Monthly"
     frontend_origin: str = "https://gauravtrades.de"
+    cors_allow_origins: str = ""
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_publishable_key: str = ""
@@ -94,6 +95,22 @@ class Settings(BaseSettings):
     watchlist: Dict[str, str] = Field(default_factory=lambda: DEFAULT_WATCHLIST.copy())
     cron_secret: str = ""
     favorite_signal_min_confidence_partial: float = 58.0
+
+    def get_cors_allowed_origins(self) -> List[str]:
+        origins: list[str] = [
+            "http://127.0.0.1:8000",
+            "http://localhost:8000",
+            "http://127.0.0.1:8003",
+            "http://localhost:8003",
+        ]
+        if self.frontend_origin:
+            origins.append(self.frontend_origin.strip())
+        if self.cors_allow_origins:
+            origins.extend(
+                [part.strip() for part in self.cors_allow_origins.split(",") if part.strip()]
+            )
+        # Preserve insertion order while deduplicating.
+        return list(dict.fromkeys(origins))
 
     @field_validator("database_url", mode="before")
     @classmethod

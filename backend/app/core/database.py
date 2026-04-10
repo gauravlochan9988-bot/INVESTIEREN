@@ -25,7 +25,7 @@ def _engine_options(database_url: str) -> dict:
     if database_url.startswith("sqlite"):
         options["connect_args"] = {"check_same_thread": False}
     else:
-        # Keep pooled Postgres connections healthy on hosted platforms like Supabase.
+        # Keep pooled Postgres connections healthy on hosted Postgres platforms like Neon.
         options["pool_pre_ping"] = True
         options["pool_recycle"] = 300
     return options
@@ -41,8 +41,8 @@ def _database_backend_label(database_url: str) -> str:
 
     parsed = urlparse(database_url)
     hostname = (parsed.hostname or "").lower()
-    if "supabase" in hostname:
-        return "supabase"
+    if "neon.tech" in hostname:
+        return "neon"
     if parsed.scheme.startswith("postgresql"):
         return "postgres"
     return parsed.scheme or "unknown"

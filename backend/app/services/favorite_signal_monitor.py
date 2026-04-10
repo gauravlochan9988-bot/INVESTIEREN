@@ -57,15 +57,34 @@ class FavoriteSignalMonitorService:
         strategy: Strategy,
         force_refresh: bool = True,
     ) -> FavoriteSignalScanSummary:
-        user_keys = self.favorite_repository.list_distinct_user_keys(db)
+        entries = self.favorite_repository.list_all_entries(db)
+        grouped: dict[tuple[str, Optional[int]], list[str]] = {}
+        for entry in entries:
+            key = (entry.user_key, entry.app_user_id)
+            grouped.setdefault(key, []).append(entry.symbol)
         events = 0
         baseline = 0
         skipped_nd = 0
         symbols_checked = 0
 
-        for user_key in user_keys:
-            app_uid = self.favorite_repository.get_app_user_id_for_user_key(db, user_key=user_key)
-            symbols = self.favorite_repository.list_symbols(db, user_key=user_key, app_user_id=app_uid)
+        for (user_key, app_uid), symbols in grouped.items():
+            state_map = self.alert_repository.list_states_for_symbols(
+                db,
+                user_key=user_key,
+                app_user_id=app_uid,
+                strategy=strategy,
+                symbols=symbols,
+            )
+            rule_map = (
+                self.alert_rule_repository.list_for_user_strategy_symbols(
+                    db,
+                    user_id=int(app_uid),
+                    strategy=strategy,
+                    symbols=symbols,
+                )
+                if app_uid is not None
+                else {}
+            )
             for symbol in symbols:
                 symbols_checked += 1
                 ev, bs, sk = self._process_favorite_symbol(
@@ -73,6 +92,8 @@ class FavoriteSignalMonitorService:
                     user_key=user_key,
                     app_user_id=app_uid,
                     symbol=symbol,
+                    prev_state=state_map.get(symbol),
+                    rule=rule_map.get(symbol),
                     strategy=strategy,
                     force_refresh=force_refresh,
                 )
@@ -82,7 +103,7 @@ class FavoriteSignalMonitorService:
 
         db.commit()
         summary = FavoriteSignalScanSummary(
-            user_keys_scanned=len(user_keys),
+            user_keys_scanned=len(grouped),
             symbols_checked=symbols_checked,
             events_created=events,
             baseline_seeded=baseline,
@@ -100,23 +121,6 @@ class FavoriteSignalMonitorService:
             },
         )
         return summary
-
-    def _load_rule(
-        self,
-        db: Session,
-        *,
-        app_user_id: Optional[int],
-        symbol: str,
-        strategy: Strategy,
-    ):
-        if app_user_id is None:
-            return None
-        return self.alert_rule_repository.get_by_user_symbol_strategy(
-            db,
-            user_id=app_user_id,
-            symbol=symbol,
-            strategy=strategy,
-        )
 
     def _signal_str(self, analysis: AnalysisResponse) -> str:
         if analysis.no_data or analysis.data_quality == "NO_DATA" or analysis.recommendation is None:
@@ -141,6 +145,8 @@ class FavoriteSignalMonitorService:
         user_key: str,
         app_user_id: Optional[int],
         symbol: str,
+        prev_state,
+        rule,
         strategy: Strategy,
         force_refresh: bool,
     ) -> tuple[int, int, int]:
@@ -151,7 +157,6 @@ class FavoriteSignalMonitorService:
             strategy=strategy,
             db=db,
         )
-        rule = self._load_rule(db, app_user_id=app_user_id, symbol=symbol, strategy=strategy)
 
         if analysis.no_data or analysis.data_quality == "NO_DATA" or analysis.recommendation is None:
             if rule is not None:
@@ -167,13 +172,7 @@ class FavoriteSignalMonitorService:
         price = quote.price if quote is not None and quote.price and quote.price > 0 else None
         chg = quote.change_percent if quote is not None else None
 
-        prev = self.alert_repository.get_state(
-            db,
-            user_key=user_key,
-            app_user_id=app_user_id,
-            symbol=symbol,
-            strategy=strategy,
-        )
+        prev = prev_state
         new_rec = analysis.recommendation
         eligible = smart_alert_allowed(
             analysis,

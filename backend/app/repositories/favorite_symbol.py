@@ -31,6 +31,14 @@ class FavoriteSymbolRepository:
         )
         return list(db.scalars(statement).all())
 
+    def list_all_entries(self, db: Session) -> list[FavoriteSymbol]:
+        statement = select(FavoriteSymbol).order_by(
+            FavoriteSymbol.user_key.asc(),
+            FavoriteSymbol.created_at.asc(),
+            FavoriteSymbol.id.asc(),
+        )
+        return list(db.scalars(statement).all())
+
     def list_symbols(
         self,
         db: Session,
@@ -39,6 +47,20 @@ class FavoriteSymbolRepository:
         app_user_id: Optional[int] = None,
     ) -> list[str]:
         return [row.symbol for row in self.list_entries(db, user_key=user_key, app_user_id=app_user_id)]
+
+    def list_symbols_for_app_user_ids(self, db: Session, *, app_user_ids: set[int]) -> dict[int, set[str]]:
+        if not app_user_ids:
+            return {}
+        statement = select(FavoriteSymbol.app_user_id, FavoriteSymbol.symbol).where(
+            FavoriteSymbol.app_user_id.in_(app_user_ids)
+        )
+        rows = db.execute(statement).all()
+        result: dict[int, set[str]] = {}
+        for app_user_id, symbol in rows:
+            if app_user_id is None:
+                continue
+            result.setdefault(int(app_user_id), set()).add(str(symbol))
+        return result
 
     def exists_for_app_user_symbol(self, db: Session, *, app_user_id: int, symbol: str) -> bool:
         statement = (
