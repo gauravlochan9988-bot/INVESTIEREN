@@ -138,6 +138,9 @@ def test_watchlist_item_uses_last_known_price_when_live_sources_fail(monkeypatch
     assert items[0].symbol == "GOOGL"
     assert items[0].price == 188.2
     assert items[0].stale is True
+    assert items[0].quote_status == "stale"
+    assert items[0].is_stale is True
+    assert items[0].data_source == "stale_cache"
 
 
 def test_watchlist_item_returns_no_data_when_no_valid_price_exists(monkeypatch):
@@ -158,6 +161,7 @@ def test_watchlist_item_returns_no_data_when_no_valid_price_exists(monkeypatch):
     assert items[0].symbol == "AMD"
     assert items[0].price is None
     assert items[0].no_data is True
+    assert items[0].quote_status in ("no_data", "fetch_error")
 
 
 def test_symbol_overview_returns_no_data_when_no_valid_price_exists(monkeypatch):

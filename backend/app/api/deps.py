@@ -10,6 +10,7 @@ from app.core.auth import AdminSessionManager, ClerkTokenVerifier
 from app.core.config import get_settings
 from app.core.database import get_db, get_session_factory
 from app.repositories.alert_repository import AlertRepository
+from app.repositories.alert_rule import AlertRuleRepository
 from app.repositories.analysis_log import AnalysisLogRepository
 from app.repositories.analysis_threshold import AnalysisThresholdRepository
 from app.repositories.app_subscription import AppSubscriptionRepository
@@ -17,9 +18,11 @@ from app.repositories.app_user import AppUserRepository
 from app.repositories.favorite_symbol import FavoriteSymbolRepository
 from app.repositories.portfolio import PortfolioRepository
 from app.repositories.trade_performance import TradePerformanceRepository
+from app.repositories.user_notification import UserNotificationRepository
 from app.services.alerts import AlertService
 from app.services.analysis_calibration import AnalysisCalibrationService
 from app.services.analysis import AnalysisService
+from app.services.favorite_signal_monitor import FavoriteSignalMonitorService
 from app.services.billing import BillingService
 from app.services.finnhub_dashboard import FinnhubDashboardService
 from app.services.macro import MacroContextService
@@ -40,6 +43,7 @@ from app.services.search import StockSearchService, build_stock_search_service
 from app.services.strategy_learning import StrategyLearningService
 from app.services.summary import SummaryService
 from app.services.trade_history import TradeHistoryService
+from app.services.user_alerts import UserAlertService
 
 FIXED_STRATEGY_THRESHOLDS: dict[str, tuple[float, float]] = {
     "simple": (3.0, -3.0),
@@ -48,7 +52,14 @@ FIXED_STRATEGY_THRESHOLDS: dict[str, tuple[float, float]] = {
 }
 
 
-DASHBOARD_WATCHLIST = ("AAPL", "MSFT", "NVDA", "AMZN", "META", "TSLA")
+def get_dashboard_watchlist_symbols() -> tuple[str, ...]:
+    """Ordered symbols for `/api/dashboard/watchlist` and dashboard preload.
+
+    Single source of truth: ``Settings.watchlist`` (``DEFAULT_WATCHLIST`` in config, overridable via env).
+    Must be a superset of frontend ``DEFAULT_SIDEBAR_ITEMS`` in ``app.js`` so the sidebar never
+    falls back to placeholder rows for missing API keys.
+    """
+    return tuple(get_settings().watchlist.keys())
 
 
 @dataclass
@@ -181,6 +192,16 @@ def get_favorite_symbol_repository_instance() -> FavoriteSymbolRepository:
 
 
 @lru_cache
+def get_alert_rule_repository_instance() -> AlertRuleRepository:
+    return AlertRuleRepository()
+
+
+@lru_cache
+def get_user_notification_repository_instance() -> UserNotificationRepository:
+    return UserNotificationRepository()
+
+
+@lru_cache
 def get_trade_performance_repository_instance() -> TradePerformanceRepository:
     return TradePerformanceRepository()
 
@@ -209,10 +230,17 @@ def get_market_data_service() -> MarketDataService:
 
 @lru_cache
 def get_finnhub_dashboard_service_instance() -> FinnhubDashboardService:
+    """Cached Finnhub dashboard service (watchlist universe fixed at first call).
+
+    After changing ``WATCHLIST``/settings or deploying new default symbols, restart the process
+    (e.g. Railway redeploy/restart) so ``@lru_cache`` picks up the new symbol set. Runtime
+    ``get_settings().watchlist`` changes alone do not refresh this instance.
+    """
     settings = get_settings()
+    symbols = get_dashboard_watchlist_symbols()
     return FinnhubDashboardService(
         api_key=settings.finnhub_api_key,
-        watchlist={symbol: settings.watchlist.get(symbol, symbol) for symbol in DASHBOARD_WATCHLIST},
+        watchlist={symbol: settings.watchlist.get(symbol, symbol) for symbol in symbols},
         news_sentiment_service=get_news_sentiment_service_instance(),
         ttl_seconds=settings.market_cache_ttl_seconds,
     )
@@ -413,6 +441,35 @@ def get_alert_service_instance() -> AlertService:
 
 def get_alert_service() -> AlertService:
     return get_alert_service_instance()
+
+
+@lru_cache
+def get_favorite_signal_monitor_service_instance() -> FavoriteSignalMonitorService:
+    settings = get_settings()
+    return FavoriteSignalMonitorService(
+        analysis_service=get_analysis_service_instance(),
+        market_data_service=get_market_data_service_instance(),
+        alert_repository=get_alert_repository_instance(),
+        favorite_repository=get_favorite_symbol_repository_instance(),
+        min_confidence_partial=float(settings.favorite_signal_min_confidence_partial),
+    )
+
+
+def get_favorite_signal_monitor_service() -> FavoriteSignalMonitorService:
+    return get_favorite_signal_monitor_service_instance()
+
+
+@lru_cache
+def get_user_alert_service_instance() -> UserAlertService:
+    return UserAlertService(
+        analysis_service=get_analysis_service_instance(),
+        alert_rule_repository=get_alert_rule_repository_instance(),
+        notification_repository=get_user_notification_repository_instance(),
+    )
+
+
+def get_user_alert_service() -> UserAlertService:
+    return get_user_alert_service_instance()
 
 
 @lru_cache

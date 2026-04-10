@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from sqlalchemy import delete, select
+from typing import Optional
+
+from sqlalchemy import and_, delete, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.alert_event import AlertEvent
@@ -8,11 +10,28 @@ from app.models.alert_state import AlertState
 
 
 class AlertRepository:
+    def _event_scope(self, *, user_key: str, app_user_id: Optional[int]):
+        if app_user_id is not None:
+            return or_(
+                AlertEvent.app_user_id == app_user_id,
+                and_(AlertEvent.app_user_id.is_(None), AlertEvent.user_key == user_key),
+            )
+        return AlertEvent.user_key == user_key
+
+    def _state_scope(self, *, user_key: str, app_user_id: Optional[int]):
+        if app_user_id is not None:
+            return or_(
+                AlertState.app_user_id == app_user_id,
+                and_(AlertState.app_user_id.is_(None), AlertState.user_key == user_key),
+            )
+        return AlertState.user_key == user_key
+
     def create_event(
         self,
         db: Session,
         *,
         user_key: str,
+        app_user_id: Optional[int] = None,
         symbol: str,
         strategy: str,
         kind: str,
@@ -29,6 +48,7 @@ class AlertRepository:
     ) -> AlertEvent:
         event = AlertEvent(
             user_key=user_key,
+            app_user_id=app_user_id,
             symbol=symbol,
             strategy=strategy,
             kind=kind,
@@ -53,13 +73,14 @@ class AlertRepository:
         db: Session,
         *,
         user_key: str,
+        app_user_id: Optional[int] = None,
         strategy: str,
         limit: int,
         favorites_only: bool = False,
     ) -> list[AlertEvent]:
         statement = (
             select(AlertEvent)
-            .where(AlertEvent.user_key == user_key, AlertEvent.strategy == strategy)
+            .where(self._event_scope(user_key=user_key, app_user_id=app_user_id), AlertEvent.strategy == strategy)
             .order_by(AlertEvent.created_at.desc(), AlertEvent.priority.desc(), AlertEvent.id.desc())
             .limit(limit)
         )
@@ -72,11 +93,12 @@ class AlertRepository:
         db: Session,
         *,
         user_key: str,
+        app_user_id: Optional[int] = None,
         symbol: str,
         strategy: str,
     ) -> AlertState | None:
         statement = select(AlertState).where(
-            AlertState.user_key == user_key,
+            self._state_scope(user_key=user_key, app_user_id=app_user_id),
             AlertState.symbol == symbol,
             AlertState.strategy == strategy,
         )
@@ -87,6 +109,7 @@ class AlertRepository:
         db: Session,
         *,
         user_key: str,
+        app_user_id: Optional[int] = None,
         symbol: str,
         strategy: str,
         price: float | None,
@@ -96,10 +119,17 @@ class AlertRepository:
         is_favorite: bool,
         commit: bool = True,
     ) -> AlertState:
-        state = self.get_state(db, user_key=user_key, symbol=symbol, strategy=strategy)
+        state = self.get_state(
+            db,
+            user_key=user_key,
+            app_user_id=app_user_id,
+            symbol=symbol,
+            strategy=strategy,
+        )
         if state is None:
             state = AlertState(
                 user_key=user_key,
+                app_user_id=app_user_id,
                 symbol=symbol,
                 strategy=strategy,
             )
@@ -109,6 +139,8 @@ class AlertRepository:
         state.last_data_quality = data_quality
         state.last_confidence = confidence
         state.is_favorite = is_favorite
+        if app_user_id is not None:
+            state.app_user_id = app_user_id
         if commit:
             db.commit()
             db.refresh(state)
@@ -119,9 +151,13 @@ class AlertRepository:
         db: Session,
         *,
         user_key: str,
+        app_user_id: Optional[int] = None,
         strategy: str,
     ) -> None:
         db.execute(
-            delete(AlertEvent).where(AlertEvent.user_key == user_key, AlertEvent.strategy == strategy)
+            delete(AlertEvent).where(
+                self._event_scope(user_key=user_key, app_user_id=app_user_id),
+                AlertEvent.strategy == strategy,
+            )
         )
         db.commit()

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
-from typing import Sequence
+from typing import Optional, Sequence
 
 from sqlalchemy.orm import Session
 
@@ -30,17 +30,47 @@ class AlertService:
         self.default_symbols = tuple(default_symbols)
         self.price_move_threshold_percent = price_move_threshold_percent
 
-    def list_favorites(self, db: Session, *, user_key: str) -> list[str]:
-        return self.favorite_repository.list_symbols(db, user_key=user_key)
+    def list_favorites(
+        self,
+        db: Session,
+        *,
+        user_key: str,
+        app_user_id: Optional[int] = None,
+    ) -> list[str]:
+        return self.favorite_repository.list_symbols(db, user_key=user_key, app_user_id=app_user_id)
 
-    def add_favorite(self, db: Session, *, user_key: str, symbol: str) -> str:
+    def add_favorite(
+        self,
+        db: Session,
+        *,
+        user_key: str,
+        symbol: str,
+        app_user_id: Optional[int] = None,
+    ) -> str:
         normalized = self.market_data_service.ensure_supported_symbol(symbol)
-        self.favorite_repository.create(db, user_key=user_key, symbol=normalized)
+        self.favorite_repository.create(
+            db,
+            user_key=user_key,
+            symbol=normalized,
+            app_user_id=app_user_id,
+        )
         return normalized
 
-    def remove_favorite(self, db: Session, *, user_key: str, symbol: str) -> bool:
+    def remove_favorite(
+        self,
+        db: Session,
+        *,
+        user_key: str,
+        symbol: str,
+        app_user_id: Optional[int] = None,
+    ) -> bool:
         normalized = self.market_data_service.ensure_supported_symbol(symbol)
-        return self.favorite_repository.delete(db, user_key=user_key, symbol=normalized)
+        return self.favorite_repository.delete(
+            db,
+            user_key=user_key,
+            symbol=normalized,
+            app_user_id=app_user_id,
+        )
 
     def sync_alerts(
         self,
@@ -48,11 +78,12 @@ class AlertService:
         *,
         strategy: Strategy,
         user_key: str = "default",
+        app_user_id: Optional[int] = None,
         force_refresh: bool = False,
         limit: int = 6,
         favorites_only: bool = False,
     ) -> list[AnalysisAlert]:
-        favorites = self.favorite_repository.list_symbols(db, user_key=user_key)
+        favorites = self.favorite_repository.list_symbols(db, user_key=user_key, app_user_id=app_user_id)
         favorite_set = set(favorites)
         universe = favorites[:] + [symbol for symbol in self.default_symbols if symbol not in favorite_set]
         if favorites_only:
@@ -71,6 +102,7 @@ class AlertService:
                     analysis=analysis,
                     strategy=strategy,
                     user_key=user_key,
+                    app_user_id=app_user_id,
                     is_favorite=analysis.symbol in favorite_set,
                     force_refresh=force_refresh,
                 )
@@ -79,6 +111,7 @@ class AlertService:
         rows = self.alert_repository.list_recent_events(
             db,
             user_key=user_key,
+            app_user_id=app_user_id,
             strategy=strategy,
             limit=limit,
             favorites_only=favorites_only,
@@ -125,6 +158,7 @@ class AlertService:
         analysis: AnalysisResponse,
         strategy: Strategy,
         user_key: str,
+        app_user_id: Optional[int],
         is_favorite: bool,
         force_refresh: bool,
     ) -> bool:
@@ -143,6 +177,7 @@ class AlertService:
         previous_state = self.alert_repository.get_state(
             db,
             user_key=user_key,
+            app_user_id=app_user_id,
             symbol=analysis.symbol,
             strategy=strategy,
         )
@@ -153,6 +188,7 @@ class AlertService:
                 self.alert_repository.create_event(
                     db,
                     user_key=user_key,
+                    app_user_id=app_user_id,
                     symbol=seed.symbol,
                     strategy=seed.strategy,
                     kind=seed.kind,
@@ -177,6 +213,7 @@ class AlertService:
                 self.alert_repository.create_event(
                     db,
                     user_key=user_key,
+                    app_user_id=app_user_id,
                     symbol=alert.symbol,
                     strategy=alert.strategy,
                     kind=alert.kind,
@@ -207,6 +244,7 @@ class AlertService:
                 self.alert_repository.create_event(
                     db,
                     user_key=user_key,
+                    app_user_id=app_user_id,
                     symbol=alert.symbol,
                     strategy=alert.strategy,
                     kind=alert.kind,
@@ -226,6 +264,7 @@ class AlertService:
         self.alert_repository.save_state(
             db,
             user_key=user_key,
+            app_user_id=app_user_id,
             symbol=analysis.symbol,
             strategy=strategy,
             price=quote.price if quote is not None else None,

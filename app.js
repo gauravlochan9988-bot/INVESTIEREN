@@ -106,22 +106,30 @@ const I18N = {
     "watchlist.metaVisible": "{visible}/{max} sichtbar",
     "watchlist.marketSyncing": "Marktdaten werden synchronisiert...",
     "watchlist.noData": "Keine Daten",
+    "watchlist.noDataHint": "Kein aktueller Kurs — Datenlieferant antwortet nicht oder Symbol unbekannt.",
     "watchlist.fallbackName": "Watchliste",
     "watchlist.stalePriceTitle": "Zuletzt bekannter Kurs",
-    "watchlist.favoritesTitle": "Favoriten",
-    "watchlist.favoritesHint": "Mit Stern anheften.",
+    "watchlist.statusStale": "Verzögert",
+    "watchlist.statusNoData": "Kein Kurs",
+    "watchlist.statusFetchError": "Abruf fehlgeschlagen",
+    "watchlist.emptyVisible": "Keine Einträge in der Liste.",
+    "watchlist.fetchErrorBanner": "Watchlist konnte nicht geladen werden. Angezeigt werden ggf. zwischengespeicherte Kurse.",
+    "watchlist.favoritesTitle": "Favoriten · Smart Alerts",
+    "watchlist.favoritesHint":
+      "Mit Stern speichern — wir überwachen das Symbol und benachrichtigen dich, sobald das Signal auf BUY oder SELL wechselt.",
     "search.noMatch": "Kein Treffer.",
     "search.open": "Offnen",
     "search.errorOff": "Suche nicht verfugbar.",
-    "favorites.label": "Favoriten",
-    "favorites.pinned": "Angeheftete Symbole",
+    "favorites.label": "Smart Alerts",
+    "favorites.pinned": "Überwachte Favoriten",
     "favorites.meta": "0 gespeichert",
     "favorites.metaCount": "{n} gespeichert",
     "favorites.emptyTitle": "Keine Favoriten",
-    "favorites.emptyBody": "Markiere eine Aktie mit Stern.",
+    "favorites.emptyBody":
+      "Stern setzen: Das Symbol wird überwacht. Bei Wechsel auf BUY oder SELL erscheint ein Alert in der Liste.",
     "symbol.selected": "Ausgewahlt",
-    "symbol.favoriteAria": "Ausgewahltes Symbol zu Favoriten hinzufugen",
-    "symbol.favoriteRemoveAria": "Symbol aus Favoriten entfernen",
+    "symbol.favoriteAria": "Symbol speichern und Smart Alerts für BUY/SELL-Wechsel aktivieren",
+    "symbol.favoriteRemoveAria": "Symbol entfernen und Smart Alerts beenden",
     "symbol.favoriteButton": "Favorit",
     "metric.price": "Preis",
     "metric.dayHigh": "Tageshoch",
@@ -178,7 +186,9 @@ const I18N = {
     "chart.compareLegend": "Auf 100% normiert",
     "alerts.metaCount": "{count} Live-Alerts",
     "alerts.noAlertsTitle": "Keine Alerts",
-    "alerts.noAlertsBody": "Nichts Starkes.",
+    "alerts.noAlertsBody":
+      "Keine Ereignisse. Gespeicherte Favoriten erzeugen Smart Alerts bei BUY/SELL-Wechseln.",
+    "alerts.smartBadge": "Smart Alert",
     "alerts.warmingTitle": "Alerts starten",
     "alerts.warmingBody": "Bald erneut versuchen.",
     "alerts.retryTap": "Zum Aktualisieren tippen",
@@ -322,22 +332,30 @@ const I18N = {
     "watchlist.metaVisible": "{visible}/{max} visible",
     "watchlist.marketSyncing": "Syncing market data...",
     "watchlist.noData": "No data",
+    "watchlist.noDataHint": "No live quote — data provider unavailable or symbol not covered.",
     "watchlist.fallbackName": "Watchlist",
     "watchlist.stalePriceTitle": "Last known price",
-    "watchlist.favoritesTitle": "Favorites",
-    "watchlist.favoritesHint": "Star to pin.",
+    "watchlist.statusStale": "Delayed",
+    "watchlist.statusNoData": "No quote",
+    "watchlist.statusFetchError": "Fetch failed",
+    "watchlist.emptyVisible": "No rows to show.",
+    "watchlist.fetchErrorBanner": "Could not load watchlist. Showing cached quotes if available.",
+    "watchlist.favoritesTitle": "Favorites · smart alerts",
+    "watchlist.favoritesHint":
+      "Star to save — we watch the symbol and notify you when the signal flips to BUY or SELL.",
     "search.noMatch": "No match.",
     "search.open": "Open",
     "search.errorOff": "Search unavailable.",
-    "favorites.label": "Favorites",
-    "favorites.pinned": "Pinned symbols",
+    "favorites.label": "Smart alerts",
+    "favorites.pinned": "Watched favorites",
     "favorites.meta": "0 saved",
     "favorites.metaCount": "{n} saved",
     "favorites.emptyTitle": "No favorites",
-    "favorites.emptyBody": "Star a stock.",
+    "favorites.emptyBody":
+      "Star a stock to watch it. When the signal switches to BUY or SELL, an alert appears here.",
     "symbol.selected": "Selected",
-    "symbol.favoriteAria": "Add selected symbol to favorites",
-    "symbol.favoriteRemoveAria": "Remove symbol from favorites",
+    "symbol.favoriteAria": "Save symbol and enable smart alerts on BUY/SELL changes",
+    "symbol.favoriteRemoveAria": "Remove symbol and stop smart alerts",
     "symbol.favoriteButton": "Favorite",
     "metric.price": "Price",
     "metric.dayHigh": "Day high",
@@ -394,7 +412,9 @@ const I18N = {
     "chart.compareLegend": "Normalized to 100%",
     "alerts.metaCount": "{count} live alerts",
     "alerts.noAlertsTitle": "No alerts",
-    "alerts.noAlertsBody": "Nothing strong.",
+    "alerts.noAlertsBody":
+      "No events yet. Saved favorites trigger smart alerts on BUY/SELL changes.",
+    "alerts.smartBadge": "Smart alert",
     "alerts.warmingTitle": "Alerts warming",
     "alerts.warmingBody": "Retry soon.",
     "alerts.retryTap": "Tap refresh to retry alerts",
@@ -574,6 +594,7 @@ function getStrategyLabel(key) {
 
 const MAX_SIDEBAR_SLOTS = 10;
 const OPPORTUNITY_LIMIT = 3;
+// Symbol set must stay ⊆ backend Settings.watchlist / DEFAULT_WATCHLIST (see get_dashboard_watchlist_symbols).
 const DEFAULT_SIDEBAR_ITEMS = [
   { symbol: "AAPL", name: "Apple Inc" },
   { symbol: "MSFT", name: "Microsoft" },
@@ -1396,7 +1417,7 @@ function isValidMarketPrice(value) {
 }
 
 function displayMarketPrice(value) {
-  return isValidMarketPrice(value) ? currency(value) : "No Data";
+  return isValidMarketPrice(value) ? currency(value) : t("metric.noData");
 }
 
 function compactNumber(value) {
@@ -1868,7 +1889,7 @@ async function searchSymbols(query) {
   }
 
   try {
-    const results = await api(`/api/search?q=${encodeURIComponent(trimmed)}&limit=8`, {
+    const results = await api(`/api/search?q=${encodeURIComponent(trimmed)}&limit=20`, {
       timeoutMs: 10000,
     });
     if (requestId !== state.searchRequestId) {
@@ -2060,16 +2081,23 @@ function renderAlerts(alerts) {
   elements.alertsList.innerHTML = alerts
     .map((alert) => {
       const tone = alertToneClasses(alert.tone);
+      const smartBadge =
+        alert.kind === "favorite_signal"
+          ? `<span class="shrink-0 rounded-full border border-violet-200/90 bg-violet-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-violet-900">${escapeHtml(t("alerts.smartBadge"))}</span>`
+          : "";
       return `
         <article class="rounded-2xl border p-4 ${tone.card}">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
-              <p class="text-sm font-semibold text-neutral-900">${alert.title}</p>
-              <p class="mt-2 text-sm leading-6 text-neutral-700">${alert.message}</p>
+              <p class="text-sm font-semibold text-neutral-900">${escapeHtml(alert.title)}</p>
+              <p class="mt-2 text-sm leading-6 text-neutral-700">${escapeHtml(alert.message)}</p>
             </div>
-            <span class="shrink-0 rounded-full px-3 py-2 text-[11px] font-semibold ${tone.badge}">
-              ${getStrategyLabel(alert.strategy) || titleCase(alert.strategy)}
-            </span>
+            <div class="flex shrink-0 flex-col items-end gap-1.5">
+              ${smartBadge}
+              <span class="rounded-full px-3 py-2 text-[11px] font-semibold ${tone.badge}">
+                ${escapeHtml(getStrategyLabel(alert.strategy) || titleCase(alert.strategy))}
+              </span>
+            </div>
           </div>
         </article>
       `;
@@ -2252,10 +2280,15 @@ function buildFallbackOpportunityEntries(symbols, watchlistMap) {
       if (!item) {
         return null;
       }
-      const change = Number(item.change_percent);
+      const st = normalizeWatchlistQuoteStatus(item);
+      const priceOk = safeWatchlistPrice(item.price) !== null;
+      const change =
+        (st === "success" || st === "stale") && priceOk ? Number(item.change_percent) : NaN;
       const score = Number.isFinite(change) ? Math.max(-1, Math.min(1, change / 2)) : 0;
       const confidence = Number.isFinite(change) ? Math.max(28, Math.min(62, Math.abs(change) * 8 + 28)) : 32;
       const recommendation = score > 0 ? "BUY" : score < 0 ? "SELL" : index === 0 ? "BUY" : "HOLD";
+      const dataQuality =
+        st === "success" && priceOk ? "FULL" : st === "stale" && priceOk ? "PARTIAL" : "NO_DATA";
       return {
         symbol,
         name: item.name || symbol,
@@ -2263,7 +2296,7 @@ function buildFallbackOpportunityEntries(symbols, watchlistMap) {
         score,
         scoreLabel: score > 0 ? "+1" : score < 0 ? "-1" : "0",
         confidence,
-        dataQuality: item.no_data ? "NO_DATA" : item.stale ? "PARTIAL" : "FULL",
+        dataQuality,
         rank: score + confidence / 115,
       };
     })
@@ -3074,11 +3107,22 @@ function isFavoriteSymbol(symbol) {
 }
 
 function buildSidebarItemFromOverview(overview) {
+  const price = safeWatchlistPrice(overview.price);
+  const ch = overview.change_percent;
+  const chNum = Number(ch);
   return {
     symbol: overview.symbol,
     name: overview.name || overview.symbol,
-    price: Number(overview.price || 0),
-    change_percent: Number(overview.change_percent || 0),
+    price,
+    change: null,
+    change_percent: price != null && Number.isFinite(chNum) ? chNum : null,
+    stale: Boolean(overview.stale),
+    is_stale: Boolean(overview.stale),
+    no_data: price == null,
+    quote_status: price != null ? "success" : "no_data",
+    data_source: "symbol_overview",
+    error_reason: null,
+    last_updated: null,
   };
 }
 
@@ -3108,13 +3152,22 @@ function getDefaultSidebarItems(itemBySymbol) {
         ...fallbackItem,
         ...liveItem,
         symbol: fallbackItem.symbol,
+        placeholder: false,
       };
     }
     return {
       ...fallbackItem,
       price: null,
+      change: null,
       change_percent: null,
       placeholder: true,
+      quote_status: "placeholder",
+      data_source: null,
+      error_reason: null,
+      last_updated: null,
+      stale: false,
+      is_stale: false,
+      no_data: true,
     };
   });
 }
@@ -3208,6 +3261,7 @@ async function toggleFavorite(symbol) {
           user_key: currentUserKey(),
         }),
       });
+      void loadAlerts(true).catch(() => {});
     }
   } catch (error) {
     console.error("[frontend] favorite update failed", error);
@@ -3617,7 +3671,7 @@ async function loadAlerts(forceRefresh = false) {
   }
   const params = new URLSearchParams({
     strategy: state.selectedStrategy,
-    limit: "6",
+    limit: "10",
     user_key: currentUserKey(),
   });
   if (forceRefresh) {
@@ -3661,7 +3715,36 @@ function safeWatchlistPrice(value) {
 
 function safeWatchlistChange(value) {
   const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : 0;
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function normalizeWatchlistQuoteStatus(item) {
+  const raw = String(item?.quote_status || "").toLowerCase();
+  if (raw === "success" || raw === "stale" || raw === "no_data" || raw === "fetch_error") {
+    return raw;
+  }
+  if (item?.placeholder) {
+    return "placeholder";
+  }
+  const priceOk = safeWatchlistPrice(item?.price) !== null;
+  if (item?.stale && priceOk) {
+    return "stale";
+  }
+  if (item?.no_data || !priceOk) {
+    return "no_data";
+  }
+  return "success";
+}
+
+function formatWatchlistShortTime(iso) {
+  if (!iso) {
+    return "";
+  }
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
+    return "";
+  }
+  return d.toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });
 }
 
 function renderWatchlist(items) {
@@ -3684,11 +3767,11 @@ function renderWatchlist(items) {
           <div class="flex min-w-0 flex-1 flex-col gap-2">
             <div class="flex items-start justify-between gap-3">
               <p class="truncate text-base font-semibold leading-tight tracking-tight text-neutral-900">${escapeHtml(emptyLabel)}</p>
-              <p class="shrink-0 tabular-nums text-xs font-semibold text-neutral-600">${percent(0)}</p>
+              <p class="shrink-0 tabular-nums text-xs font-semibold text-neutral-500">—</p>
             </div>
             <div class="flex items-start justify-between gap-3">
-              <p class="line-clamp-2 min-w-0 flex-1 text-xs font-medium leading-snug text-neutral-800">${escapeHtml(t("watchlist.marketSyncing"))}</p>
-              <p class="shrink-0 tabular-nums text-sm font-bold text-neutral-950">${escapeHtml(t("watchlist.noData"))}</p>
+              <p class="line-clamp-2 min-w-0 flex-1 text-xs font-medium leading-snug text-neutral-600">${escapeHtml(t("watchlist.emptyVisible"))}</p>
+              <p class="shrink-0 tabular-nums text-sm font-semibold text-neutral-500">—</p>
             </div>
           </div>
         </div>
@@ -3699,19 +3782,66 @@ function renderWatchlist(items) {
   }
 
   visibleItems.forEach((item) => {
-    const changeValue = safeWatchlistChange(item.change_percent);
+    const quoteStatus = normalizeWatchlistQuoteStatus(item);
     const priceValue = safeWatchlistPrice(item.price);
-    const stale = Boolean(item.stale);
-    const tone = stale
-      ? "text-amber-900"
-      : changeValue >= 0
-        ? "text-emerald-800"
-        : "text-rose-800";
+    const hasPrice = priceValue !== null;
+    const changeRaw = safeWatchlistChange(item.change_percent);
+    const hasChange = hasPrice && changeRaw !== null;
+    const changeDisplay = hasChange ? percent(changeRaw) : "—";
+    const stale = quoteStatus === "stale" || (Boolean(item.stale) && hasPrice);
+    const missingQuote =
+      !hasPrice ||
+      quoteStatus === "placeholder" ||
+      quoteStatus === "no_data" ||
+      quoteStatus === "fetch_error";
+    const tone = missingQuote
+      ? quoteStatus === "fetch_error"
+        ? "text-neutral-600"
+        : "text-neutral-500"
+      : stale
+        ? "text-amber-900"
+        : changeRaw != null && changeRaw >= 0
+          ? "text-emerald-800"
+          : "text-rose-800";
     const active = item.symbol === state.selectedSymbol;
     const sym = String(item.symbol || "");
     const escSym = escapeHtml(sym);
-    const escName = escapeHtml(item.name || "");
+    const displayName = String(item.name || "").trim() || sym;
+    const escName = escapeHtml(displayName);
     const staleTitle = escapeHtml(t("watchlist.stalePriceTitle"));
+    const noDataTitle = escapeHtml(t("watchlist.noDataHint"));
+    const updatedLabel = formatWatchlistShortTime(item.last_updated);
+    const updatedTitle = escapeHtml(
+      updatedLabel ? `${t("watchlist.stalePriceTitle")}: ${updatedLabel}` : t("watchlist.stalePriceTitle"),
+    );
+    const statusBadge =
+      stale && hasPrice
+        ? `<span class="rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-950" title="${updatedTitle}">${escapeHtml(t("watchlist.statusStale"))}</span>`
+        : "";
+    const errHint =
+      quoteStatus === "fetch_error" && item.error_reason
+        ? `<p class="mt-1 line-clamp-2 text-[11px] leading-snug text-neutral-500">${escapeHtml(String(item.error_reason).slice(0, 120))}</p>`
+        : "";
+    const priceTextMissing =
+      quoteStatus === "fetch_error"
+        ? t("watchlist.statusFetchError")
+        : quoteStatus === "placeholder"
+          ? t("watchlist.marketSyncing")
+          : t("watchlist.statusNoData");
+    const priceTitle = missingQuote
+      ? quoteStatus === "fetch_error"
+        ? escapeHtml(String(item.error_reason || t("watchlist.statusFetchError")))
+        : quoteStatus === "placeholder"
+          ? escapeHtml(t("watchlist.marketSyncing"))
+          : noDataTitle
+      : updatedLabel
+        ? escapeHtml(`${t("watchlist.stalePriceTitle")}: ${updatedLabel}`)
+        : stale
+          ? staleTitle
+          : "";
+    const priceHtml = missingQuote
+      ? escapeHtml(priceTextMissing)
+      : escapeHtml(displayMarketPrice(priceValue));
     const card = document.createElement("button");
     card.type = "button";
     card.dataset.symbol = sym;
@@ -3719,7 +3849,9 @@ function renderWatchlist(items) {
       "watchlist-slot w-full rounded-2xl border px-4 py-4 text-left transition",
       active
         ? "border-[#005c39]/35 bg-[#005c39]/10 shadow-md shadow-black/10"
-        : "border-neutral-200/90 bg-neutral-50 hover:bg-neutral-100",
+        : quoteStatus === "fetch_error"
+          ? "border-neutral-200/90 bg-neutral-50/90 hover:bg-neutral-100"
+          : "border-neutral-200/90 bg-neutral-50 hover:bg-neutral-100",
     ].join(" ");
     card.innerHTML = `
       <div class="flex items-start gap-4">
@@ -3729,13 +3861,16 @@ function renderWatchlist(items) {
         <div class="flex min-w-0 flex-1 flex-col gap-2">
           <div class="flex items-start justify-between gap-3">
             <p class="watchlist-symbol min-w-0 truncate text-base font-semibold leading-tight tracking-tight text-neutral-900">${escSym}</p>
-            <p class="watchlist-change shrink-0 tabular-nums text-xs font-semibold leading-tight ${tone}">${percent(changeValue)}</p>
+            <p class="watchlist-change shrink-0 tabular-nums text-xs font-semibold leading-tight ${tone}">${escapeHtml(changeDisplay)}</p>
           </div>
           <div class="flex items-start justify-between gap-3">
-            <p class="watchlist-name line-clamp-2 min-w-0 flex-1 text-xs font-medium leading-snug text-neutral-800">${escName}</p>
-            <div class="flex shrink-0 items-center gap-1.5 self-start pt-0.5">
-              ${stale ? `<span class="text-[10px] font-semibold text-amber-900" title="${staleTitle}">⚠️</span>` : ""}
-              <p class="watchlist-price tabular-nums text-sm font-semibold leading-none text-neutral-900">${displayMarketPrice(priceValue)}</p>
+            <div class="min-w-0 flex-1">
+              <p class="watchlist-name line-clamp-2 text-xs font-medium leading-snug text-neutral-800">${escName}</p>
+              ${errHint}
+            </div>
+            <div class="flex shrink-0 flex-col items-end gap-1 self-start pt-0.5">
+              ${statusBadge}
+              <p class="watchlist-price text-right tabular-nums text-sm font-semibold leading-none ${missingQuote ? "text-neutral-500" : stale ? "text-amber-950" : "text-neutral-900"}"${priceTitle ? ` title="${priceTitle}"` : ""}>${priceHtml}</p>
             </div>
           </div>
         </div>
@@ -4405,14 +4540,38 @@ async function loadWatchlist(forceRefresh = false) {
   renderLoadingWatchlist();
   elements.watchlistMeta.textContent = tf("watchlist.metaVisible", { visible: 0, max: MAX_SIDEBAR_SLOTS });
   const suffix = forceRefresh ? "?refresh=1" : "";
-  const items = await api(`/api/dashboard/watchlist${suffix}`, {
-    timeoutMs: 25000,
-    retryCount: 1,
-  });
-  state.watchlist = items;
-  writeCachedJson(STORAGE_KEYS.cachedWatchlist, items);
-  renderWatchlist(items);
-  return items;
+  try {
+    const items = await api(`/api/dashboard/watchlist${suffix}`, {
+      timeoutMs: 25000,
+      retryCount: 1,
+    });
+    state.watchlist = items;
+    writeCachedJson(STORAGE_KEYS.cachedWatchlist, items);
+    renderWatchlist(items);
+    return items;
+  } catch (error) {
+    console.error("[frontend] watchlist load failed", error);
+    const cached = readCachedJson(STORAGE_KEYS.cachedWatchlist);
+    if (Array.isArray(cached) && cached.length) {
+      state.watchlist = cached.map((row) => {
+        if (safeWatchlistPrice(row.price) != null) {
+          return {
+            ...row,
+            quote_status: "stale",
+            stale: true,
+            is_stale: true,
+            data_source: row.data_source || "stale_cache",
+          };
+        }
+        return row;
+      });
+    } else {
+      state.watchlist = [];
+    }
+    renderWatchlist(state.watchlist);
+    showError(error?.message || t("watchlist.fetchErrorBanner"));
+    return state.watchlist;
+  }
 }
 
 async function loadSymbol(symbol, forceRefresh = false) {

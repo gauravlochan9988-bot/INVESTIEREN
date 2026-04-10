@@ -105,8 +105,8 @@ def create_app() -> FastAPI:
 
         def warm_top_symbols() -> None:
             from .api.deps import (
-                DASHBOARD_WATCHLIST,
                 get_analysis_service_instance,
+                get_dashboard_watchlist_symbols,
                 get_finnhub_dashboard_service_instance,
             )
 
@@ -118,7 +118,7 @@ def create_app() -> FastAPI:
             while True:
                 try:
                     dashboard_service.get_watchlist(force_refresh=False)
-                    for symbol in DASHBOARD_WATCHLIST:
+                    for symbol in get_dashboard_watchlist_symbols():
                         dashboard_service.get_symbol_overview(symbol, force_refresh=False)
                         analysis_service.prime_symbol(symbol, force_refresh=False)
                         for strategy in strategies:

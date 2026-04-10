@@ -151,7 +151,18 @@ class FinnhubSearchProvider:
 
             if not symbol or not name or not _is_supported_symbol(symbol):
                 continue
-            if instrument_type and instrument_type not in {"COMMON STOCK", "ADR", "ETP", "ETF"}:
+            allowed_types = {
+                "COMMON STOCK",
+                "ADR",
+                "ETP",
+                "ETF",
+                "REIT",
+                "STOCK",
+                "FUND",
+                "CLOSED-END FUND",
+                "MLP",
+            }
+            if instrument_type and instrument_type not in allowed_types:
                 continue
 
             results.append(SearchSnapshot(symbol=symbol, name=name))
@@ -166,19 +177,17 @@ class CompositeSearchProvider:
         self.providers = tuple(providers)
 
     def search(self, query: str, limit: int) -> List[SearchSnapshot]:
+        """Merge all providers so global listings are not cut off after the first source."""
         results: List[SearchSnapshot] = []
         errors: List[ExternalServiceError] = []
+        fetch_limit = max(limit * 3, 32)
 
         for provider in self.providers:
             try:
-                results.extend(provider.search(query, limit))
+                results.extend(provider.search(query, fetch_limit))
             except ExternalServiceError as error:
                 errors.append(error)
                 continue
-
-            deduped = _dedupe_snapshots(results, limit)
-            if len(deduped) >= limit:
-                return deduped
 
         deduped = _dedupe_snapshots(results, limit)
         if deduped:
@@ -205,7 +214,7 @@ class StockSearchService:
         if len(normalized_query) < 1:
             raise ValidationError("Search query must not be empty.")
 
-        capped_limit = max(1, min(limit, 20))
+        capped_limit = max(1, min(limit, 40))
         cache_key = f"{_normalize_text(normalized_query)}:{capped_limit}"
         cached = self.cache.get(cache_key)
         if cached is not None:
@@ -226,24 +235,26 @@ class StockSearchService:
 
     def _search_with_fallbacks(self, query: str, limit: int) -> List[SearchSnapshot]:
         mapped_results = self._mapped_results(query)
-        if mapped_results:
-            return mapped_results[:limit]
+        remote_limit = max(limit * 4, 32)
+        remote_results = self._provider_results(query, remote_limit)
+        local_limit = max(limit * 3, 16)
+        local_results = self._search_catalog(query, local_limit)
 
-        remote_results = self._provider_results(query, max(limit * 2, 8))
-        if remote_results:
-            return _dedupe_snapshots(remote_results, limit)
+        merged: List[SearchSnapshot] = []
+        merged.extend(mapped_results)
+        merged.extend(remote_results)
+        merged.extend(local_results)
+        deduped = _dedupe_snapshots(merged, limit)
+        if deduped:
+            return deduped
 
-        local_results = self._search_catalog(query, max(limit * 3, 12))
-        if local_results:
-            return _dedupe_snapshots(local_results, limit)
-
-        fallback_results: List[SearchSnapshot] = list(mapped_results)
+        fallback_results: List[SearchSnapshot] = []
         for fallback_query in self._fallback_queries(query):
-            fallback_results.extend(self._search_catalog(fallback_query, max(limit * 2, 8)))
-            fallback_results.extend(self._provider_results(fallback_query, max(limit * 2, 8)))
-            deduped = _dedupe_snapshots(fallback_results, limit)
-            if deduped:
-                return deduped
+            fallback_results.extend(self._search_catalog(fallback_query, max(limit * 2, 12)))
+            fallback_results.extend(self._provider_results(fallback_query, max(limit * 2, 16)))
+            deduped_fb = _dedupe_snapshots(fallback_results, limit)
+            if deduped_fb:
+                return deduped_fb
 
         direct_candidate = self._direct_symbol_candidate(query)
         if direct_candidate is not None:
@@ -259,19 +270,6 @@ class StockSearchService:
             return self.provider.search(query, limit)
         except ExternalServiceError:
             return []
-
-    def _should_skip_remote(
-        self,
-        query: str,
-        local_results: Sequence[SearchSnapshot],
-        limit: int,
-    ) -> bool:
-        normalized_query = _normalize_text(query)
-        if len(normalized_query) < 2:
-            return True
-        if len(local_results) >= limit:
-            return True
-        return any(_normalize_text(snapshot.symbol) == normalized_query for snapshot in local_results)
 
     def _mapped_results(self, query: str) -> List[SearchSnapshot]:
         normalized = _normalize_text(query)
@@ -450,9 +448,13 @@ def _dedupe_snapshots(snapshots: Sequence[SearchSnapshot], limit: int) -> List[S
 
 def build_stock_search_service() -> StockSearchService:
     settings = get_settings()
-    remote_providers: List[StockSearchProvider] = [YFinanceSearchProvider()]
-    if settings.finnhub_api_key:
+    # Finnhub first when configured: strong global / multi-exchange symbol search.
+    remote_providers: List[StockSearchProvider] = []
+    if settings.finnhub_api_key.strip():
         remote_providers.append(FinnhubSearchProvider(settings.finnhub_api_key))
+    remote_providers.append(YFinanceSearchProvider())
 
-    provider: StockSearchProvider | None = CompositeSearchProvider(remote_providers)
+    provider: StockSearchProvider | None = (
+        CompositeSearchProvider(remote_providers) if remote_providers else None
+    )
     return StockSearchService(provider=provider)

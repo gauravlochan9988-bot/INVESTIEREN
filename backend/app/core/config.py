@@ -12,6 +12,7 @@ BACKEND_DIR = APP_DIR.parent
 PROJECT_ROOT = BACKEND_DIR.parent
 
 
+# Drives MarketData allowed symbols, search defaults, and `/api/dashboard/watchlist` (via get_dashboard_watchlist_symbols).
 DEFAULT_WATCHLIST: Dict[str, str] = {
     "AAPL": "Apple",
     "MSFT": "Microsoft",
@@ -91,6 +92,8 @@ class Settings(BaseSettings):
     admin_access_max_attempts: int = 5
     admin_access_lockout_seconds: int = 900
     watchlist: Dict[str, str] = Field(default_factory=lambda: DEFAULT_WATCHLIST.copy())
+    cron_secret: str = ""
+    favorite_signal_min_confidence_partial: float = 58.0
 
     @field_validator("database_url", mode="before")
     @classmethod

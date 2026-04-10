@@ -14,6 +14,7 @@ from app.api.deps import (
     get_analysis_service,
     get_market_data_service,
     get_portfolio_service,
+    get_user_alert_service,
     require_full_access_user_context,
     get_stock_search_service,
     get_trade_history_service,
@@ -21,12 +22,15 @@ from app.api.deps import (
 )
 from app.core.database import get_db
 from app.models import Base
+from app.models.app_user import AppUser
+from app.repositories.alert_rule import AlertRuleRepository
 from app.repositories.alert_repository import AlertRepository
 from app.repositories.analysis_log import AnalysisLogRepository
 from app.repositories.analysis_threshold import AnalysisThresholdRepository
 from app.repositories.favorite_symbol import FavoriteSymbolRepository
 from app.repositories.portfolio import PortfolioRepository
 from app.repositories.trade_performance import TradePerformanceRepository
+from app.repositories.user_notification import UserNotificationRepository
 from app.services.analysis import AnalysisService
 from app.services.analysis_calibration import AnalysisCalibrationService
 from app.services.alerts import AlertService
@@ -37,8 +41,32 @@ from app.services.portfolio import PortfolioService
 from app.services.search import StockSearchService
 from app.services.strategy_learning import StrategyLearningService
 from app.services.trade_history import TradeHistoryService
+from app.services.user_alerts import UserAlertService
 from app.main import create_app
 from tests.helpers import FakeMarketDataProvider, FakeNewsProvider, FakeSearchProvider, FakeSummaryService
+
+
+def _seed_deterministic_test_app_users(session: Session) -> None:
+    """Stable ids for tests that override RequestUserContext with fixed app_user_id."""
+    seeds = [
+        (5, "clerk|desk"),
+        (7, "clerk|user-123"),
+        (9, "clerk|alerts-1"),
+        (11, "clerk|favorites-1"),
+    ]
+    for uid, subject in seeds:
+        if session.get(AppUser, uid) is None:
+            session.add(
+                AppUser(
+                    id=uid,
+                    auth_subject=subject,
+                    provider="clerk",
+                    email=None,
+                    name=None,
+                    picture_url=None,
+                )
+            )
+    session.commit()
 
 
 @pytest.fixture
@@ -112,6 +140,7 @@ def db_session() -> Session:
     TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
     Base.metadata.create_all(bind=engine)
     session = TestingSessionLocal()
+    _seed_deterministic_test_app_users(session)
     try:
         yield session
     finally:
@@ -149,6 +178,11 @@ def client(
         favorite_repository=FavoriteSymbolRepository(),
         default_symbols=tuple(market_data_service.allowed_symbols.keys()),
     )
+    user_alert_service = UserAlertService(
+        analysis_service=analysis_service,
+        alert_rule_repository=AlertRuleRepository(),
+        notification_repository=UserNotificationRepository(),
+    )
     trade_history_service = TradeHistoryService(
         market_data_service=market_data_service,
         trade_performance_repository=TradePerformanceRepository(),
@@ -162,6 +196,7 @@ def client(
     app.dependency_overrides[get_analysis_service] = lambda: analysis_service
     app.dependency_overrides[get_analysis_calibration_service] = lambda: calibration_service
     app.dependency_overrides[get_alert_service] = lambda: alert_service
+    app.dependency_overrides[get_user_alert_service] = lambda: user_alert_service
     app.dependency_overrides[get_portfolio_service] = lambda: portfolio_service
     app.dependency_overrides[get_stock_search_service] = lambda: stock_search_service
     app.dependency_overrides[get_trade_history_service] = lambda: trade_history_service

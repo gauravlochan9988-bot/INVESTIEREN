@@ -17,7 +17,7 @@ InterestRateEffect = Literal["positive", "neutral", "negative"]
 UsdStrength = Literal["weak", "neutral", "strong"]
 Strategy = Literal["simple", "ai", "hedgefund"]
 AlertTone = Literal["bullish", "bearish", "neutral"]
-AlertKind = Literal["recommendation", "signal", "price", "rsi", "entry", "exit"]
+AlertKind = Literal["recommendation", "signal", "price", "rsi", "entry", "exit", "favorite_signal"]
 
 STRATEGY_PROMPTS: dict[str, str] = {
     "simple": (

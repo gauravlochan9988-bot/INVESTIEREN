@@ -96,6 +96,7 @@ def get_alerts(
         force_refresh=refresh,
         limit=limit,
         user_key=user_context.user_key,
+        app_user_id=user_context.app_user_id,
         favorites_only=favorites_only,
     )
 
@@ -108,7 +109,11 @@ def get_favorites(
 ) -> list[FavoriteSymbolResponse]:
     return [
         FavoriteSymbolResponse(symbol=symbol, user_key=user_context.user_key)
-        for symbol in alert_service.list_favorites(db, user_key=user_context.user_key)
+        for symbol in alert_service.list_favorites(
+            db,
+            user_key=user_context.user_key,
+            app_user_id=user_context.app_user_id,
+        )
     ]
 
 
@@ -119,7 +124,12 @@ def add_favorite(
     alert_service: AlertService = Depends(get_alert_service),
     user_context: RequestUserContext = Depends(require_authenticated_user_context),
 ) -> FavoriteSymbolResponse:
-    symbol = alert_service.add_favorite(db, user_key=user_context.user_key, symbol=payload.symbol)
+    symbol = alert_service.add_favorite(
+        db,
+        user_key=user_context.user_key,
+        symbol=payload.symbol,
+        app_user_id=user_context.app_user_id,
+    )
     return FavoriteSymbolResponse(symbol=symbol, user_key=user_context.user_key)
 
 
@@ -130,7 +140,12 @@ def delete_favorite(
     alert_service: AlertService = Depends(get_alert_service),
     user_context: RequestUserContext = Depends(require_authenticated_user_context),
 ) -> FavoriteSymbolResponse:
-    alert_service.remove_favorite(db, user_key=user_context.user_key, symbol=symbol)
+    alert_service.remove_favorite(
+        db,
+        user_key=user_context.user_key,
+        symbol=symbol,
+        app_user_id=user_context.app_user_id,
+    )
     return FavoriteSymbolResponse(symbol=symbol.strip().upper(), user_key=user_context.user_key)
 
 

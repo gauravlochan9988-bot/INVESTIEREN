@@ -5170,6 +5170,86 @@ body {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
+/* BUY + Teilsignal / gemischt: keine Vollfläche Grün — hell, hoher Kontrast, Amber-Badges harmonieren */
+#recommendationCard.signal-buy-card.signal-partial-card {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 92, 57, 0.08) 0%,
+    #ffffff 42%,
+    #f8faf9 100%
+  ) !important;
+  border-color: rgba(0, 92, 57, 0.28) !important;
+  color: #171717 !important;
+  box-shadow:
+    0 12px 32px rgba(15, 23, 42, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+#recommendationCard.signal-buy-card.signal-partial-card::before {
+  background: linear-gradient(90deg, transparent, rgba(0, 92, 57, 0.25), transparent);
+  opacity: 1;
+}
+
+#recommendationCard.signal-buy-card.signal-partial-card #recommendationValue,
+#recommendationCard.signal-buy-card.signal-partial-card #recommendationIcon {
+  opacity: 1;
+}
+
+#recommendationCard.signal-buy-card.signal-partial-card .text-neutral-950,
+#recommendationCard.signal-buy-card.signal-partial-card .text-neutral-900 {
+  color: #0a0a0a !important;
+}
+
+#recommendationCard.signal-buy-card.signal-partial-card .text-neutral-800 {
+  color: #3d3d3d !important;
+}
+
+#recommendationCard.signal-buy-card.signal-partial-card .text-neutral-700 {
+  color: #454545 !important;
+}
+
+#recommendationCard.signal-buy-card.signal-partial-card .text-neutral-600 {
+  color: #525252 !important;
+}
+
+#recommendationCard.signal-buy-card.signal-partial-card .text-slate-200,
+#recommendationCard.signal-buy-card.signal-partial-card .text-slate-300,
+#recommendationCard.signal-buy-card.signal-partial-card .text-slate-400,
+#recommendationCard.signal-buy-card.signal-partial-card .text-slate-500 {
+  color: #525252 !important;
+}
+
+#recommendationCard.signal-buy-card.signal-partial-card #recommendationValue {
+  color: #004730 !important;
+  text-shadow: none;
+}
+
+#recommendationCard.signal-buy-card.signal-partial-card #recommendationIcon.signal-icon {
+  color: #005c39 !important;
+}
+
+#tradeDecisionSection #recommendationCard.signal-buy-card.signal-partial-card .signal-confidence-shell,
+#tradeDecisionSection #recommendationCard.signal-buy-card.signal-partial-card .signal-reason-block {
+  background: #f4faf7 !important;
+  border: 1px solid rgba(0, 92, 57, 0.14) !important;
+}
+
+#tradeDecisionSection #recommendationCard.signal-buy-card.signal-partial-card .decision-context-box {
+  background: rgba(0, 92, 57, 0.05) !important;
+  border-color: rgba(0, 92, 57, 0.16) !important;
+}
+
+#tradeDecisionSection #recommendationCard.signal-buy-card.signal-partial-card .signal-icon {
+  background: #ffffff !important;
+  border-color: rgba(0, 92, 57, 0.2) !important;
+  box-shadow: 0 0 0 1px rgba(0, 92, 57, 0.06);
+}
+
+#recommendationCard.signal-buy-card.signal-partial-card #confidenceBarFill,
+#recommendationCard.signal-buy-card.signal-partial-card #mobileConfidenceBarFill {
+  background: linear-gradient(90deg, #ea8600, #fbbf24) !important;
+}
+
 .chart-frame,
 #tradingviewChart {
   border-color: var(--glass-border) !important;
@@ -5336,6 +5416,14 @@ body {
     align-self: start !important;
     max-height: none !important;
     overflow: visible !important;
+    /* Kurse-Spalte: kühler Nebenton vs. Mitte/Rechts */
+    background:
+      linear-gradient(165deg, rgba(255, 255, 255, 0.98) 0%, rgba(241, 245, 249, 0.93) 100%),
+      radial-gradient(ellipse 95% 55% at -8% -5%, rgba(59, 130, 246, 0.09), transparent 58%) !important;
+    border-color: rgba(148, 163, 184, 0.38) !important;
+    box-shadow:
+      0 14px 44px rgba(15, 23, 42, 0.075),
+      inset 0 1px 0 rgba(255, 255, 255, 0.96) !important;
   }
 
   #analysisCenterColumn {
@@ -5345,6 +5433,31 @@ body {
     grid-column: 2 !important;
     grid-row: 1 !important;
     order: initial !important;
+    padding: clamp(0.4rem, 1vw, 0.7rem);
+    border-radius: 1.75rem;
+    background: linear-gradient(
+      168deg,
+      rgba(0, 92, 57, 0.06) 0%,
+      rgba(249, 249, 248, 0.88) 30%,
+      rgba(242, 216, 201, 0.16) 100%
+    );
+    border: 1px solid rgba(0, 92, 57, 0.1);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  }
+
+  /* Helle Karten in der Mitte: klar vom Spalten-Track getrennt */
+  #analysisCenterColumn > .dashboard-panel,
+  #signalsOverviewRow > .dashboard-panel {
+    background: linear-gradient(
+      180deg,
+      #ffffff 0%,
+      rgba(255, 255, 255, 0.96) 45%,
+      rgba(252, 252, 251, 1) 100%
+    ) !important;
+    border-color: rgba(0, 92, 57, 0.12) !important;
+    box-shadow:
+      0 10px 34px rgba(15, 23, 42, 0.048),
+      inset 0 1px 0 rgba(255, 255, 255, 0.92) !important;
   }
 
   /* order: Mitte-Spalte — Symbol → Entscheidung → Chart, Startlinie mit Seitenleisten */
@@ -5391,6 +5504,15 @@ body {
     overflow: visible !important;
   }
 
+  /* Rechte Spalte: dezenter Brand-Schein */
+  #decisionRail .dashboard-panel {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(247, 252, 249, 0.94)),
+      radial-gradient(ellipse 88% 52% at 102% -2%, rgba(0, 92, 57, 0.1), transparent 56%) !important;
+    border-color: rgba(0, 92, 57, 0.17) !important;
+    box-shadow: 0 12px 38px rgba(0, 92, 57, 0.065) !important;
+  }
+
   #companySection {
     display: flex !important;
     flex-direction: column !important;
@@ -5417,6 +5539,10 @@ body {
     grid-row: 1 !important;
     position: sticky !important;
     top: 1rem !important;
+    background:
+      linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.9)),
+      radial-gradient(ellipse 80% 45% at 100% 0%, rgba(59, 130, 246, 0.07), transparent 50%) !important;
+    border-color: rgba(148, 163, 184, 0.32) !important;
   }
 
   #analysisCenterColumn {
@@ -5425,6 +5551,22 @@ body {
     gap: 1rem !important;
     grid-column: 1 !important;
     grid-row: 1 / span 2 !important;
+    padding: 0.35rem;
+    border-radius: 1.5rem;
+    background: linear-gradient(
+      165deg,
+      rgba(0, 92, 57, 0.045) 0%,
+      rgba(249, 249, 248, 0.85) 40%,
+      rgba(242, 216, 201, 0.12) 100%
+    );
+    border: 1px solid rgba(0, 92, 57, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  }
+
+  #analysisCenterColumn > .dashboard-panel,
+  #signalsOverviewRow > .dashboard-panel {
+    border-color: rgba(0, 92, 57, 0.1) !important;
+    box-shadow: 0 8px 26px rgba(15, 23, 42, 0.04) !important;
   }
 
   #selectedSymbolSection {
@@ -5444,6 +5586,13 @@ body {
     grid-column: 2 !important;
     grid-row: 2 !important;
     position: static !important;
+  }
+
+  #decisionRail .dashboard-panel {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(248, 252, 249, 0.92)),
+      radial-gradient(ellipse 75% 42% at 100% 0%, rgba(0, 92, 57, 0.07), transparent 52%) !important;
+    border-color: rgba(0, 92, 57, 0.14) !important;
   }
 
   #companySection,

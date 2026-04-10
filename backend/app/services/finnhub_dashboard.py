@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
+import logging
 import math
 from typing import Iterable, Union
 
@@ -12,9 +13,23 @@ from app.schemas.dashboard import (
     DashboardNewsItem,
     DashboardSymbolOverview,
     DashboardWatchlistItem,
+    WatchlistQuoteStatus,
 )
 from app.services.cache import RequestDeduplicator, TTLCache
 from app.services.news import NewsSentimentService
+
+logger = logging.getLogger(__name__)
+
+_FETCH_ERROR_MARKERS = (
+    "rate limit",
+    "unavailable",
+    "rejected",
+    "timeout",
+    "api key",
+    "finnhub request failed",
+    "finnhub is currently",
+    "check finnh",
+)
 
 
 class FinnhubDashboardService:
@@ -152,6 +167,110 @@ class FinnhubDashboardService:
             return fallback
         return round(numeric, 2)
 
+    @staticmethod
+    def _clip_reason(message: str, max_len: int = 220) -> str:
+        text = (message or "").strip()
+        if len(text) <= max_len:
+            return text
+        return text[: max_len - 1] + "…"
+
+    @staticmethod
+    def _looks_like_transport_failure(message: str) -> bool:
+        lower = (message or "").lower()
+        return any(marker in lower for marker in _FETCH_ERROR_MARKERS)
+
+    def _quote_timestamp(self, quote: dict) -> datetime | None:
+        raw = quote.get("t")
+        if raw is None:
+            return None
+        try:
+            ts = float(raw)
+        except (TypeError, ValueError):
+            return None
+        if ts <= 0:
+            return None
+        return datetime.fromtimestamp(ts, tz=timezone.utc)
+
+    def _item_from_finnhub(self, symbol: str, quote: dict, price: float) -> DashboardWatchlistItem:
+        return DashboardWatchlistItem(
+            symbol=symbol,
+            name=self.watchlist_names.get(symbol) or symbol,
+            exchange=None,
+            logo=None,
+            price=price,
+            change=self._quote_number(quote.get("d"), None),
+            change_percent=self._quote_number(quote.get("dp"), None),
+            high=self._quote_number(quote.get("h"), price),
+            low=self._quote_number(quote.get("l"), price),
+            open=self._quote_number(quote.get("o"), price),
+            previous_close=self._quote_number(quote.get("pc"), price),
+            stale=False,
+            is_stale=False,
+            no_data=False,
+            quote_status="success",
+            error_reason=None,
+            data_source="finnhub",
+            last_updated=self._quote_timestamp(quote),
+        )
+
+    def _item_from_yfinance_watchlist(self, symbol: str) -> DashboardWatchlistItem:
+        overview = self._fallback_symbol_overview(symbol)
+        now = datetime.now(timezone.utc)
+        return DashboardWatchlistItem(
+            symbol=overview.symbol,
+            name=overview.name,
+            exchange=overview.exchange,
+            logo=overview.logo,
+            price=overview.price,
+            change=None,
+            change_percent=overview.change_percent,
+            high=overview.high,
+            low=overview.low,
+            open=overview.open,
+            previous_close=overview.previous_close,
+            stale=False,
+            is_stale=False,
+            no_data=False,
+            quote_status="success",
+            error_reason=None,
+            data_source="yfinance",
+            last_updated=now,
+        )
+
+    def _item_as_stale(self, item: DashboardWatchlistItem) -> DashboardWatchlistItem:
+        return item.model_copy(
+            update={
+                "stale": True,
+                "is_stale": True,
+                "quote_status": "stale",
+                "data_source": "stale_cache",
+                "error_reason": None,
+            }
+        )
+
+    def _item_without_quote(self, symbol: str, *, reason: str) -> DashboardWatchlistItem:
+        clipped = self._clip_reason(reason)
+        is_fetch_error = self._looks_like_transport_failure(clipped)
+        status: WatchlistQuoteStatus = "fetch_error" if is_fetch_error else "no_data"
+        return DashboardWatchlistItem(
+            symbol=symbol,
+            name=self.watchlist_names.get(symbol) or symbol,
+            price=None,
+            change=None,
+            change_percent=None,
+            high=None,
+            low=None,
+            open=None,
+            previous_close=None,
+            stale=False,
+            is_stale=False,
+            no_data=True,
+            quote_status=status,
+            error_reason=clipped if clipped else None,
+            data_source="none",
+            last_updated=None,
+        )
+
     def _last_known_symbol_overview(self, symbol: str) -> DashboardSymbolOverview | None:
         cache_key = f"symbol:{symbol}"
         active = self.symbol_cache.get(cache_key)
@@ -177,18 +296,7 @@ class FinnhubDashboardService:
         )
 
     def _no_data_watchlist_item(self, symbol: str) -> DashboardWatchlistItem:
-        return DashboardWatchlistItem(
-            symbol=symbol,
-            name=self.watchlist_names.get(symbol) or symbol,
-            price=None,
-            change_percent=None,
-            high=None,
-            low=None,
-            open=None,
-            previous_close=None,
-            stale=False,
-            no_data=True,
-        )
+        return self._item_without_quote(symbol, reason="No valid market quote available.")
 
     def _fallback_symbol_overview(self, symbol: str) -> DashboardSymbolOverview:
         lookup_symbol = self._normalize_market_symbol(symbol)
@@ -265,27 +373,14 @@ class FinnhubDashboardService:
         )
 
     def _fallback_watchlist_item(self, symbol: str) -> DashboardWatchlistItem:
-        overview = self._fallback_symbol_overview(symbol)
-        return DashboardWatchlistItem(
-            symbol=overview.symbol,
-            name=overview.name,
-            exchange=overview.exchange,
-            logo=overview.logo,
-            price=overview.price,
-            change_percent=overview.change_percent,
-            high=overview.high,
-            low=overview.low,
-            open=overview.open,
-            previous_close=overview.previous_close,
-            stale=overview.stale,
-        )
+        return self._item_from_yfinance_watchlist(symbol)
 
     def _last_known_watchlist_item(self, symbol: str) -> DashboardWatchlistItem | None:
         active = self.watchlist_cache.get("watchlist") or []
         stale = self.watchlist_cache.get_stale("watchlist") or []
         for item in [*active, *stale]:
             if item.symbol == symbol and self._valid_price(item.price) is not None:
-                return item.model_copy(update={"stale": True})
+                return item
         return None
 
     def _find_item_in_snapshot(
@@ -325,33 +420,35 @@ class FinnhubDashboardService:
             )
         return items
 
-    def _build_watchlist_item(self, symbol: str) -> DashboardWatchlistItem:
+    def _build_watchlist_item(
+        self,
+        symbol: str,
+        stale_snapshot: list[DashboardWatchlistItem] | None = None,
+    ) -> DashboardWatchlistItem:
         try:
             quote = self._fetch_quote(symbol)
             price = self._valid_price(quote.get("c"))
             if price is None:
-                raise ExternalServiceError(f"No Finnhub quote data available for {symbol}.")
-            return DashboardWatchlistItem(
-                symbol=symbol,
-                name=self.watchlist_names.get(symbol) or symbol,
-                exchange=None,
-                logo=None,
-                price=price,
-                change_percent=self._quote_number(quote.get("dp"), 0.0),
-                high=self._quote_number(quote.get("h"), price),
-                low=self._quote_number(quote.get("l"), price),
-                open=self._quote_number(quote.get("o"), price),
-                previous_close=self._quote_number(quote.get("pc"), price),
-                stale=False,
+                raise ExternalServiceError(f"No valid Finnhub price for {symbol}.")
+            return self._item_from_finnhub(symbol, quote, price)
+        except ExternalServiceError as exc:
+            logger.warning(
+                "watchlist finnhub failed",
+                extra={"symbol": symbol, "error": str(exc)},
             )
-        except ExternalServiceError:
             try:
                 return self._fallback_watchlist_item(symbol)
-            except ExternalServiceError:
-                last_known = self._last_known_watchlist_item(symbol)
+            except ExternalServiceError as exc2:
+                logger.warning(
+                    "watchlist yfinance failed",
+                    extra={"symbol": symbol, "error": str(exc2)},
+                )
+                last_known = self._last_known_watchlist_item(symbol) or self._find_item_in_snapshot(
+                    stale_snapshot, symbol
+                )
                 if last_known is not None:
-                    return last_known
-                return self._no_data_watchlist_item(symbol)
+                    return self._item_as_stale(last_known)
+                return self._item_without_quote(symbol, reason=str(exc2))
 
     def get_watchlist(self, force_refresh: bool = False) -> list[DashboardWatchlistItem]:
         cache_key = "watchlist"
@@ -369,19 +466,7 @@ class FinnhubDashboardService:
 
             items: list[DashboardWatchlistItem] = []
             for symbol in self.watchlist:
-                try:
-                    item = self._build_watchlist_item(symbol)
-                except ExternalServiceError:
-                    last_known = self._find_item_in_snapshot(stale_snapshot, symbol)
-                    if last_known is not None:
-                        items.append(last_known)
-                    continue
-                if item.no_data:
-                    last_known = self._find_item_in_snapshot(stale_snapshot, symbol)
-                    if last_known is not None:
-                        items.append(last_known.model_copy(update={"stale": True}))
-                        continue
-                items.append(item)
+                items.append(self._build_watchlist_item(symbol, stale_snapshot))
 
             if not items:
                 stale = self.watchlist_cache.get_stale(cache_key)

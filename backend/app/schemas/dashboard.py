@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel
+
+WatchlistQuoteStatus = Literal["success", "stale", "no_data", "fetch_error"]
 
 
 class DashboardWatchlistItem(BaseModel):
@@ -12,6 +14,7 @@ class DashboardWatchlistItem(BaseModel):
     exchange: Optional[str] = None
     logo: Optional[str] = None
     price: Optional[float] = None
+    change: Optional[float] = None
     change_percent: Optional[float] = None
     high: Optional[float] = None
     low: Optional[float] = None
@@ -19,6 +22,11 @@ class DashboardWatchlistItem(BaseModel):
     previous_close: Optional[float] = None
     stale: bool = False
     no_data: bool = False
+    quote_status: WatchlistQuoteStatus = "success"
+    error_reason: Optional[str] = None
+    data_source: Optional[str] = None
+    last_updated: Optional[datetime] = None
+    is_stale: bool = False
 
 
 class DashboardSymbolOverview(BaseModel):
