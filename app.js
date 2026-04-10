@@ -1109,7 +1109,8 @@ function deriveClerkFrontendApiUrlFromPublishableKey(publishableKey) {
     const padded = `${encoded}${"=".repeat((4 - (encoded.length % 4)) % 4)}`;
     const decoded = window
       .atob(padded.replace(/-/g, "+").replace(/_/g, "/"))
-      .trim();
+      .trim()
+      .replace(/\$+$/, "");
     if (!decoded) {
       return "";
     }
