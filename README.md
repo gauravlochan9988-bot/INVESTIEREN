@@ -90,6 +90,7 @@ DATABASE_URL=postgresql+psycopg2://USER:PASSWORD@ep-xxxxxx.eu-central-1.aws.neon
 - `CLERK_JWT_KEY`
 - `FRONTEND_ORIGIN`
 - `CORS_ALLOW_ORIGINS` (comma-separated, optional)
+- `OWNER_AUTH_SUBJECTS` (comma-separated Clerk `sub` values with owner access)
 - `CRON_SECRET`
 
 ## API overview

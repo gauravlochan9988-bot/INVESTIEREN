@@ -16,6 +16,7 @@ const AUTH_TOKEN_CACHE_MS = 45 * 1000;
 const SIMPLE_ACCESS_CODE = "9988";
 const BOOT_ANIMATION_FREEZE_MS = 900;
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const AUTH_RESEND_COOLDOWN_SECONDS = 30;
 
 const I18N_STORAGE_KEY = "investieren:lang";
 const I18N_DEFAULT = "auto";
@@ -659,6 +660,12 @@ const state = {
     currentUser: null,
     subscription: null,
     adminSession: window.localStorage.getItem(STORAGE_KEYS.adminSession) || "",
+    formMode: "login",
+    verifyStep: false,
+    verifyEmail: "",
+    verifyMode: "signup",
+    resendCooldownUntil: 0,
+    resetSignIn: null,
   },
   appBindingsReady: false,
 };
@@ -669,17 +676,31 @@ const elements = {
   paywallUpgradeButton: document.getElementById("paywallUpgradeButton"),
   paywallLogoutButton: document.getElementById("paywallLogoutButton"),
   paywallMessage: document.getElementById("paywallMessage"),
-  authManagedPanel: document.getElementById("authManagedPanel"),
-  authClerkPanel: document.getElementById("authClerkPanel"),
-  authClerkMount: document.getElementById("authClerkMount"),
   authForm: document.getElementById("authForm"),
   authGoogleButton: document.getElementById("authGoogleButton"),
   authAppleButton: document.getElementById("authAppleButton"),
   authEmailButton: document.getElementById("authEmailButton"),
+  authModeLoginButton: document.getElementById("authModeLoginButton"),
+  authModeSignupButton: document.getElementById("authModeSignupButton"),
+  authSubmitButton: document.getElementById("authSubmitButton"),
+  authVerifyPanel: document.getElementById("authVerifyPanel"),
+  authVerifyEmail: document.getElementById("authVerifyEmail"),
+  authVerificationCode: document.getElementById("authVerificationCode"),
+  authResetNewPassword: document.getElementById("authResetNewPassword"),
+  authResetPasswordShell: document.getElementById("authResetPasswordShell"),
+  authVerifySubmitButton: document.getElementById("authVerifySubmitButton"),
+  authVerifyResendButton: document.getElementById("authVerifyResendButton"),
+  authVerifyBackButton: document.getElementById("authVerifyBackButton"),
+  authForgotPasswordButton: document.getElementById("authForgotPasswordButton"),
+  authUsername: document.getElementById("authUsername"),
+  authUsernameLabel: document.getElementById("authUsernameLabel"),
+  authUsernameShell: document.getElementById("authUsernameShell"),
+  authEmail: document.getElementById("authEmail"),
   authAdminToggleButton: document.getElementById("authAdminToggleButton"),
   authLoading: document.getElementById("authLoading"),
   authPassword: document.getElementById("authPassword"),
   authError: document.getElementById("authError"),
+  authInfo: document.getElementById("authInfo"),
   authCancelButton: document.getElementById("authCancelButton"),
   appShell: document.getElementById("appShell"),
   backendStatus: document.getElementById("backendStatus"),
@@ -831,6 +852,7 @@ function updateAuthVisualMotion(clientX, clientY) {
 let authVisualMotionRaf = null;
 let pendingAuthVisualPoint = null;
 let authVisualMotionBound = false;
+let authResendTicker = null;
 
 function flushAuthVisualMotion() {
   authVisualMotionRaf = null;
@@ -985,15 +1007,47 @@ function currentUserKey() {
 }
 
 function renderAuthMode() {
-  if (elements.authManagedPanel) {
-    elements.authManagedPanel.hidden = true;
-  }
-  if (elements.authClerkPanel) {
-    elements.authClerkPanel.hidden = true;
-  }
   if (elements.authForm) {
     elements.authForm.hidden = false;
   }
+  const signup = state.auth.formMode === "signup";
+  const verifyStep = Boolean(state.auth.verifyStep);
+  const resetMode = state.auth.verifyMode === "reset";
+  if (elements.authUsernameLabel) {
+    elements.authUsernameLabel.hidden = !signup || verifyStep;
+  }
+  if (elements.authUsernameShell) {
+    elements.authUsernameShell.hidden = !signup || verifyStep;
+  }
+  if (elements.authEmail) {
+    elements.authEmail.disabled = verifyStep;
+  }
+  if (elements.authPassword) {
+    elements.authPassword.disabled = verifyStep;
+  }
+  if (elements.authSubmitButton) {
+    elements.authSubmitButton.textContent = signup ? "Create account" : "Login";
+    elements.authSubmitButton.hidden = verifyStep;
+  }
+  if (elements.authForgotPasswordButton) {
+    elements.authForgotPasswordButton.hidden = verifyStep || signup;
+  }
+  if (elements.authVerifyPanel) {
+    elements.authVerifyPanel.hidden = !verifyStep;
+  }
+  if (elements.authVerifyEmail) {
+    elements.authVerifyEmail.textContent = state.auth.verifyEmail || "your email";
+  }
+  if (elements.authResetPasswordShell) {
+    elements.authResetPasswordShell.hidden = !verifyStep || !resetMode;
+  }
+  if (elements.authVerifySubmitButton) {
+    elements.authVerifySubmitButton.textContent = resetMode ? "Reset password and continue" : "Verify and continue";
+  }
+  elements.authModeLoginButton?.classList.toggle("bg-neutral-900", !signup);
+  elements.authModeLoginButton?.classList.toggle("text-white", !signup);
+  elements.authModeSignupButton?.classList.toggle("bg-neutral-900", signup);
+  elements.authModeSignupButton?.classList.toggle("text-white", signup);
 }
 
 function setAuthLoading(loading, message = "Redirecting…") {
@@ -1004,6 +1058,19 @@ function setAuthLoading(loading, message = "Redirecting…") {
   elements.authLoading.textContent = message;
 }
 
+function setAuthInfo(message = "") {
+  if (!elements.authInfo) {
+    return;
+  }
+  if (!message) {
+    elements.authInfo.hidden = true;
+    elements.authInfo.textContent = "";
+    return;
+  }
+  elements.authInfo.textContent = message;
+  elements.authInfo.hidden = false;
+}
+
 function setAuthError(message = "") {
   if (!elements.authError) {
     return;
@@ -1011,25 +1078,121 @@ function setAuthError(message = "") {
   if (!message) {
     elements.authError.hidden = true;
     elements.authPassword?.setAttribute("aria-invalid", "false");
+    elements.authEmail?.setAttribute("aria-invalid", "false");
+    elements.authVerificationCode?.setAttribute("aria-invalid", "false");
+    elements.authResetNewPassword?.setAttribute("aria-invalid", "false");
     return;
   }
   elements.authError.textContent = message;
   elements.authError.hidden = false;
   elements.authPassword?.setAttribute("aria-invalid", "true");
+  elements.authEmail?.setAttribute("aria-invalid", "true");
+  elements.authVerificationCode?.setAttribute("aria-invalid", "true");
+  elements.authResetNewPassword?.setAttribute("aria-invalid", "true");
+}
+
+function readClerkPublishableKeyFromDom() {
+  const node = document.querySelector('meta[name="clerk-publishable-key"]');
+  return String(node?.getAttribute("content") || "").trim();
+}
+
+function deriveClerkFrontendApiUrlFromPublishableKey(publishableKey) {
+  const value = String(publishableKey || "").trim();
+  if (!value || !value.includes("$")) {
+    return "";
+  }
+  try {
+    const encoded = value.split("$", 1)[0].split("_").pop() || "";
+    if (!encoded) {
+      return "";
+    }
+    const padded = `${encoded}${"=".repeat((4 - (encoded.length % 4)) % 4)}`;
+    const decoded = window
+      .atob(padded.replace(/-/g, "+").replace(/_/g, "/"))
+      .trim();
+    if (!decoded) {
+      return "";
+    }
+    return decoded.startsWith("https://") ? decoded : `https://${decoded}`;
+  } catch {
+    return "";
+  }
+}
+
+function getClientAuthConfigFallback() {
+  const publishableKey = readClerkPublishableKeyFromDom();
+  if (!publishableKey) {
+    return null;
+  }
+  const frontendApiUrl = deriveClerkFrontendApiUrlFromPublishableKey(publishableKey);
+  if (!frontendApiUrl) {
+    return null;
+  }
+  return {
+    enabled: true,
+    provider: "clerk",
+    publishable_key: publishableKey,
+    frontend_api_url: frontendApiUrl,
+  };
+}
+
+function startResendCooldown(seconds = AUTH_RESEND_COOLDOWN_SECONDS) {
+  state.auth.resendCooldownUntil = Date.now() + Math.max(1, seconds) * 1000;
+  syncResendCooldownButton();
+}
+
+function syncResendCooldownButton() {
+  if (!elements.authVerifyResendButton) {
+    return;
+  }
+  const remainingMs = state.auth.resendCooldownUntil - Date.now();
+  if (remainingMs <= 0) {
+    elements.authVerifyResendButton.disabled = false;
+    elements.authVerifyResendButton.textContent = "Resend code";
+    if (authResendTicker) {
+      window.clearTimeout(authResendTicker);
+      authResendTicker = null;
+    }
+    return;
+  }
+  const remainingSeconds = Math.ceil(remainingMs / 1000);
+  elements.authVerifyResendButton.disabled = true;
+  elements.authVerifyResendButton.textContent = `Resend in ${remainingSeconds}s`;
+  if (authResendTicker) {
+    window.clearTimeout(authResendTicker);
+  }
+  authResendTicker = window.setTimeout(syncResendCooldownButton, 250);
 }
 
 async function fetchAuthConfig() {
-  const config = await api("/api/auth/config", {
-    timeoutMs: 12000,
-    retryCount: 1,
-    skipAuth: true,
-  });
-  state.auth.config = config;
+  let config = {};
+  try {
+    config = await api("/api/auth/config", {
+      timeoutMs: 12000,
+      retryCount: 1,
+      skipAuth: true,
+    });
+  } catch (error) {
+    console.warn("[frontend] auth config endpoint unavailable, trying client fallback", error);
+  }
+
+  const fallback = getClientAuthConfigFallback();
+  const merged = { ...(config || {}) };
+  if (fallback) {
+    merged.provider = "clerk";
+    merged.publishable_key = merged.publishable_key || fallback.publishable_key;
+    merged.frontend_api_url = merged.frontend_api_url || fallback.frontend_api_url;
+    if (!merged.enabled) {
+      merged.enabled = true;
+    }
+  }
+
+  state.auth.config = merged;
   state.auth.enabled = Boolean(
-    config?.enabled && config.provider === "clerk" && config.publishable_key && config.frontend_api_url,
+    merged?.provider === "clerk" && merged.publishable_key && merged.frontend_api_url,
   );
   renderAuthMode();
-  return config;
+  return merged;
 }
 
 async function ensureClerkFrontendLoaded(config) {
@@ -1068,37 +1231,8 @@ async function ensureClerkFrontendLoaded(config) {
 }
 
 function renderManagedAuthView(mode = "login") {
-  if (!state.auth.enabled || !state.auth.client || !elements.authClerkMount) {
-    return;
-  }
-
-  state.auth.view = mode === "signup" ? "signup" : "login";
-  state.auth.showManagedAuth = true;
-  state.auth.showAdminAccess = false;
+  state.auth.formMode = mode === "signup" ? "signup" : "login";
   renderAuthMode();
-
-  try {
-    state.auth.client.unmountSignIn?.(elements.authClerkMount);
-    state.auth.client.unmountSignUp?.(elements.authClerkMount);
-  } catch (error) {
-    console.debug("[frontend] auth unmount skipped", error);
-  }
-  elements.authClerkMount.innerHTML = "";
-
-  const sharedOptions = {
-    path: window.location.pathname,
-    signInUrl: window.location.pathname,
-    signUpUrl: window.location.pathname,
-    fallbackRedirectUrl: `${window.location.origin}${window.location.pathname}`,
-    forceRedirectUrl: `${window.location.origin}${window.location.pathname}`,
-  };
-
-  if (state.auth.view === "signup") {
-    state.auth.client.mountSignUp(elements.authClerkMount, sharedOptions);
-    return;
-  }
-
-  state.auth.client.mountSignIn(elements.authClerkMount, sharedOptions);
 }
 
 async function getAccessToken(forceRefresh = false) {
@@ -1154,7 +1288,7 @@ function renderSubscriptionButton() {
     return;
   }
 
-  if (isAuthenticated()) {
+  if (hasProAccess()) {
     elements.subscribeButton.textContent = "Full Access";
     elements.subscribeButton.disabled = true;
     elements.subscribeButton.className =
@@ -1162,8 +1296,8 @@ function renderSubscriptionButton() {
     return;
   }
 
-  elements.subscribeButton.disabled = true;
-  elements.subscribeButton.textContent = "Locked";
+  elements.subscribeButton.disabled = !isAuthenticated();
+  elements.subscribeButton.textContent = isAuthenticated() ? "Upgrade €4.99" : "Locked";
   elements.subscribeButton.className =
     "action-secondary rounded-2xl border border-neutral-200/90 bg-white/5 px-4 py-3 text-sm font-semibold text-neutral-700 opacity-80 xl:min-w-[132px]";
 }
@@ -1179,8 +1313,21 @@ function managedPlanConfig() {
   };
 }
 
+function isOwnerUser() {
+  return Boolean(state.auth.currentUser?.is_admin || state.auth.currentUser?.role === "owner");
+}
+
 function hasActiveSubscription() {
-  return isAuthenticated();
+  return Boolean(state.auth.subscription?.active || isOwnerUser());
+}
+
+function hasProAccess() {
+  return hasActiveSubscription();
+}
+
+function strategyRequiresPro(strategy) {
+  const normalized = String(strategy || "").toLowerCase();
+  return normalized === "ai" || normalized === "hedgefund";
 }
 
 function setAdminSessionToken(token = "") {
@@ -1235,9 +1382,10 @@ function syncLimitedAccessBanner() {
   if (!elements.limitedAccessBanner) {
     return;
   }
-  elements.limitedAccessBanner.classList.add("hidden");
-  elements.limitedAccessBanner.classList.remove("flex");
-  elements.limitedAccessBanner.hidden = true;
+  const show = isAuthenticated() && !hasProAccess();
+  elements.limitedAccessBanner.classList.toggle("hidden", !show);
+  elements.limitedAccessBanner.classList.toggle("flex", show);
+  elements.limitedAccessBanner.hidden = !show;
 }
 
 async function loadSubscriptionStatus() {
@@ -1248,20 +1396,45 @@ async function loadSubscriptionStatus() {
     return null;
   }
 
-  state.auth.subscription = {
-    active: true,
-    status: "active",
-    amount_cents: 499,
-    currency: "eur",
-    interval: "month",
-  };
+  try {
+    state.auth.subscription = await api("/api/billing/subscription", {
+      timeoutMs: 15000,
+      retryCount: 1,
+    });
+  } catch (error) {
+    console.error("[frontend] subscription status load failed", error);
+    state.auth.subscription = {
+      active: false,
+      status: "inactive",
+      amount_cents: 499,
+      currency: "eur",
+      interval: "month",
+    };
+  }
   renderSubscriptionButton();
   syncLimitedAccessBanner();
   return state.auth.subscription;
 }
 
 async function startCheckout() {
-  renderSubscriptionButton();
+  if (!isAuthenticated()) {
+    setAuthError("Please login first.");
+    return;
+  }
+  try {
+    const session = await api("/api/billing/checkout", {
+      method: "POST",
+      body: JSON.stringify({}),
+      timeoutMs: 20000,
+      retryCount: 0,
+    });
+    if (!session?.url) {
+      throw new Error("Checkout is unavailable.");
+    }
+    window.location.href = session.url;
+  } catch (error) {
+    showError(error.message || "Checkout failed.");
+  }
 }
 
 async function handleBillingRedirectState() {
@@ -1321,29 +1494,45 @@ async function initializeManagedAuth() {
   state.auth.showManagedAuth = false;
   state.auth.showAdminAccess = true;
   renderAuthMode();
-  state.auth.ready = true;
-  renderSubscriptionButton();
-  return false;
+  try {
+    const config = await fetchAuthConfig();
+    if (!config?.enabled) {
+      state.auth.ready = true;
+      renderSubscriptionButton();
+      return false;
+    }
+    const clerk = await ensureClerkFrontendLoaded(config);
+    await clerk.load();
+    state.auth.client = clerk;
+    state.auth.enabled = true;
+    state.auth.ready = true;
+
+    if (clerk.user && clerk.session) {
+      setAuthenticated(true);
+      await syncAuthenticatedUser(true);
+      await loadSubscriptionStatus();
+      await handleBillingRedirectState();
+    } else {
+      setAuthenticated(false);
+      state.auth.subscription = null;
+      renderSubscriptionButton();
+    }
+    return true;
+  } catch (error) {
+    console.error("[frontend] managed auth init failed", error);
+    state.auth.enabled = false;
+    state.auth.client = null;
+    state.auth.ready = true;
+    renderSubscriptionButton();
+    return false;
+  }
 }
 
 async function loginWithManagedProvider(mode = "login") {
   if (!state.auth.ready) {
-    setAuthLoading(true, t("auth.loadingLogin"));
     return;
   }
-
-  if (!state.auth.enabled || !state.auth.client) {
-    setAuthError("Login is unavailable.");
-    return;
-  }
-
-  setAuthError("");
-  try {
-    renderManagedAuthView(mode);
-  } catch (error) {
-    console.error("[frontend] auth view switch failed", error);
-    setAuthError("Login failed. Try again.");
-  }
+  renderManagedAuthView(mode);
 }
 
 async function continueWithOAuth(strategy) {
@@ -1385,6 +1574,123 @@ async function continueWithOAuth(strategy) {
 
   setAuthLoading(false);
   await loginWithManagedProvider("login");
+}
+
+async function authenticateWithEmailPassword({ mode, username, email, password }) {
+  if (!state.auth.enabled || !state.auth.client) {
+    throw new Error("Login is unavailable.");
+  }
+  const clerk = state.auth.client;
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const normalizedPassword = String(password || "");
+  const normalizedUsername = String(username || "").trim();
+  if (!normalizedEmail || !normalizedPassword) {
+    throw new Error("Email and password are required.");
+  }
+  if (mode === "signup" && normalizedUsername.length < 3) {
+    throw new Error("Username must have at least 3 characters.");
+  }
+
+  if (mode === "signup") {
+    const signUpAttempt = await clerk.client.signUp.create({
+      emailAddress: normalizedEmail,
+      password: normalizedPassword,
+      username: normalizedUsername || undefined,
+    });
+    if (signUpAttempt.status === "complete" && signUpAttempt.createdSessionId) {
+      await clerk.setActive({ session: signUpAttempt.createdSessionId });
+      return;
+    }
+    await clerk.client.signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+    state.auth.verifyStep = true;
+    state.auth.verifyEmail = normalizedEmail;
+    state.auth.verifyMode = "signup";
+    startResendCooldown();
+    renderAuthMode();
+    throw new Error("Enter the verification code sent to your email.");
+  }
+
+  const signInAttempt = await clerk.client.signIn.create({
+    identifier: normalizedEmail,
+    password: normalizedPassword,
+  });
+  if (signInAttempt.status === "complete" && signInAttempt.createdSessionId) {
+    await clerk.setActive({ session: signInAttempt.createdSessionId });
+    return;
+  }
+  throw new Error("Login failed. Check your credentials.");
+}
+
+async function completeSignupVerification(code) {
+  if (!state.auth.enabled || !state.auth.client) {
+    throw new Error("Login is unavailable.");
+  }
+  const normalizedCode = String(code || "").trim();
+  if (!normalizedCode) {
+    throw new Error("Verification code is required.");
+  }
+  const result = await state.auth.client.client.signUp.attemptEmailAddressVerification({
+    code: normalizedCode,
+  });
+  if (result.status === "complete" && result.createdSessionId) {
+    await state.auth.client.setActive({ session: result.createdSessionId });
+    state.auth.verifyStep = false;
+    state.auth.verifyEmail = "";
+    state.auth.verifyMode = "signup";
+    renderAuthMode();
+    return;
+  }
+  throw new Error("Verification failed. Try again.");
+}
+
+async function startPasswordResetFlow(email) {
+  if (!state.auth.enabled || !state.auth.client) {
+    throw new Error("Login is unavailable.");
+  }
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  if (!normalizedEmail) {
+    throw new Error("Please enter your email first.");
+  }
+  const signIn = await state.auth.client.client.signIn.create({
+    strategy: "reset_password_email_code",
+    identifier: normalizedEmail,
+  });
+  state.auth.resetSignIn = signIn;
+  state.auth.verifyStep = true;
+  state.auth.verifyMode = "reset";
+  state.auth.verifyEmail = normalizedEmail;
+  startResendCooldown();
+  renderAuthMode();
+}
+
+async function completePasswordReset(code, newPassword) {
+  const normalizedCode = String(code || "").trim();
+  const normalizedPassword = String(newPassword || "");
+  if (!normalizedCode) {
+    throw new Error("Verification code is required.");
+  }
+  if (normalizedPassword.length < 8) {
+    throw new Error("New password must be at least 8 characters.");
+  }
+  const baseSignIn = state.auth.resetSignIn || state.auth.client?.client?.signIn;
+  if (!baseSignIn?.attemptFirstFactor) {
+    throw new Error("Password reset session is unavailable.");
+  }
+  const result = await baseSignIn.attemptFirstFactor({
+    strategy: "reset_password_email_code",
+    code: normalizedCode,
+    password: normalizedPassword,
+  });
+  if (result.status === "complete" && result.createdSessionId) {
+    await state.auth.client.setActive({ session: result.createdSessionId });
+    state.auth.verifyStep = false;
+    state.auth.verifyEmail = "";
+    state.auth.verifyMode = "signup";
+    state.auth.resetSignIn = null;
+    renderAuthMode();
+    return;
+  }
+  throw new Error("Password reset failed. Please try again.");
 }
 
 function scheduleLowPriorityTask(task, delayMs = 0) {
@@ -2960,6 +3266,10 @@ function bindMobileStrategyCards() {
       if (!nextStrategy || nextStrategy === state.selectedStrategy) {
         return;
       }
+      if (strategyRequiresPro(nextStrategy) && !hasProAccess()) {
+        showPaywall("AI and Hedgefund strategies require Pro subscription.");
+        return;
+      }
       persistSelectedStrategy(nextStrategy);
       renderStrategyButtons();
       await loadSymbol(state.selectedSymbol, true);
@@ -3095,8 +3405,9 @@ function persistSelectedSymbol(symbol) {
 }
 
 function persistSelectedStrategy(strategy) {
-  state.selectedStrategy = strategy;
-  window.sessionStorage.setItem(STORAGE_KEYS.selectedStrategy, strategy);
+  const next = strategyRequiresPro(strategy) && !hasProAccess() ? "simple" : strategy;
+  state.selectedStrategy = next;
+  window.sessionStorage.setItem(STORAGE_KEYS.selectedStrategy, next);
 }
 
 function readCachedJson(key) {
@@ -4715,7 +5026,7 @@ async function loadSymbol(symbol, forceRefresh = false) {
 }
 
 async function loadStrategySnapshots(symbol, forceRefresh = false) {
-  const strategies = STRATEGY_KEYS;
+  const strategies = hasProAccess() ? STRATEGY_KEYS : ["simple"];
   const existing = state.strategySnapshots[symbol] || {};
   const params = new URLSearchParams();
   if (forceRefresh) {
@@ -4744,10 +5055,6 @@ async function loadStrategySnapshots(symbol, forceRefresh = false) {
 }
 
 async function bootDashboard(forceRefresh = false) {
-  if (state.auth.enabled && isAuthenticated() && !hasActiveSubscription()) {
-    showPaywall(t("paywall.defaultMessage"));
-    return;
-  }
   clearError();
   updateChartCompareUi();
   if (!forceRefresh) {
@@ -4778,26 +5085,31 @@ async function bootDashboard(forceRefresh = false) {
       });
     }, 140);
 
-    scheduleLowPriorityTask(() => {
-      loadAlerts(forceRefresh).catch((error) => {
-        console.error("[frontend] alerts load failed", error);
-        const cachedAlerts = readCachedJson(STORAGE_KEYS.cachedAlerts);
-        if (Array.isArray(cachedAlerts) && cachedAlerts.length) {
-          renderAlerts(cachedAlerts);
-          elements.alertsMeta.textContent = t("alerts.cached");
-        } else {
-          renderAlertsWarning(t("alerts.retryGeneric"));
-        }
-        queueAlertsRetry(forceRefresh);
-      });
-    }, 180);
+    if (hasProAccess()) {
+      scheduleLowPriorityTask(() => {
+        loadAlerts(forceRefresh).catch((error) => {
+          console.error("[frontend] alerts load failed", error);
+          const cachedAlerts = readCachedJson(STORAGE_KEYS.cachedAlerts);
+          if (Array.isArray(cachedAlerts) && cachedAlerts.length) {
+            renderAlerts(cachedAlerts);
+            elements.alertsMeta.textContent = t("alerts.cached");
+          } else {
+            renderAlertsWarning(t("alerts.retryGeneric"));
+          }
+          queueAlertsRetry(forceRefresh);
+        });
+      }, 180);
 
-    scheduleLowPriorityTask(() => {
-      loadOpportunities(forceRefresh).catch((error) => {
-        console.error("[frontend] opportunity load failed", error);
-        renderOpportunityWarning(t("signals.retrying"));
-      });
-    }, 220);
+      scheduleLowPriorityTask(() => {
+        loadOpportunities(forceRefresh).catch((error) => {
+          console.error("[frontend] opportunity load failed", error);
+          renderOpportunityWarning(t("signals.retrying"));
+        });
+      }, 220);
+    } else {
+      renderAlertsWarning(t("paywall.defaultMessage"));
+      renderOpportunityWarning(t("paywall.defaultMessage"));
+    }
 
     if (favoritesResult.status === "rejected") {
       console.error("[frontend] favorite preload failed", favoritesResult.reason);
@@ -4836,6 +5148,32 @@ function bindAuth() {
     void loginWithManagedProvider("login");
   });
 
+  elements.authModeLoginButton?.addEventListener("click", () => {
+    state.auth.formMode = "login";
+    state.auth.verifyStep = false;
+    state.auth.verifyEmail = "";
+    state.auth.verifyMode = "signup";
+    state.auth.resetSignIn = null;
+    state.auth.resendCooldownUntil = 0;
+    setAuthInfo("");
+    setAuthError("");
+    syncResendCooldownButton();
+    renderAuthMode();
+  });
+
+  elements.authModeSignupButton?.addEventListener("click", () => {
+    state.auth.formMode = "signup";
+    state.auth.verifyStep = false;
+    state.auth.verifyEmail = "";
+    state.auth.verifyMode = "signup";
+    state.auth.resetSignIn = null;
+    state.auth.resendCooldownUntil = 0;
+    setAuthInfo("");
+    setAuthError("");
+    syncResendCooldownButton();
+    renderAuthMode();
+  });
+
   elements.authAdminToggleButton?.addEventListener("click", () => {
     state.auth.showAdminAccess = !state.auth.showAdminAccess;
     if (state.auth.showAdminAccess) {
@@ -4849,36 +5187,155 @@ function bindAuth() {
   });
 
   elements.authPassword?.addEventListener("input", () => {
+    setAuthInfo("");
     setAuthError("");
+  });
+  elements.authEmail?.addEventListener("input", () => {
+    setAuthInfo("");
+    setAuthError("");
+  });
+  elements.authUsername?.addEventListener("input", () => {
+    setAuthInfo("");
+    setAuthError("");
+  });
+  elements.authVerificationCode?.addEventListener("input", () => {
+    setAuthInfo("");
+    setAuthError("");
+  });
+  elements.authResetNewPassword?.addEventListener("input", () => {
+    setAuthInfo("");
+    setAuthError("");
+  });
+
+  elements.authForgotPasswordButton?.addEventListener("click", async () => {
+    try {
+      setAuthInfo("");
+      setAuthError("");
+      setAuthLoading(true, "Sending reset code...");
+      await startPasswordResetFlow(elements.authEmail?.value || "");
+      setAuthInfo("Reset code sent. Enter code and new password.");
+    } catch (error) {
+      setAuthError(error.message || "Could not start password reset.");
+    } finally {
+      setAuthLoading(false);
+    }
+  });
+
+  elements.authVerifySubmitButton?.addEventListener("click", async () => {
+    try {
+      setAuthLoading(true, "Verifying...");
+      setAuthInfo("");
+      setAuthError("");
+      if (state.auth.verifyMode === "reset") {
+        await completePasswordReset(
+          elements.authVerificationCode?.value || "",
+          elements.authResetNewPassword?.value || "",
+        );
+      } else {
+        await completeSignupVerification(elements.authVerificationCode?.value || "");
+      }
+      await syncAuthenticatedUser(true);
+      setAuthError("");
+      setAuthenticated(true);
+      setAdminSessionToken("");
+      await loadSubscriptionStatus();
+      showAppShell();
+      await bootDashboard();
+      elements.authForm?.reset();
+      state.auth.formMode = "login";
+      state.auth.verifyStep = false;
+      state.auth.verifyEmail = "";
+      state.auth.verifyMode = "signup";
+      state.auth.resetSignIn = null;
+      state.auth.resendCooldownUntil = 0;
+      syncResendCooldownButton();
+      renderAuthMode();
+    } catch (error) {
+      setAuthenticated(false);
+      setAuthError(error.message || "Verification failed.");
+    } finally {
+      setAuthLoading(false);
+    }
+  });
+
+  elements.authVerifyResendButton?.addEventListener("click", async () => {
+    if (state.auth.resendCooldownUntil > Date.now()) {
+      return;
+    }
+    try {
+      setAuthLoading(true, "Resending code...");
+      setAuthError("");
+      if (state.auth.verifyMode === "reset") {
+        const baseSignIn = state.auth.resetSignIn || state.auth.client?.client?.signIn;
+        if (!baseSignIn?.prepareFirstFactor) {
+          throw new Error("Password reset session is unavailable.");
+        }
+        await baseSignIn.prepareFirstFactor({
+          strategy: "reset_password_email_code",
+        });
+      } else {
+        await state.auth.client?.client?.signUp?.prepareEmailAddressVerification?.({
+          strategy: "email_code",
+        });
+      }
+      startResendCooldown();
+      setAuthInfo("A new verification code was sent.");
+    } catch (error) {
+      setAuthError(error.message || "Could not resend code.");
+    } finally {
+      setAuthLoading(false);
+    }
+  });
+
+  elements.authVerifyBackButton?.addEventListener("click", () => {
+    state.auth.verifyStep = false;
+    state.auth.verifyEmail = "";
+    state.auth.verifyMode = "signup";
+    state.auth.resetSignIn = null;
+    state.auth.resendCooldownUntil = 0;
+    setAuthInfo("");
+    setAuthError("");
+    syncResendCooldownButton();
+    renderAuthMode();
   });
 
   elements.authForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const code = elements.authPassword.value.trim();
-    if (code !== SIMPLE_ACCESS_CODE) {
-      setAuthError(t("errors.invalidCode"));
-      elements.authPassword.select();
+    if (state.auth.verifyStep) {
       return;
     }
-
+    const mode = state.auth.formMode === "signup" ? "signup" : "login";
+    const username = elements.authUsername?.value || "";
+    const email = elements.authEmail?.value || "";
+    const password = elements.authPassword?.value || "";
     try {
-      const result = await api("/api/auth/access-code", {
-        method: "POST",
-        body: JSON.stringify({ code }),
-      });
+      setAuthLoading(true, mode === "signup" ? "Creating account..." : "Signing in...");
+      setAuthInfo("");
+      await authenticateWithEmailPassword({ mode, username, email, password });
+      await syncAuthenticatedUser(true);
       setAuthError("");
       setAuthenticated(true);
-      setAdminSessionToken(result.session_token || "");
-      if (result.user) {
-        state.auth.currentUser = result.user;
-      }
+      setAdminSessionToken("");
       await loadSubscriptionStatus();
       showAppShell();
       await bootDashboard();
+      elements.authForm?.reset();
+      state.auth.formMode = "login";
+      state.auth.verifyStep = false;
+      state.auth.verifyEmail = "";
+      state.auth.verifyMode = "signup";
+      state.auth.resetSignIn = null;
+      state.auth.resendCooldownUntil = 0;
+      syncResendCooldownButton();
+      renderAuthMode();
     } catch (error) {
       setAuthenticated(false);
-      setAuthError(error.message || t("errors.invalidCode"));
-      elements.authPassword.select();
+      if (!state.auth.verifyStep) {
+        setAuthError(error.message || "Authentication failed.");
+      }
+      elements.authPassword?.select();
+    } finally {
+      setAuthLoading(false);
     }
   });
 }
@@ -4889,6 +5346,10 @@ function bindApp() {
 
   const applyStrategy = async (nextStrategy) => {
     if (!nextStrategy || nextStrategy === state.selectedStrategy) {
+      return;
+    }
+    if (strategyRequiresPro(nextStrategy) && !hasProAccess()) {
+      showPaywall("AI and Hedgefund strategies require Pro subscription.");
       return;
     }
     persistSelectedStrategy(nextStrategy);
@@ -4917,6 +5378,11 @@ function bindApp() {
   };
 
   elements.logoutButton.addEventListener("click", async () => {
+    try {
+      await state.auth.client?.signOut?.();
+    } catch (error) {
+      console.error("[frontend] signout failed", error);
+    }
     setAuthenticated(false);
     showLoginOverlay();
   });
@@ -4934,6 +5400,11 @@ function bindApp() {
   });
 
   elements.paywallLogoutButton?.addEventListener("click", async () => {
+    try {
+      await state.auth.client?.signOut?.();
+    } catch (error) {
+      console.error("[frontend] signout failed", error);
+    }
     setAuthenticated(false);
     showLoginOverlay();
   });
@@ -5128,6 +5599,9 @@ async function initializeApp() {
   if (isAuthenticated()) {
     ensureAppBindings();
     await loadSubscriptionStatus();
+    if (strategyRequiresPro(state.selectedStrategy) && !hasProAccess()) {
+      persistSelectedStrategy("simple");
+    }
     showAppShell();
     void bootDashboard();
     return;

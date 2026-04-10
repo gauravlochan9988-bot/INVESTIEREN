@@ -95,6 +95,7 @@ class Settings(BaseSettings):
     watchlist: Dict[str, str] = Field(default_factory=lambda: DEFAULT_WATCHLIST.copy())
     cron_secret: str = ""
     favorite_signal_min_confidence_partial: float = 58.0
+    owner_auth_subjects: str = ""
 
     def get_cors_allowed_origins(self) -> List[str]:
         origins: list[str] = [
@@ -111,6 +112,9 @@ class Settings(BaseSettings):
             )
         # Preserve insertion order while deduplicating.
         return list(dict.fromkeys(origins))
+
+    def get_owner_subjects(self) -> List[str]:
+        return [part.strip() for part in self.owner_auth_subjects.split(",") if part.strip()]
 
     @field_validator("database_url", mode="before")
     @classmethod

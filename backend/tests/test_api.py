@@ -202,13 +202,15 @@ def test_full_access_dependency_requires_subscription_or_admin(client, db_sessio
         app_user_id=77,
         is_authenticated=True,
         is_admin=False,
+        role="user",
+        plan="free",
     )
     try:
         user = AppUser(auth_subject="clerk|basic-user", provider="clerk", email="basic@example.com", name="Basic User")
         db_session.add(user)
         db_session.commit()
 
-        response = client.get("/api/dashboard/watchlist")
+        response = client.get("/api/alerts", params={"strategy": "hedgefund", "limit": 6})
         assert response.status_code == 402
         assert response.json()["detail"] == "Active subscription required."
     finally:

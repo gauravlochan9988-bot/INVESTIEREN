@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import (
     get_admin_session_manager,
+    get_app_subscription_repository,
     get_app_user_repository,
     get_clerk_verifier,
 )
@@ -14,6 +15,7 @@ from app.core.auth import AdminSessionManager, ClerkTokenVerifier, extract_beare
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.repositories.app_user import AppUserRepository
+from app.repositories.app_subscription import AppSubscriptionRepository
 from app.schemas.auth import (
     AdminAccessRequest,
     AdminAccessResponse,
@@ -37,7 +39,13 @@ def _get_admin_attempt_cache(ttl_seconds: int) -> TTLCache[int]:
     return _admin_attempt_cache
 
 
-def _serialize_user(user, *, is_admin: bool = False) -> AppUserResponse:
+def _serialize_user(
+    user,
+    *,
+    is_admin: bool = False,
+    role: str = "user",
+    plan: str = "free",
+) -> AppUserResponse:
     return AppUserResponse(
         id=user.id,
         auth_subject=user.auth_subject,
@@ -46,7 +54,26 @@ def _serialize_user(user, *, is_admin: bool = False) -> AppUserResponse:
         name=user.name,
         picture_url=user.picture_url,
         is_admin=is_admin,
+        role=role,
+        plan=plan,
     )
+
+
+def _derive_role_plan(
+    *,
+    user,
+    is_admin: bool,
+    settings,
+    subscription_repository: AppSubscriptionRepository,
+    db: Session,
+) -> tuple[str, str]:
+    owner_subjects = set(settings.get_owner_subjects())
+    if is_admin or user.auth_subject in owner_subjects:
+        return "owner", "pro"
+    subscription = subscription_repository.get_by_user_id(db, app_user_id=user.id)
+    if subscription and subscription.status in {"active", "trialing"}:
+        return "user", "pro"
+    return "user", "free"
 
 
 def verify_access_code(code: str, expected_code: str) -> bool:
@@ -106,6 +133,7 @@ def create_admin_access_session(
     verifier: ClerkTokenVerifier = Depends(get_clerk_verifier),
     admin_session_manager: AdminSessionManager = Depends(get_admin_session_manager),
     app_user_repository: AppUserRepository = Depends(get_app_user_repository),
+    subscription_repository: AppSubscriptionRepository = Depends(get_app_subscription_repository),
 ) -> AdminAccessResponse:
     forwarded_for = request.headers.get("x-forwarded-for", "")
     client_ip = forwarded_for.split(",", 1)[0].strip() or (request.client.host if request.client else "unknown")
@@ -149,10 +177,17 @@ def create_admin_access_session(
         name=name,
         picture_url=picture_url,
     )
+    role, plan = _derive_role_plan(
+        user=user,
+        is_admin=True,
+        settings=settings,
+        subscription_repository=subscription_repository,
+        db=db,
+    )
     session_token = admin_session_manager.create(auth_subject=user.auth_subject, provider=user.provider)
     return AdminAccessResponse(
         session_token=session_token,
-        user=_serialize_user(user, is_admin=True),
+        user=_serialize_user(user, is_admin=True, role=role, plan=plan),
     )
 
 
@@ -164,6 +199,8 @@ def get_current_user(
     verifier: ClerkTokenVerifier = Depends(get_clerk_verifier),
     admin_session_manager: AdminSessionManager = Depends(get_admin_session_manager),
     app_user_repository: AppUserRepository = Depends(get_app_user_repository),
+    subscription_repository: AppSubscriptionRepository = Depends(get_app_subscription_repository),
+    settings=Depends(get_settings),
 ) -> AppUserResponse:
     if x_admin_session and admin_session_manager.enabled:
         claims = admin_session_manager.verify(x_admin_session.strip())
@@ -184,7 +221,14 @@ def get_current_user(
                 name="Admin Access",
                 picture_url=None,
             )
-        return _serialize_user(user, is_admin=True)
+        role, plan = _derive_role_plan(
+            user=user,
+            is_admin=True,
+            settings=settings,
+            subscription_repository=subscription_repository,
+            db=db,
+        )
+        return _serialize_user(user, is_admin=True, role=role, plan=plan)
 
     token = extract_bearer_token(authorization)
     claims = verifier.verify(token)
@@ -203,4 +247,11 @@ def get_current_user(
         name=(claims.get("full_name") or claims.get("name") or claims.get("username") or None),
         picture_url=(claims.get("image_url") or claims.get("picture") or None),
     )
-    return _serialize_user(user, is_admin=False)
+    role, plan = _derive_role_plan(
+        user=user,
+        is_admin=False,
+        settings=settings,
+        subscription_repository=subscription_repository,
+        db=db,
+    )
+    return _serialize_user(user, is_admin=False, role=role, plan=plan)

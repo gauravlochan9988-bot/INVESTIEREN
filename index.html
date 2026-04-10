@@ -9,6 +9,7 @@
     />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="color-scheme" content="light" />
+    <meta name="clerk-publishable-key" content="pk_test_cnVsaW5nLWJ1Zy01Ny5jbGVyay5hY2NvdW50cy5kZXYk" />
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://s3.tradingview.com https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; media-src 'self' https://v1.pinimg.com data: blob:; connect-src 'self' http://127.0.0.1:8000 http://localhost:8000 http://127.0.0.1:8003 http://localhost:8003 https://investieren-production.up.railway.app https://*.tradingview.com https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com; frame-src 'self' https://*.tradingview.com https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com; child-src 'self' https://*.tradingview.com https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com; font-src 'self' https: data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
@@ -70,7 +71,82 @@
 
             <form id="authForm" class="auth-landing-form" novalidate>
               <div class="auth-login-card">
-                <label for="authPassword" class="auth-input-label auth-input-label-row">
+                <div class="auth-landing-actions">
+                  <button id="authGoogleButton" type="button" class="auth-private-button auth-landing-primary login-button">
+                    Continue with Google
+                  </button>
+                  <button id="authAppleButton" type="button" class="auth-landing-secondary">
+                    Continue with Apple
+                  </button>
+                </div>
+
+                <div class="mt-4 flex items-center gap-3 text-xs text-neutral-500">
+                  <span class="h-px flex-1 bg-neutral-200"></span>
+                  <span>or</span>
+                  <span class="h-px flex-1 bg-neutral-200"></span>
+                </div>
+
+                <div class="mt-4 grid grid-cols-2 gap-2">
+                  <button id="authModeLoginButton" type="button" class="rounded-xl border border-neutral-200/90 bg-white px-3 py-2 text-sm font-semibold text-neutral-900">
+                    Login
+                  </button>
+                  <button id="authModeSignupButton" type="button" class="rounded-xl border border-neutral-200/90 bg-white px-3 py-2 text-sm font-semibold text-neutral-900">
+                    Sign Up
+                  </button>
+                </div>
+
+                <label id="authUsernameLabel" for="authUsername" class="mt-4 auth-input-label auth-input-label-row" hidden>
+                  <span class="auth-input-label-icon" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        d="M4 20a8 8 0 1 1 16 0M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
+                        stroke="currentColor"
+                        stroke-width="1.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </span>
+                  <span>Username</span>
+                </label>
+                <div id="authUsernameShell" class="auth-input-shell auth-landing-input-shell" hidden>
+                  <input
+                    id="authUsername"
+                    name="username"
+                    type="text"
+                    placeholder="yourname"
+                    autocomplete="username"
+                    class="w-full rounded-2xl border border-neutral-200/90 bg-white px-5 py-4 text-base text-neutral-900 outline-none transition login-input"
+                  />
+                </div>
+
+                <label for="authEmail" class="mt-4 auth-input-label auth-input-label-row">
+                  <span class="auth-input-label-icon" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        d="M4 6h16v12H4V6Zm0 0 8 6 8-6"
+                        stroke="currentColor"
+                        stroke-width="1.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </span>
+                  <span>Email</span>
+                </label>
+                <div class="auth-input-shell auth-landing-input-shell">
+                  <input
+                    id="authEmail"
+                    name="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    autocomplete="email"
+                    aria-invalid="false"
+                    class="w-full rounded-2xl border border-neutral-200/90 bg-white px-5 py-4 text-base text-neutral-900 outline-none transition login-input"
+                  />
+                </div>
+
+                <label for="authPassword" class="mt-4 auth-input-label auth-input-label-row">
                   <span class="auth-input-label-icon" aria-hidden="true">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path
@@ -89,27 +165,70 @@
                     id="authPassword"
                     name="password"
                     type="password"
-                    placeholder="Code eingeben"
-                    data-i18n-placeholder="auth.accessCodePlaceholder"
+                    placeholder="Password"
                     autocomplete="current-password"
-                    aria-describedby="authPasswordHint"
                     aria-invalid="false"
                     class="w-full rounded-2xl border border-neutral-200/90 bg-white px-5 py-4 text-base text-neutral-900 outline-none transition login-input"
                   />
                 </div>
-
-                <div class="auth-landing-actions">
-                  <button type="submit" class="auth-private-button auth-landing-primary login-button">
-                    <span data-i18n="auth.enterDashboard">Zum Dashboard</span>
+                <div class="mt-2 flex justify-end">
+                  <button id="authForgotPasswordButton" type="button" class="auth-landing-secondary">
+                    Forgot password?
                   </button>
-                  <a href="#authFeatures" class="auth-landing-secondary" data-i18n="auth.viewSignals">Signale</a>
+                </div>
+
+                <button id="authSubmitButton" type="submit" class="mt-4 auth-private-button auth-landing-primary login-button">
+                  Login
+                </button>
+                <p id="authLoading" class="mt-2 text-xs text-neutral-500" hidden>Authenticating...</p>
+
+                <div id="authVerifyPanel" class="mt-4 rounded-2xl border border-neutral-200/90 bg-white p-4" hidden>
+                  <p class="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-600">Email verification</p>
+                  <p class="mt-2 text-sm text-neutral-700">
+                    Enter the code sent to <span id="authVerifyEmail" class="font-semibold text-neutral-900">your email</span>.
+                  </p>
+                  <div class="mt-3 auth-input-shell auth-landing-input-shell">
+                    <input
+                      id="authVerificationCode"
+                      name="verificationCode"
+                      type="text"
+                      inputmode="numeric"
+                      autocomplete="one-time-code"
+                      placeholder="123456"
+                      aria-invalid="false"
+                      class="w-full rounded-2xl border border-neutral-200/90 bg-white px-5 py-4 text-base text-neutral-900 outline-none transition login-input"
+                    />
+                  </div>
+                  <div id="authResetPasswordShell" class="mt-3 auth-input-shell auth-landing-input-shell" hidden>
+                    <input
+                      id="authResetNewPassword"
+                      name="resetNewPassword"
+                      type="password"
+                      autocomplete="new-password"
+                      placeholder="New password"
+                      aria-invalid="false"
+                      class="w-full rounded-2xl border border-neutral-200/90 bg-white px-5 py-4 text-base text-neutral-900 outline-none transition login-input"
+                    />
+                  </div>
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    <button id="authVerifySubmitButton" type="button" class="auth-private-button auth-landing-primary login-button">
+                      Verify and continue
+                    </button>
+                    <button id="authVerifyResendButton" type="button" class="auth-landing-secondary">
+                      Resend code
+                    </button>
+                    <button id="authVerifyBackButton" type="button" class="auth-landing-secondary">
+                      Back
+                    </button>
+                  </div>
                 </div>
 
                 <p id="authError" class="auth-error-text" role="alert" aria-live="polite" hidden>
-                  Ungültiger Code
+                  Login failed.
                 </p>
+                <p id="authInfo" class="auth-password-hint" role="status" aria-live="polite" hidden></p>
                 <p id="authPasswordHint" class="auth-password-hint">
-                  <span data-i18n="auth.hint">Nur für autorisierte Nutzer. Verbindung ist verschlüsselt.</span>
+                  <span>Use your own branded login. Clerk runs only in the background.</span>
                 </p>
               </div>
             </form>

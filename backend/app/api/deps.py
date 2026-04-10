@@ -68,6 +68,25 @@ class RequestUserContext:
     app_user_id: Optional[int]
     is_authenticated: bool
     is_admin: bool = False
+    role: str = "user"
+    plan: str = "free"
+
+
+def _resolve_role_plan(
+    *,
+    user,
+    is_admin: bool,
+    settings,
+    subscription_repository: AppSubscriptionRepository,
+    db: Session,
+) -> tuple[str, str]:
+    owner_subjects = set(settings.get_owner_subjects())
+    if is_admin or user.auth_subject in owner_subjects:
+        return "owner", "pro"
+    subscription = subscription_repository.get_by_user_id(db, app_user_id=user.id)
+    if subscription and subscription.status in {"active", "trialing"}:
+        return "user", "pro"
+    return "user", "free"
 
 
 @lru_cache
@@ -313,6 +332,7 @@ def get_request_user_context(
     verifier: ClerkTokenVerifier = Depends(get_clerk_verifier),
     admin_session_manager: AdminSessionManager = Depends(get_admin_session_manager),
     app_user_repository: AppUserRepository = Depends(get_app_user_repository),
+    subscription_repository: AppSubscriptionRepository = Depends(get_app_subscription_repository),
 ) -> RequestUserContext:
     if x_admin_session and admin_session_manager.enabled:
         claims = admin_session_manager.verify(x_admin_session.strip())
@@ -324,11 +344,20 @@ def get_request_user_context(
             name="Admin Access",
             picture_url=None,
         )
+        role, plan = _resolve_role_plan(
+            user=user,
+            is_admin=True,
+            settings=get_settings(),
+            subscription_repository=subscription_repository,
+            db=db,
+        )
         return RequestUserContext(
             user_key=user.auth_subject,
             app_user_id=user.id,
             is_authenticated=True,
             is_admin=True,
+            role=role,
+            plan=plan,
         )
 
     if not authorization or not verifier.enabled:
@@ -350,11 +379,20 @@ def get_request_user_context(
         name=(claims.get("full_name") or claims.get("name") or claims.get("username") or None),
         picture_url=(claims.get("image_url") or claims.get("picture") or None),
     )
+    role, plan = _resolve_role_plan(
+        user=user,
+        is_admin=False,
+        settings=get_settings(),
+        subscription_repository=subscription_repository,
+        db=db,
+    )
     return RequestUserContext(
         user_key=user.auth_subject,
         app_user_id=user.id,
         is_authenticated=True,
         is_admin=False,
+        role=role,
+        plan=plan,
     )
 
 
@@ -374,7 +412,7 @@ def require_full_access_user_context(
     db: Session = Depends(get_db),
     subscription_repository: AppSubscriptionRepository = Depends(get_app_subscription_repository),
 ) -> RequestUserContext:
-    if user_context.is_admin:
+    if user_context.is_admin or user_context.role == "owner" or user_context.plan == "pro":
         return user_context
 
     subscription = subscription_repository.get_by_user_id(db, app_user_id=user_context.app_user_id)
@@ -385,6 +423,26 @@ def require_full_access_user_context(
         status_code=status.HTTP_402_PAYMENT_REQUIRED,
         detail="Active subscription required.",
     )
+
+
+def require_pro_user_context(
+    user_context: RequestUserContext = Depends(require_full_access_user_context),
+) -> RequestUserContext:
+    return user_context
+
+
+def ensure_strategy_access(
+    user_context: RequestUserContext,
+    strategy: str,
+) -> None:
+    normalized = str(strategy or "simple").strip().lower()
+    if normalized in {"ai", "hedgefund"} and not (
+        user_context.is_admin or user_context.role == "owner" or user_context.plan == "pro"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="AI and Hedgefund strategies require Pro subscription.",
+        )
 
 
 def get_analysis_calibration_service() -> AnalysisCalibrationService:

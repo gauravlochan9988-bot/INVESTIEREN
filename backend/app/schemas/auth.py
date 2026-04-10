@@ -23,6 +23,8 @@ class AppUserResponse(BaseModel):
     name: Optional[str] = None
     picture_url: Optional[str] = None
     is_admin: bool = False
+    role: str = "user"
+    plan: str = "free"
 
 
 class AdminAccessRequest(BaseModel):

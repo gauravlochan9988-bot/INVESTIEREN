@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.app_user import AppUser
@@ -24,19 +24,25 @@ class AppUserRepository:
         picture_url: Optional[str],
     ) -> AppUser:
         row = self.get_by_subject(db, auth_subject=auth_subject)
+        normalized_email = (email or "").strip().lower() or None
+        if row is None and normalized_email:
+            row = db.scalar(
+                select(AppUser).where(func.lower(AppUser.email) == normalized_email)
+            )
         resolved_provider = provider or (auth_subject.split("|", 1)[0] if "|" in auth_subject else "clerk")
         if row is None:
             row = AppUser(
                 auth_subject=auth_subject,
                 provider=resolved_provider,
-                email=email,
+                email=normalized_email,
                 name=name,
                 picture_url=picture_url,
             )
             db.add(row)
         else:
+            row.auth_subject = auth_subject
             row.provider = resolved_provider
-            row.email = email
+            row.email = normalized_email
             row.name = name
             row.picture_url = picture_url
 

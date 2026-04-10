@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import (
     RequestUserContext,
     get_user_alert_service,
-    require_authenticated_user_context,
+    require_pro_user_context,
 )
 from app.core.database import get_db
 from app.schemas.user_alerts import (
@@ -27,7 +27,7 @@ router = APIRouter(tags=["user-alerts"])
 @router.get("/alert-rules", response_model=list[AlertRuleResponse])
 def list_alert_rules(
     db: Session = Depends(get_db),
-    user_context: RequestUserContext = Depends(require_authenticated_user_context),
+    user_context: RequestUserContext = Depends(require_pro_user_context),
     user_alert_service: UserAlertService = Depends(get_user_alert_service),
 ) -> list[AlertRuleResponse]:
     return user_alert_service.list_rules(db, user_id=user_context.app_user_id)
@@ -37,7 +37,7 @@ def list_alert_rules(
 def create_alert_rule(
     payload: AlertRuleCreate,
     db: Session = Depends(get_db),
-    user_context: RequestUserContext = Depends(require_authenticated_user_context),
+    user_context: RequestUserContext = Depends(require_pro_user_context),
     user_alert_service: UserAlertService = Depends(get_user_alert_service),
 ) -> AlertRuleResponse:
     return user_alert_service.create_rule(db, user_id=user_context.app_user_id, payload=payload)
@@ -48,7 +48,7 @@ def update_alert_rule(
     rule_id: int,
     payload: AlertRuleUpdate,
     db: Session = Depends(get_db),
-    user_context: RequestUserContext = Depends(require_authenticated_user_context),
+    user_context: RequestUserContext = Depends(require_pro_user_context),
     user_alert_service: UserAlertService = Depends(get_user_alert_service),
 ) -> AlertRuleResponse:
     row = user_alert_service.update_rule(db, user_id=user_context.app_user_id, rule_id=rule_id, payload=payload)
@@ -61,7 +61,7 @@ def update_alert_rule(
 def delete_alert_rule(
     rule_id: int,
     db: Session = Depends(get_db),
-    user_context: RequestUserContext = Depends(require_authenticated_user_context),
+    user_context: RequestUserContext = Depends(require_pro_user_context),
     user_alert_service: UserAlertService = Depends(get_user_alert_service),
 ) -> AlertRuleResponse:
     row = user_alert_service.delete_rule(db, user_id=user_context.app_user_id, rule_id=rule_id)
@@ -75,7 +75,7 @@ def list_notifications(
     limit: int = Query(default=20, ge=1, le=100),
     unread_only: bool = Query(default=False),
     db: Session = Depends(get_db),
-    user_context: RequestUserContext = Depends(require_authenticated_user_context),
+    user_context: RequestUserContext = Depends(require_pro_user_context),
     user_alert_service: UserAlertService = Depends(get_user_alert_service),
 ) -> list[NotificationResponse]:
     return user_alert_service.list_notifications(
@@ -90,7 +90,7 @@ def list_notifications(
 def mark_notification_read(
     notification_id: int,
     db: Session = Depends(get_db),
-    user_context: RequestUserContext = Depends(require_authenticated_user_context),
+    user_context: RequestUserContext = Depends(require_pro_user_context),
     user_alert_service: UserAlertService = Depends(get_user_alert_service),
 ) -> NotificationResponse:
     row = user_alert_service.mark_notification_read(
@@ -106,7 +106,7 @@ def mark_notification_read(
 @router.post("/notifications/read-all", response_model=MarkAllNotificationsReadResponse)
 def mark_all_notifications_read(
     db: Session = Depends(get_db),
-    user_context: RequestUserContext = Depends(require_authenticated_user_context),
+    user_context: RequestUserContext = Depends(require_pro_user_context),
     user_alert_service: UserAlertService = Depends(get_user_alert_service),
 ) -> MarkAllNotificationsReadResponse:
     updated = user_alert_service.mark_all_notifications_read(db, user_id=user_context.app_user_id)

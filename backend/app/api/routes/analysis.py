@@ -2,13 +2,14 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import (
+    ensure_strategy_access,
     get_alert_service,
     get_analysis_calibration_service,
     get_analysis_log_repository,
     get_analysis_service,
     get_request_user_context,
     require_authenticated_user_context,
-    require_full_access_user_context,
+    require_pro_user_context,
     get_strategy_learning_service,
     get_trade_history_service,
     RequestUserContext,
@@ -30,13 +31,14 @@ from app.services.analysis import AnalysisService
 from app.services.strategy_learning import StrategyLearningService
 from app.services.trade_history import TradeHistoryService
 
-router = APIRouter(tags=["analysis"], dependencies=[Depends(require_full_access_user_context)])
+router = APIRouter(tags=["analysis"])
 
 
 @router.get("/analysis/stats", response_model=AnalysisDistributionStats)
 def get_analysis_stats(
     db: Session = Depends(get_db),
     calibration_service: AnalysisCalibrationService = Depends(get_analysis_calibration_service),
+    _: RequestUserContext = Depends(require_pro_user_context),
 ) -> AnalysisDistributionStats:
     return calibration_service.get_distribution_stats(db)
 
@@ -45,6 +47,7 @@ def get_analysis_stats(
 def get_analysis_performance(
     db: Session = Depends(get_db),
     strategy_learning_service: StrategyLearningService = Depends(get_strategy_learning_service),
+    _: RequestUserContext = Depends(require_pro_user_context),
 ) -> StrategyLearningStatsResponse:
     return strategy_learning_service.get_stats(db)
 
@@ -59,7 +62,9 @@ def get_analysis(
     analysis_log_repository: AnalysisLogRepository = Depends(get_analysis_log_repository),
     calibration_service: AnalysisCalibrationService = Depends(get_analysis_calibration_service),
     trade_history_service: TradeHistoryService = Depends(get_trade_history_service),
+    user_context: RequestUserContext = Depends(require_authenticated_user_context),
 ) -> AnalysisResponse:
+    ensure_strategy_access(user_context, strategy)
     result = analysis_service.analyze_symbol(
         symbol,
         force_refresh=refresh,
@@ -88,7 +93,7 @@ def get_alerts(
     favorites_only: bool = Query(default=False),
     db: Session = Depends(get_db),
     alert_service: AlertService = Depends(get_alert_service),
-    user_context: RequestUserContext = Depends(require_authenticated_user_context),
+    user_context: RequestUserContext = Depends(require_pro_user_context),
 ) -> list[AnalysisAlert]:
     return alert_service.sync_alerts(
         db,
@@ -105,7 +110,7 @@ def get_alerts(
 def get_favorites(
     db: Session = Depends(get_db),
     alert_service: AlertService = Depends(get_alert_service),
-    user_context: RequestUserContext = Depends(require_authenticated_user_context),
+    user_context: RequestUserContext = Depends(require_pro_user_context),
 ) -> list[FavoriteSymbolResponse]:
     return [
         FavoriteSymbolResponse(symbol=symbol, user_key=user_context.user_key)
@@ -122,7 +127,7 @@ def add_favorite(
     payload: FavoriteSymbolCreate,
     db: Session = Depends(get_db),
     alert_service: AlertService = Depends(get_alert_service),
-    user_context: RequestUserContext = Depends(require_authenticated_user_context),
+    user_context: RequestUserContext = Depends(require_pro_user_context),
 ) -> FavoriteSymbolResponse:
     symbol = alert_service.add_favorite(
         db,
@@ -139,7 +144,7 @@ def delete_favorite(
     symbol: str,
     db: Session = Depends(get_db),
     alert_service: AlertService = Depends(get_alert_service),
-    user_context: RequestUserContext = Depends(require_authenticated_user_context),
+    user_context: RequestUserContext = Depends(require_pro_user_context),
 ) -> FavoriteSymbolResponse:
     alert_service.remove_favorite(
         db,
@@ -159,7 +164,9 @@ def analyze_symbol(
     analysis_log_repository: AnalysisLogRepository = Depends(get_analysis_log_repository),
     calibration_service: AnalysisCalibrationService = Depends(get_analysis_calibration_service),
     trade_history_service: TradeHistoryService = Depends(get_trade_history_service),
+    user_context: RequestUserContext = Depends(require_authenticated_user_context),
 ) -> AnalysisResponse:
+    ensure_strategy_access(user_context, payload.strategy)
     result = analysis_service.analyze_symbol(
         payload.symbol,
         force_refresh=refresh,
