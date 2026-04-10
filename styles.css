@@ -876,10 +876,10 @@ body.booting *::after {
   .auth-photo-img {
     /* Portrait: anchor upper / center so form + headline sit over calmer wall area */
     object-position: 48% 12%;
-    opacity: 0.92;
-    filter: saturate(0.92) brightness(0.9) contrast(1.02);
-    min-height: 115%;
-    transform: translateY(-4%);
+    opacity: 0.82;
+    filter: none;
+    min-height: 100%;
+    transform: none;
   }
 }
 
@@ -905,20 +905,26 @@ body.booting *::after {
 
 @media (max-width: 768px) {
   .auth-photo-vignette {
-    background:
-      radial-gradient(ellipse 115% 78% at 50% 0%, rgba(249, 249, 248, 0.9) 0%, transparent 48%),
-      radial-gradient(ellipse 80% 60% at 90% 92%, rgba(0, 0, 0, 0.1) 0%, transparent 50%),
-      linear-gradient(180deg, rgba(249, 249, 248, 0.82) 0%, rgba(249, 249, 248, 0.28) 42%, rgba(255, 255, 255, 0.06) 58%, rgba(0, 0, 0, 0.1) 100%);
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
+    background: linear-gradient(
+      180deg,
+      rgba(249, 249, 248, 0.88) 0%,
+      rgba(249, 249, 248, 0.5) 40%,
+      rgba(255, 255, 255, 0.08) 62%,
+      rgba(0, 0, 0, 0.1) 100%
+    );
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }
 
 @media (max-width: 390px) {
   .auth-photo-vignette {
-    background:
-      radial-gradient(ellipse 125% 82% at 50% 0%, rgba(249, 249, 248, 0.94) 0%, transparent 46%),
-      linear-gradient(180deg, rgba(249, 249, 248, 0.88) 0%, rgba(249, 249, 248, 0.32) 40%, rgba(0, 0, 0, 0.12) 100%);
+    background: linear-gradient(
+      180deg,
+      rgba(249, 249, 248, 0.92) 0%,
+      rgba(249, 249, 248, 0.58) 44%,
+      rgba(0, 0, 0, 0.11) 100%
+    );
   }
 }
 
@@ -1516,6 +1522,50 @@ body.booting *::after {
 
   .auth-benefit-copy {
     padding: 0.78rem 0.82rem 0.84rem;
+  }
+}
+
+@media (max-width: 768px) {
+  #authOverlay {
+    background: linear-gradient(180deg, #fdfdfb 0%, var(--color-page) 55%, #f3f2ed 100%);
+  }
+
+  .auth-landing-shell {
+    min-height: 100svh;
+    padding-top: 0.5rem;
+    padding-bottom: 1rem;
+  }
+
+  .auth-landing-grid {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
+  .auth-visual-column {
+    display: none;
+  }
+
+  .auth-landing-copy,
+  .auth-login-card,
+  .auth-purchase-option,
+  .auth-feature-card {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+  }
+
+  .auth-purchase-option,
+  .auth-feature-grid,
+  .auth-landing-footer {
+    content-visibility: auto;
+  }
+
+  .auth-purchase-option {
+    contain-intrinsic-size: 340px;
+  }
+
+  .auth-feature-grid {
+    contain-intrinsic-size: 420px;
   }
 }
 
