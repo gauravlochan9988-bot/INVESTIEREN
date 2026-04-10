@@ -2,7 +2,7 @@ def test_root_serves_static_dashboard(client):
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "Investieren AI" in response.text
+    assert "GQ Trading" in response.text
     assert 'id="authOverlay"' in response.text
     assert "GQ Trading" in response.text
     assert "Get real trading signals. Not guesses." in response.text
@@ -62,7 +62,7 @@ def test_static_assets_are_available(client):
     assert "sessionStorage" in response.text
     assert "initializeManagedAuth" in response.text
     assert "ensureClerkFrontendLoaded" in response.text
-    assert "mountSignIn" in response.text
+    assert "handleRedirectCallback" in response.text
     assert "pricingPageUrl" in response.text
     assert 'new URL("pricing.html"' in response.text
     assert "hasActiveSubscription" in response.text

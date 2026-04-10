@@ -929,18 +929,48 @@ body.booting *::after {
 }
 
 #authOverlay {
-  align-items: flex-start;
+  align-items: center;
   overflow-y: auto;
   overscroll-behavior-y: contain;
   overflow-anchor: none;
   overflow-x: hidden;
   scrollbar-gutter: stable both-edges;
-  padding: 1.25rem 0 1.75rem;
+  padding: 2rem 0;
   background:
-    radial-gradient(circle at 0% 0%, rgba(0, 92, 57, 0.07), transparent 42%),
-    radial-gradient(circle at 100% 85%, rgba(255, 193, 7, 0.07), transparent 40%),
-    linear-gradient(180deg, #fdfdfb 0%, var(--color-page) 48%, #f0efe9 100%);
+    radial-gradient(circle at 0% 0%, rgba(34, 211, 238, 0.08), transparent 42%),
+    radial-gradient(circle at 100% 85%, rgba(14, 116, 144, 0.16), transparent 40%),
+    linear-gradient(180deg, #05070c 0%, #0b1220 55%, #05070c 100%);
   color: var(--color-text);
+  --color-text: #e2e8f0;
+  --color-text-muted: rgba(148, 163, 184, 0.85);
+  --color-surface-2: rgba(15, 23, 42, 0.66);
+  --glass-border: rgba(148, 163, 184, 0.18);
+}
+
+#authOverlay .login-input {
+  background: rgba(15, 23, 42, 0.78);
+  color: var(--color-text) !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+  box-shadow: none;
+}
+
+#authOverlay .login-input::placeholder {
+  color: rgba(148, 163, 184, 0.7);
+}
+
+#authOverlay .login-input:focus {
+  border-color: rgba(34, 211, 238, 0.45) !important;
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.12);
+}
+
+#authOverlay .auth-benefit-copy {
+  background: rgba(15, 23, 42, 0.78);
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.35);
+}
+
+#authOverlay .auth-password-hint,
+#authOverlay .auth-benefit-text {
+  color: var(--color-text-muted);
 }
 
 .login-bg {
@@ -1015,7 +1045,7 @@ body.booting *::after {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: calc(100svh - 3rem);
+  min-height: 0;
   padding: clamp(1.5rem, 4vw, 2rem) 0;
   gap: 0;
 }
@@ -1104,6 +1134,14 @@ body.booting *::after {
   justify-items: center;
   gap: 0.82rem;
   margin-bottom: 1.8rem;
+}
+
+.auth-brand-name {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--color-text);
 }
 
 .auth-brand-mark {
