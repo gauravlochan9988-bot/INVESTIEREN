@@ -31,6 +31,12 @@ const I18N = {
     "auth.enterDashboard": "Zum Dashboard",
     "auth.viewSignals": "Signale",
     "auth.hint": "Nur fur autorisierte Nutzer. Verbindung ist verschlusselt.",
+    "auth.purchaseKicker": "Noch keinen Code?",
+    "auth.purchaseBody":
+      "Pro-Zugang fur €4.99 pro Monat — sicher per Stripe. Nach dem Kauf mit deinem Zugangscode hier einloggen.",
+    "auth.purchaseCta": "Zugang kaufen — €4.99 / Monat",
+    "auth.purchaseCtaAria": "Zur Kaufseite fur Pro-Zugang und Zugangscode",
+    "auth.purchaseNote": "Apple Pay und Google Pay im Checkout.",
     "auth.features.liveSignalsTitle": "Live-Signale",
     "auth.features.liveSignalsBody": "Konkrete Einstiegs- und Ausstiegssignale mit Echtzeit-Marktkontext.",
     "auth.features.aiTitle": "KI-Strategie-Engine",
@@ -97,15 +103,25 @@ const I18N = {
     "limited.unlock": "Freischalten €4.99",
     "watchlist.quotes": "Kurse",
     "watchlist.syncing": "Synchronisiere...",
+    "watchlist.metaVisible": "{visible}/{max} sichtbar",
+    "watchlist.marketSyncing": "Marktdaten werden synchronisiert...",
+    "watchlist.noData": "Keine Daten",
+    "watchlist.fallbackName": "Watchliste",
+    "watchlist.stalePriceTitle": "Zuletzt bekannter Kurs",
     "watchlist.favoritesTitle": "Favoriten",
     "watchlist.favoritesHint": "Mit Stern anheften.",
+    "search.noMatch": "Kein Treffer.",
+    "search.open": "Offnen",
+    "search.errorOff": "Suche nicht verfugbar.",
     "favorites.label": "Favoriten",
     "favorites.pinned": "Angeheftete Symbole",
     "favorites.meta": "0 gespeichert",
+    "favorites.metaCount": "{n} gespeichert",
     "favorites.emptyTitle": "Keine Favoriten",
     "favorites.emptyBody": "Markiere eine Aktie mit Stern.",
     "symbol.selected": "Ausgewahlt",
     "symbol.favoriteAria": "Ausgewahltes Symbol zu Favoriten hinzufugen",
+    "symbol.favoriteRemoveAria": "Symbol aus Favoriten entfernen",
     "symbol.favoriteButton": "Favorit",
     "metric.price": "Preis",
     "metric.dayHigh": "Tageshoch",
@@ -231,6 +247,12 @@ const I18N = {
     "auth.enterDashboard": "Enter Dashboard",
     "auth.viewSignals": "Signals",
     "auth.hint": "Private system. Access for authorized users only.",
+    "auth.purchaseKicker": "Need an access code?",
+    "auth.purchaseBody":
+      "Unlock Pro for €4.99/month via Stripe. After checkout, sign in here with your access code.",
+    "auth.purchaseCta": "Buy access — €4.99 / month",
+    "auth.purchaseCtaAria": "Open checkout page for Pro access and access code",
+    "auth.purchaseNote": "Apple Pay and Google Pay available at checkout.",
     "auth.features.liveSignalsTitle": "Live Signals",
     "auth.features.liveSignalsBody": "Actionable entries and exits with real-time market context.",
     "auth.features.aiTitle": "AI Strategy Engine",
@@ -297,15 +319,25 @@ const I18N = {
     "limited.unlock": "Unlock €4.99",
     "watchlist.quotes": "Quotes",
     "watchlist.syncing": "Syncing...",
+    "watchlist.metaVisible": "{visible}/{max} visible",
+    "watchlist.marketSyncing": "Syncing market data...",
+    "watchlist.noData": "No data",
+    "watchlist.fallbackName": "Watchlist",
+    "watchlist.stalePriceTitle": "Last known price",
     "watchlist.favoritesTitle": "Favorites",
     "watchlist.favoritesHint": "Star to pin.",
+    "search.noMatch": "No match.",
+    "search.open": "Open",
+    "search.errorOff": "Search unavailable.",
     "favorites.label": "Favorites",
     "favorites.pinned": "Pinned symbols",
     "favorites.meta": "0 saved",
+    "favorites.metaCount": "{n} saved",
     "favorites.emptyTitle": "No favorites",
     "favorites.emptyBody": "Star a stock.",
     "symbol.selected": "Selected",
     "symbol.favoriteAria": "Add selected symbol to favorites",
+    "symbol.favoriteRemoveAria": "Remove symbol from favorites",
     "symbol.favoriteButton": "Favorite",
     "metric.price": "Price",
     "metric.dayHigh": "Day high",
@@ -1079,14 +1111,14 @@ function renderSubscriptionButton() {
     elements.subscribeButton.textContent = "Full Access";
     elements.subscribeButton.disabled = true;
     elements.subscribeButton.className =
-      "action-secondary rounded-2xl border border-emerald-400/25 bg-emerald-400/12 px-4 py-3 text-sm font-semibold text-emerald-200 opacity-90 xl:min-w-[132px]";
+      "action-secondary rounded-2xl border border-[#005c39]/25 bg-[#005c39]/10 px-4 py-3 text-sm font-semibold text-[#005c39] opacity-90 xl:min-w-[132px]";
     return;
   }
 
   elements.subscribeButton.disabled = true;
   elements.subscribeButton.textContent = "Locked";
   elements.subscribeButton.className =
-    "action-secondary rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-300 opacity-80 xl:min-w-[132px]";
+    "action-secondary rounded-2xl border border-neutral-200/90 bg-white/5 px-4 py-3 text-sm font-semibold text-neutral-700 opacity-80 xl:min-w-[132px]";
 }
 
 function managedPlanConfig() {
@@ -1113,8 +1145,17 @@ function setAdminSessionToken(token = "") {
   window.localStorage.removeItem(STORAGE_KEYS.adminSession);
 }
 
+function pricingPageUrl() {
+  try {
+    return new URL("pricing.html", window.location.href).href;
+  } catch {
+    return "pricing.html";
+  }
+}
+
 function isPricingPage() {
-  return window.location.pathname === "/pricing.html" || window.location.pathname.endsWith("/pricing.html");
+  const path = window.location.pathname || "";
+  return /(^|\/)pricing\.html$/i.test(path);
 }
 
 function redirectToPricingPage() {
@@ -1122,7 +1163,7 @@ function redirectToPricingPage() {
     return;
   }
   hidePaywall();
-  window.location.replace("/pricing.html");
+  window.location.replace(pricingPageUrl());
 }
 
 function showPaywall(message = t("paywall.defaultMessage")) {
@@ -1679,35 +1720,35 @@ function sizeBucket(percentValue) {
 function learningMetricTone(value, options = {}) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) {
-    return "text-slate-200";
+    return "text-neutral-800";
   }
   if (options.invert) {
     if (numeric <= 0) {
-      return "text-slate-200";
+      return "text-neutral-800";
     }
-    return "text-rose-300";
+    return "text-rose-700";
   }
   if (numeric > 0) {
-    return "text-emerald-300";
+    return "text-emerald-700";
   }
   if (numeric < 0) {
-    return "text-rose-300";
+    return "text-rose-700";
   }
-  return "text-slate-200";
+  return "text-neutral-800";
 }
 
 function learningStatus(profile) {
   if (!profile) {
     return {
       label: t("learning.status.waiting"),
-      tone: "text-slate-400",
-      badge: "border-white/10 bg-white/5 text-slate-300",
+      tone: "text-neutral-600",
+      badge: "border-neutral-200/90 bg-white/5 text-neutral-700",
     };
   }
   if (profile.eligible) {
     return {
       label: t("learning.status.on"),
-      tone: "text-emerald-300",
+      tone: "text-emerald-700",
       badge: "border-emerald-400/20 bg-emerald-500/10 text-emerald-200",
     };
   }
@@ -1723,8 +1764,8 @@ function learningStatus(profile) {
   }
   return {
     label: t("learning.status.noTrades"),
-    tone: "text-slate-400",
-    badge: "border-white/10 bg-white/5 text-slate-300",
+    tone: "text-neutral-600",
+    badge: "border-neutral-200/90 bg-white/5 text-neutral-700",
   };
 }
 
@@ -1750,7 +1791,7 @@ function setBackendStatus(message, tone = "loading") {
     error: "status-error",
   };
   elements.backendStatus.textContent = message;
-  elements.backendStatus.className = `rounded-full border px-4 py-2 text-xs font-medium ${palette[tone] || palette.loading}`;
+  elements.backendStatus.className = `dashboard-chip rounded-full border px-4 py-2 text-xs font-semibold ${palette[tone] || palette.loading}`;
 }
 
 function showError(message) {
@@ -1781,8 +1822,8 @@ function renderSearchSuggestions(results, query) {
 
   if (!results.length) {
     elements.searchSuggestions.innerHTML = `
-      <div class="rounded-2xl px-4 py-4 text-sm text-slate-400">
-        No match.
+      <div class="rounded-2xl px-4 py-4 text-sm text-neutral-600">
+        ${escapeHtml(t("search.noMatch"))}
       </div>
     `;
     elements.searchSuggestions.classList.remove("hidden");
@@ -1795,13 +1836,13 @@ function renderSearchSuggestions(results, query) {
         <button
           type="button"
           class="search-suggestion flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left transition hover:bg-white/5"
-          data-symbol="${item.symbol}"
+          data-symbol="${escapeHtml(item.symbol)}"
         >
           <div class="min-w-0">
-            <p class="text-sm font-semibold text-white">${item.symbol}</p>
-            <p class="mt-1 text-xs text-slate-400">${item.name}</p>
+            <p class="text-sm font-semibold text-neutral-900">${escapeHtml(item.symbol)}</p>
+            <p class="mt-1 text-xs text-neutral-600">${escapeHtml(item.name || "")}</p>
           </div>
-          <span class="ml-3 shrink-0 text-xs uppercase tracking-[0.24em] text-slate-500">Open</span>
+          <span class="ml-3 shrink-0 text-xs uppercase tracking-[0.24em] text-neutral-500">${escapeHtml(t("search.open"))}</span>
         </button>
       `,
     )
@@ -1839,8 +1880,8 @@ async function searchSymbols(query) {
       return;
     }
     elements.searchSuggestions.innerHTML = `
-      <div class="rounded-2xl px-4 py-4 text-sm text-rose-300">
-        ⚠️ Search off.
+      <div class="rounded-2xl px-4 py-4 text-sm text-rose-700">
+        ⚠️ ${escapeHtml(t("search.errorOff"))}
       </div>
     `;
     elements.searchSuggestions.classList.remove("hidden");
@@ -1873,14 +1914,14 @@ async function resolveSearchSelection(query) {
 
 function renderAnalysisLoading(symbol) {
   state.latestAnalysis = null;
-  elements.recommendationCard.className = "rounded-[28px] border border-white/10 bg-slate-950/70 p-5";
-  elements.recommendationValue.className = "text-5xl font-black tracking-[-0.06em] text-white xl:text-6xl";
+  elements.recommendationCard.className = "rounded-[28px] border border-neutral-200/90 bg-neutral-50 p-5";
+  elements.recommendationValue.className = "text-5xl font-black tracking-[-0.06em] text-neutral-900 xl:text-6xl";
   elements.recommendationIcon.className = "signal-icon tone-muted";
   elements.recommendationIcon.textContent = "◌";
   elements.recommendationValue.textContent = "LOADING";
   elements.signalQualityBadge.hidden = true;
   elements.conflictBadge.hidden = true;
-  elements.confidenceValue.className = "mt-2 text-2xl font-semibold text-white";
+  elements.confidenceValue.className = "mt-2 text-2xl font-semibold text-neutral-900";
   elements.confidenceValue.textContent = "--";
   setConfidenceBar(0, "NO_DATA");
   elements.confidenceHint.textContent = "⚠️ Scanning";
@@ -1893,7 +1934,7 @@ function renderAnalysisLoading(symbol) {
   elements.biasValue.textContent = "Balanced";
   elements.noTradeReason.textContent = "Waiting.";
   if (elements.mobileConfidenceValue) {
-    elements.mobileConfidenceValue.className = "mt-2 text-2xl font-semibold text-white";
+    elements.mobileConfidenceValue.className = "mt-2 text-2xl font-semibold text-neutral-900";
     elements.mobileConfidenceValue.textContent = "--";
   }
   if (elements.mobileConfidenceBarFill) {
@@ -1915,10 +1956,10 @@ function renderAnalysisLoading(symbol) {
   if (elements.mobileNoTradeReason) {
     elements.mobileNoTradeReason.textContent = "Waiting.";
   }
-  elements.riskValue.className = "mt-3 text-2xl font-semibold text-white";
+  elements.riskValue.className = "mt-3 text-2xl font-semibold text-neutral-900";
   elements.riskValue.textContent = "--";
   elements.timeframeValue.textContent = "--";
-  elements.coverageValue.className = "mt-3 text-2xl font-semibold text-white";
+  elements.coverageValue.className = "mt-3 text-2xl font-semibold text-neutral-900";
   elements.coverageValue.textContent = "No Data";
   elements.coverageReason.textContent = "Waiting.";
   elements.entryValue.textContent = "--";
@@ -1930,7 +1971,7 @@ function renderAnalysisLoading(symbol) {
   elements.stopLossValue.textContent = "--";
   elements.stopLossReason.textContent = "Waiting.";
   elements.warningsList.innerHTML =
-    '<span class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-400">Loading</span>';
+    '<span class="rounded-full border border-neutral-200/90 bg-white/5 px-3 py-2 text-xs font-medium text-neutral-600">Loading</span>';
 
   if (isMobileViewport()) {
     renderSkeleton(elements.recommendationValue, "h-8 w-36");
@@ -1965,19 +2006,19 @@ function renderAnalysisLoading(symbol) {
 function alertToneClasses(tone) {
   if (tone === "bullish") {
     return {
-      card: "border-emerald-400/20 bg-emerald-500/10",
-      badge: "border border-emerald-400/20 bg-emerald-400/15 text-emerald-200",
+      card: "border-emerald-400/25 bg-emerald-500/10",
+      badge: "border border-emerald-400/25 bg-emerald-400/15 text-emerald-800",
     };
   }
   if (tone === "bearish") {
     return {
-      card: "border-rose-400/20 bg-rose-500/10",
-      badge: "border border-rose-400/20 bg-rose-400/15 text-rose-200",
+      card: "border-rose-400/25 bg-rose-500/10",
+      badge: "border border-rose-400/25 bg-rose-400/15 text-rose-800",
     };
   }
   return {
-    card: "border-white/10 bg-slate-950/60",
-    badge: "border border-white/10 bg-white/5 text-slate-200",
+    card: "border-neutral-200/90 bg-white",
+    badge: "border border-neutral-200/90 bg-neutral-100 text-neutral-800",
   };
 }
 
@@ -1987,10 +2028,10 @@ function renderAlertsLoading() {
   elements.alertsList.innerHTML = Array.from({ length: 3 })
     .map(
       () => `
-        <article class="animate-pulse rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-          <div class="h-4 w-24 rounded bg-white/10"></div>
-          <div class="mt-3 h-6 w-40 rounded bg-white/10"></div>
-          <div class="mt-3 h-4 w-full rounded bg-white/10"></div>
+        <article class="animate-pulse rounded-2xl border border-neutral-200/90 bg-white p-4">
+          <div class="h-4 w-24 rounded bg-neutral-200/70"></div>
+          <div class="mt-3 h-6 w-40 rounded bg-neutral-200/70"></div>
+          <div class="mt-3 h-4 w-full rounded bg-neutral-200/70"></div>
         </article>
       `,
     )
@@ -2007,9 +2048,9 @@ function renderAlerts(alerts) {
 
   if (!alerts.length) {
     elements.alertsList.innerHTML = `
-      <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-        <p class="text-sm font-semibold text-white">${escapeHtml(t("alerts.noAlertsTitle"))}</p>
-        <p class="mt-2 text-sm leading-6 text-slate-400">⚠️ ${escapeHtml(t("alerts.noAlertsBody"))}</p>
+      <article class="rounded-2xl border border-neutral-200/90 bg-white p-4">
+        <p class="text-sm font-semibold text-neutral-900">${escapeHtml(t("alerts.noAlertsTitle"))}</p>
+        <p class="mt-2 text-sm leading-6 text-neutral-600">⚠️ ${escapeHtml(t("alerts.noAlertsBody"))}</p>
       </article>
     `;
     requestAnimationFrame(syncCompanySectionAlignment);
@@ -2023,8 +2064,8 @@ function renderAlerts(alerts) {
         <article class="rounded-2xl border p-4 ${tone.card}">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
-              <p class="text-sm font-semibold text-white">${alert.title}</p>
-              <p class="mt-2 text-sm leading-6 text-slate-300">${alert.message}</p>
+              <p class="text-sm font-semibold text-neutral-900">${alert.title}</p>
+              <p class="mt-2 text-sm leading-6 text-neutral-700">${alert.message}</p>
             </div>
             <span class="shrink-0 rounded-full px-3 py-2 text-[11px] font-semibold ${tone.badge}">
               ${getStrategyLabel(alert.strategy) || titleCase(alert.strategy)}
@@ -2042,8 +2083,8 @@ function renderAlertsWarning(message) {
   elements.alertsMeta.textContent = message;
   elements.alertsList.innerHTML = `
     <article class="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-      <p class="text-sm font-semibold text-white">${escapeHtml(t("alerts.warmingTitle"))}</p>
-      <p class="mt-2 text-sm leading-6 text-slate-300">⚠️ ${escapeHtml(t("alerts.warmingBody"))}</p>
+      <p class="text-sm font-semibold text-neutral-900">${escapeHtml(t("alerts.warmingTitle"))}</p>
+      <p class="mt-2 text-sm leading-6 text-neutral-700">⚠️ ${escapeHtml(t("alerts.warmingBody"))}</p>
     </article>
   `;
   requestAnimationFrame(syncCompanySectionAlignment);
@@ -2100,7 +2141,7 @@ function renderOpportunityLoading() {
   elements.opportunityList.innerHTML = Array.from({ length: 3 })
     .map(
       () => `
-        <article class="animate-pulse rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+        <article class="animate-pulse rounded-2xl border border-neutral-200/90 bg-white p-4">
           <div class="h-4 w-24 rounded bg-white/10"></div>
           <div class="mt-3 h-16 rounded-2xl bg-white/10"></div>
         </article>
@@ -2116,9 +2157,9 @@ function buildOpportunitySection(title, tone, entries, emptyMessage) {
         <div class="opportunity-group-head">
           <p class="opportunity-group-title">${escapeHtml(title)}</p>
         </div>
-        <div class="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-4 text-sm leading-6 text-slate-400">
+        <div class="rounded-2xl border border-neutral-200/90 bg-white px-4 py-4 text-sm leading-6 text-neutral-600">
           ${escapeHtml(t("signals.emptySetups"))}
-          <span class="block mt-1 text-xs text-slate-500">${escapeHtml(emptyMessage)}</span>
+          <span class="block mt-1 text-xs text-neutral-500">${escapeHtml(emptyMessage)}</span>
         </div>
       </article>
     `;
@@ -2141,14 +2182,14 @@ function buildOpportunitySection(title, tone, entries, emptyMessage) {
               >
                 <div class="min-w-0">
                   <div class="flex items-center justify-between gap-3">
-                    <p class="truncate text-sm font-semibold text-white">${entry.symbol}</p>
+                    <p class="truncate text-sm font-semibold text-neutral-900">${entry.symbol}</p>
                     <span class="opportunity-pill">${index === 0 ? escapeHtml(tf("signals.topPick", { rec: entry.recommendation })) : escapeHtml(entry.recommendation)}</span>
                   </div>
-                  <p class="mt-1 truncate text-xs text-slate-400">${entry.name}</p>
+                  <p class="mt-1 truncate text-xs text-neutral-600">${entry.name}</p>
                 </div>
                 <div class="text-right">
-                  <p class="text-sm font-semibold text-white">${Math.round(entry.confidence)}%</p>
-                  <p class="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500">${escapeHtml(tf("signals.scoreLabel", { label: entry.scoreLabel }))}</p>
+                  <p class="text-sm font-semibold text-neutral-900">${Math.round(entry.confidence)}%</p>
+                  <p class="mt-1 text-[11px] uppercase tracking-[0.18em] text-neutral-500">${escapeHtml(tf("signals.scoreLabel", { label: entry.scoreLabel }))}</p>
                 </div>
               </button>
             `,
@@ -2302,8 +2343,8 @@ function renderOpportunityWarning(message) {
   elements.opportunityMeta.textContent = message;
   elements.opportunityList.innerHTML = `
     <article class="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-      <p class="text-sm font-semibold text-white">${escapeHtml(t("signals.panelWarmingTitle"))}</p>
-      <p class="mt-2 text-sm leading-6 text-slate-300">⚠️ ${escapeHtml(t("signals.panelWarmingBody"))}</p>
+      <p class="text-sm font-semibold text-neutral-900">${escapeHtml(t("signals.panelWarmingTitle"))}</p>
+      <p class="mt-2 text-sm leading-6 text-neutral-700">⚠️ ${escapeHtml(t("signals.panelWarmingBody"))}</p>
     </article>
   `;
 }
@@ -2464,11 +2505,11 @@ function renderLearningStatsLoading() {
   }
   elements.learningMeta.textContent = t("learning.loading");
   elements.learningMeta.className =
-    "min-w-0 max-w-full shrink whitespace-normal rounded-full border border-white/10 bg-slate-950/60 px-3 py-2 text-right text-[0.68rem] font-medium leading-snug text-slate-400 sm:max-w-[min(100%,14rem)]";
+    "min-w-0 max-w-full shrink whitespace-normal rounded-full border border-neutral-200/90 bg-white px-3 py-2 text-right text-[0.68rem] font-medium leading-snug text-neutral-600 sm:max-w-[min(100%,14rem)]";
   elements.learningList.innerHTML = Array.from({ length: 3 })
     .map(
       () => `
-        <article class="animate-pulse rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+        <article class="animate-pulse rounded-2xl border border-neutral-200/90 bg-white p-4">
           <div class="h-4 w-28 rounded bg-white/10"></div>
           <div class="mt-3 h-3 w-20 rounded bg-white/10"></div>
           <div class="mt-4 grid grid-cols-2 gap-3">
@@ -2492,8 +2533,8 @@ function renderLearningStatsError(message) {
     "min-w-0 max-w-full shrink whitespace-normal rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-right text-[0.68rem] font-medium leading-snug text-amber-200 sm:max-w-[min(100%,14rem)]";
   elements.learningList.innerHTML = `
     <article class="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-      <p class="text-sm font-semibold text-white">${escapeHtml(t("learning.offline"))}</p>
-      <p class="mt-2 text-sm leading-6 text-slate-300">${escapeHtml(message || `⚠️ ${t("learning.tryAgain")}`)}</p>
+      <p class="text-sm font-semibold text-neutral-900">${escapeHtml(t("learning.offline"))}</p>
+      <p class="mt-2 text-sm leading-6 text-neutral-700">${escapeHtml(message || `⚠️ ${t("learning.tryAgain")}`)}</p>
     </article>
   `;
 }
@@ -2516,14 +2557,14 @@ function renderLearningStats(response = emptyLearningResponse()) {
       ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-200"
       : selectedProfile
         ? "border-amber-400/20 bg-amber-500/10 text-amber-200"
-        : "border-white/10 bg-slate-950/60 text-slate-400"
+        : "border-neutral-200/90 bg-white text-neutral-600"
   }`;
 
   if (!strategies.length) {
     elements.learningList.innerHTML = `
-      <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-        <p class="text-sm font-semibold text-white">${escapeHtml(t("learning.noClosedTrades"))}</p>
-        <p class="mt-2 text-sm leading-6 text-slate-400">${escapeHtml(t("learning.statsLater"))}</p>
+      <article class="rounded-2xl border border-neutral-200/90 bg-white p-4">
+        <p class="text-sm font-semibold text-neutral-900">${escapeHtml(t("learning.noClosedTrades"))}</p>
+        <p class="mt-2 text-sm leading-6 text-neutral-600">${escapeHtml(t("learning.statsLater"))}</p>
       </article>
     `;
     return;
@@ -2537,28 +2578,28 @@ function renderLearningStats(response = emptyLearningResponse()) {
       const drawdownTone = learningMetricTone(profile.drawdown, { invert: true });
       const winRateTone =
         profile.win_rate >= 0.55
-          ? "text-emerald-300"
+          ? "text-emerald-700"
           : profile.win_rate > 0 && profile.win_rate <= 0.45
-            ? "text-rose-300"
-            : "text-slate-200";
+            ? "text-rose-700"
+            : "text-neutral-800";
       const noteText = profile.note ? formatLearningNote(profile.note) : "";
       const noteHtml = noteText
-        ? `<p class="mt-4 text-sm leading-relaxed text-slate-400">${escapeHtml(noteText)}</p>`
+        ? `<p class="mt-4 text-sm leading-relaxed text-neutral-600">${escapeHtml(noteText)}</p>`
         : "";
 
       return `
         <article class="rounded-2xl border p-4 ${
           active
-            ? "border-cyan-300/30 bg-cyan-300/10 shadow-lg shadow-cyan-500/10"
-            : "border-white/10 bg-slate-950/60"
+            ? "border-[#005c39]/30 bg-[#005c39]/10 shadow-md shadow-black/10"
+            : "border-neutral-200/90 bg-white"
         }">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-2">
-                <p class="text-sm font-semibold text-white">${getStrategyLabel(profile.strategy) || titleCase(profile.strategy)}</p>
+                <p class="text-sm font-semibold text-neutral-900">${getStrategyLabel(profile.strategy) || titleCase(profile.strategy)}</p>
                 ${
                   active
-                    ? `<span class="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-200">${escapeHtml(t("learning.selected"))}</span>`
+                    ? `<span class="rounded-full border border-[#005c39]/25 bg-[#005c39]/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#005c39]">${escapeHtml(t("learning.selected"))}</span>`
                     : ""
                 }
               </div>
@@ -2570,21 +2611,21 @@ function renderLearningStats(response = emptyLearningResponse()) {
           </div>
 
           <div class="mt-4 grid min-w-0 grid-cols-2 gap-2 sm:gap-3">
-            <div class="min-w-0 rounded-2xl border border-white/10 bg-white/5 px-2.5 py-2.5 sm:px-3 sm:py-3">
-              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">${escapeHtml(t("learning.metric.winRate"))}</p>
+            <div class="min-w-0 rounded-2xl border border-neutral-200/90 bg-white/5 px-2.5 py-2.5 sm:px-3 sm:py-3">
+              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500">${escapeHtml(t("learning.metric.winRate"))}</p>
               <p class="mt-2 text-lg font-semibold tabular-nums ${winRateTone}">${ratioPercent(profile.win_rate)}</p>
             </div>
-            <div class="min-w-0 rounded-2xl border border-white/10 bg-white/5 px-2.5 py-2.5 sm:px-3 sm:py-3">
-              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">${escapeHtml(t("learning.metric.avgPl"))}</p>
+            <div class="min-w-0 rounded-2xl border border-neutral-200/90 bg-white/5 px-2.5 py-2.5 sm:px-3 sm:py-3">
+              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500">${escapeHtml(t("learning.metric.avgPl"))}</p>
               <p class="mt-2 text-lg font-semibold tabular-nums ${avgPnlTone}">${signedCurrency(profile.average_profit_loss)}</p>
             </div>
-            <div class="min-w-0 rounded-2xl border border-white/10 bg-white/5 px-2.5 py-2.5 sm:px-3 sm:py-3">
-              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">${escapeHtml(t("learning.metric.drawdown"))}</p>
+            <div class="min-w-0 rounded-2xl border border-neutral-200/90 bg-white/5 px-2.5 py-2.5 sm:px-3 sm:py-3">
+              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500">${escapeHtml(t("learning.metric.drawdown"))}</p>
               <p class="mt-2 text-lg font-semibold tabular-nums ${drawdownTone}">${currency(profile.drawdown || 0)}</p>
             </div>
-            <div class="min-w-0 rounded-2xl border border-white/10 bg-white/5 px-2.5 py-2.5 sm:px-3 sm:py-3">
-              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">${escapeHtml(t("learning.metric.version"))}</p>
-              <p class="mt-2 text-sm font-semibold tabular-nums text-slate-200">${escapeHtml(formatLearningVersion(profile.learning_version || response.version))}</p>
+            <div class="min-w-0 rounded-2xl border border-neutral-200/90 bg-white/5 px-2.5 py-2.5 sm:px-3 sm:py-3">
+              <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500">${escapeHtml(t("learning.metric.version"))}</p>
+              <p class="mt-2 text-sm font-semibold tabular-nums text-neutral-800">${escapeHtml(formatLearningVersion(profile.learning_version || response.version))}</p>
             </div>
           </div>
 
@@ -2646,11 +2687,11 @@ function renderAnalysis(analysis) {
     elements.recommendationCard.className = "rounded-[28px] border border-rose-400/25 bg-rose-500/10 p-5";
     elements.recommendationIcon.className = "signal-icon tone-sell";
     elements.recommendationIcon.textContent = recommendationIcon("NO DATA");
-    elements.recommendationValue.className = "text-5xl font-black tracking-[-0.06em] text-rose-200 xl:text-6xl";
+    elements.recommendationValue.className = "text-5xl font-black tracking-[-0.06em] text-rose-800 xl:text-6xl";
     elements.recommendationValue.textContent = "NO DATA";
     elements.signalQualityBadge.hidden = true;
     elements.conflictBadge.hidden = true;
-    elements.confidenceValue.className = "mt-2 text-2xl font-semibold text-slate-200";
+    elements.confidenceValue.className = "mt-2 text-2xl font-semibold text-neutral-800";
     elements.confidenceValue.textContent = "--";
     setConfidenceBar(0, "NO_DATA");
     elements.confidenceHint.textContent = "⚠️ No data";
@@ -2659,7 +2700,7 @@ function renderAnalysis(analysis) {
     elements.biasValue.textContent = "Balanced";
     elements.noTradeReason.textContent = reason;
     if (elements.mobileConfidenceValue) {
-      elements.mobileConfidenceValue.className = "mt-2 text-2xl font-semibold text-slate-200";
+      elements.mobileConfidenceValue.className = "mt-2 text-2xl font-semibold text-neutral-800";
       elements.mobileConfidenceValue.textContent = "--";
     }
     if (elements.mobileConfidenceBarFill) {
@@ -2678,7 +2719,7 @@ function renderAnalysis(analysis) {
     if (elements.mobileNoTradeReason) {
       elements.mobileNoTradeReason.textContent = reason;
     }
-    elements.riskValue.className = "mt-3 text-2xl font-semibold text-slate-200";
+    elements.riskValue.className = "mt-3 text-2xl font-semibold text-neutral-800";
     elements.riskValue.textContent = "--";
     elements.timeframeValue.textContent = "--";
     elements.coverageValue.className = `mt-3 text-2xl font-semibold ${noDataQuality.tone}`;
@@ -2693,7 +2734,7 @@ function renderAnalysis(analysis) {
     elements.stopLossValue.textContent = "--";
     elements.stopLossReason.textContent = "No stop.";
     elements.warningsList.innerHTML =
-      '<span class="rounded-full border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-200">No live data</span>';
+      '<span class="rounded-full border border-rose-400/25 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-800">No live data</span>';
     renderMobileStrategyCards();
     syncMobileFavoriteButton();
     return;
@@ -2760,10 +2801,10 @@ function renderAnalysis(analysis) {
   elements.coverageValue.className = `mt-3 text-2xl font-semibold ${dataQuality.tone}`;
   elements.coverageValue.textContent = dataQuality.label;
   elements.coverageReason.textContent = dataQuality.reason;
-  elements.entryValue.className = `mt-3 text-2xl font-semibold ${analysis.entry_signal ? "text-emerald-300" : "text-slate-200"}`;
+  elements.entryValue.className = `mt-3 text-2xl font-semibold ${analysis.entry_signal ? "text-emerald-700" : "text-neutral-800"}`;
   elements.entryValue.textContent = yesNoLabel(analysis.entry_signal);
   elements.entryReason.textContent = analysis.entry_reason || "No entry.";
-  elements.exitValue.className = `mt-3 text-2xl font-semibold ${analysis.exit_signal ? "text-rose-300" : "text-slate-200"}`;
+  elements.exitValue.className = `mt-3 text-2xl font-semibold ${analysis.exit_signal ? "text-rose-700" : "text-neutral-800"}`;
   elements.exitValue.textContent = yesNoLabel(analysis.exit_signal);
   elements.exitReason.textContent = analysis.exit_reason || "No exit.";
   elements.positionSizeValue.textContent = sizeBucket(analysis.position_size_percent);
@@ -2775,7 +2816,7 @@ function renderAnalysis(analysis) {
         .map((warning) => {
           const tone = /negative|high|weak|unclear|drawdown|overbought|headwind|pressure|strong/i.test(warning)
             ? "border-amber-400/20 bg-amber-500/10 text-amber-200"
-            : "border-white/10 bg-white/5 text-slate-300";
+            : "border-neutral-200/90 bg-white/5 text-neutral-700";
           return `<span class="rounded-full border px-3 py-2 text-xs font-medium ${tone}">${warning}</span>`;
         })
         .join("")
@@ -2801,13 +2842,13 @@ function renderMobileStrategyCardsLoading(symbol) {
   elements.mobileStrategyCards.innerHTML = STRATEGY_KEYS.map((k) => [k, getStrategyLabel(k)])
     .map(
       ([key, label]) => `
-        <button type="button" class="mobile-strategy-card mobile-only rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-left" data-mobile-strategy="${key}">
+        <button type="button" class="mobile-strategy-card mobile-only rounded-2xl border border-neutral-200/90 bg-white p-4 text-left" data-mobile-strategy="${key}">
           <div class="flex items-center justify-between gap-3">
-            <p class="text-sm font-semibold text-white">${label}</p>
-            <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-slate-300">Scan</span>
+            <p class="text-sm font-semibold text-neutral-900">${label}</p>
+            <span class="rounded-full border border-neutral-200/90 bg-white/5 px-3 py-1 text-[11px] font-semibold text-neutral-700">Scan</span>
           </div>
           <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/10"><div class="mobile-skeleton h-full w-1/2 rounded-full"></div></div>
-          <p class="mt-3 text-sm text-slate-400">Checking ${symbol}</p>
+          <p class="mt-3 text-sm text-neutral-600">Checking ${symbol}</p>
         </button>
       `,
     )
@@ -2837,15 +2878,15 @@ function renderMobileStrategyCards() {
         <button type="button" class="mobile-strategy-card mobile-only rounded-2xl border p-4 text-left ${tone} ${active}" data-mobile-strategy="${key}">
           <div class="flex items-start justify-between gap-3">
             <div>
-              <p class="text-sm font-semibold text-white">${label}</p>
+              <p class="text-sm font-semibold text-neutral-900">${label}</p>
               <p class="mt-2 text-xl font-black tracking-[-0.03em]">${recommendation}</p>
             </div>
             <div class="text-right">
               <p class="text-[11px] font-medium uppercase tracking-[0.2em] opacity-70">Confidence</p>
-              <p class="mt-2 text-base font-semibold text-white">${confidence}</p>
+              <p class="mt-2 text-base font-semibold text-neutral-900">${confidence}</p>
             </div>
           </div>
-          <p class="mt-3 line-clamp-2 text-sm leading-6 text-slate-200/90">${reason}</p>
+          <p class="mt-3 line-clamp-2 text-sm leading-6 text-neutral-800/90">${reason}</p>
         </button>
       `;
     })
@@ -2884,42 +2925,44 @@ function syncSelectedFavoriteButton() {
     return;
   }
   const active = isFavoriteSymbol(state.selectedSymbol);
-  elements.selectedFavoriteButton.textContent = active ? "★ Favorite" : "☆ Favorite";
+  elements.selectedFavoriteButton.textContent = active
+    ? `★ ${t("symbol.favoriteButton")}`
+    : `☆ ${t("symbol.favoriteButton")}`;
   elements.selectedFavoriteButton.className = active
-    ? "favorite-button favorite-active rounded-full border border-amber-300/30 bg-amber-300/12 px-4 py-2 text-sm font-semibold text-amber-200"
-    : "favorite-button rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300";
+    ? "favorite-button favorite-active rounded-full border border-amber-500/40 bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-950"
+    : "favorite-button rounded-full border border-neutral-200/90 bg-white px-4 py-2 text-sm font-semibold text-neutral-800";
   elements.selectedFavoriteButton.setAttribute(
     "aria-label",
-    active ? "Remove selected symbol from favorites" : "Add selected symbol to favorites",
+    active ? t("symbol.favoriteRemoveAria") : t("symbol.favoriteAria"),
   );
 }
 
 function showPortfolioSheetLoading() {
   elements.portfolioSheetSummary.innerHTML = `
-    <div class="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+    <div class="rounded-2xl border border-neutral-200/90 bg-white p-4">
       <div class="mobile-skeleton h-4 w-24"></div>
       <div class="mt-3 mobile-skeleton h-8 w-32"></div>
     </div>
   `;
   elements.portfolioSheetPositions.innerHTML = `
-    <div class="rounded-2xl border border-white/10 bg-slate-900/70 p-4"><div class="mobile-skeleton h-4 w-full"></div><div class="mt-3 mobile-skeleton h-4 w-10/12"></div></div>
+    <div class="rounded-2xl border border-neutral-200/90 bg-white p-4"><div class="mobile-skeleton h-4 w-full"></div><div class="mt-3 mobile-skeleton h-4 w-10/12"></div></div>
   `;
 }
 
 function renderPortfolioSheet(portfolio) {
-  const pnlTone = Number(portfolio.total_pnl || 0) >= 0 ? "text-emerald-300" : "text-rose-300";
+  const pnlTone = Number(portfolio.total_pnl || 0) >= 0 ? "text-emerald-700" : "text-rose-700";
   elements.portfolioSheetSummary.innerHTML = `
-    <article class="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-      <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-500">Market value</p>
-      <p class="mt-3 text-3xl font-semibold text-white">${currency(portfolio.market_value || 0)}</p>
+    <article class="rounded-2xl border border-neutral-200/90 bg-white p-4">
+      <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Market value</p>
+      <p class="mt-3 text-3xl font-semibold text-neutral-900">${currency(portfolio.market_value || 0)}</p>
       <p class="mt-2 text-sm ${pnlTone}">${percent(portfolio.total_pnl_percent || 0)} · ${currency(portfolio.total_pnl || 0)}</p>
     </article>
   `;
   if (!portfolio.positions?.length) {
     elements.portfolioSheetPositions.innerHTML = `
-      <article class="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
-        <p class="text-sm font-semibold text-white">No positions</p>
-        <p class="mt-2 text-sm leading-6 text-slate-400">Add later.</p>
+      <article class="rounded-2xl border border-neutral-200/90 bg-white p-4">
+        <p class="text-sm font-semibold text-neutral-900">No positions</p>
+        <p class="mt-2 text-sm leading-6 text-neutral-600">Add later.</p>
       </article>
     `;
     return;
@@ -2927,19 +2970,19 @@ function renderPortfolioSheet(portfolio) {
   elements.portfolioSheetPositions.innerHTML = portfolio.positions
     .map((position) => {
       const allocation = portfolio.market_value ? ((position.market_value / portfolio.market_value) * 100).toFixed(1) : "0.0";
-      const tone = Number(position.pnl || 0) >= 0 ? "text-emerald-300" : "text-rose-300";
+      const tone = Number(position.pnl || 0) >= 0 ? "text-emerald-700" : "text-rose-700";
       return `
-        <article class="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+        <article class="rounded-2xl border border-neutral-200/90 bg-white p-4">
           <div class="flex items-center justify-between gap-3">
             <div>
-              <p class="text-sm font-semibold text-white">${position.symbol}</p>
-              <p class="mt-1 text-xs text-slate-400">${allocation}% allocation</p>
+              <p class="text-sm font-semibold text-neutral-900">${position.symbol}</p>
+              <p class="mt-1 text-xs text-neutral-600">${allocation}% allocation</p>
             </div>
             <p class="text-sm font-semibold ${tone}">${currency(position.pnl || 0)}</p>
           </div>
           <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
-            <div><p class="text-slate-500">Value</p><p class="mt-1 font-medium text-white">${currency(position.market_value || 0)}</p></div>
-            <div><p class="text-slate-500">Entry</p><p class="mt-1 font-medium text-white">${currency(position.average_price || 0)}</p></div>
+            <div><p class="text-neutral-500">Value</p><p class="mt-1 font-medium text-neutral-900">${currency(position.market_value || 0)}</p></div>
+            <div><p class="text-neutral-500">Entry</p><p class="mt-1 font-medium text-neutral-900">${currency(position.average_price || 0)}</p></div>
           </div>
         </article>
       `;
@@ -2959,8 +3002,8 @@ function openPortfolioSheet() {
     .catch((error) => {
       elements.portfolioSheetPositions.innerHTML = `
         <article class="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-          <p class="text-sm font-semibold text-white">Portfolio offline</p>
-          <p class="mt-2 text-sm leading-6 text-slate-300">${error.message || "⚠️ Try again."}</p>
+          <p class="text-sm font-semibold text-neutral-900">Portfolio offline</p>
+          <p class="mt-2 text-sm leading-6 text-neutral-700">${error.message || "⚠️ Try again."}</p>
         </article>
       `;
     });
@@ -3183,12 +3226,14 @@ async function toggleFavorite(symbol) {
 }
 
 function renderFavoriteButton(symbol) {
-  const active = isFavoriteSymbol(symbol);
-  const label = active ? "Remove favorite" : "Add favorite";
+  const sym = String(symbol || "").trim();
+  const active = isFavoriteSymbol(sym);
+  const label = escapeHtml(active ? t("symbol.favoriteRemoveAria") : t("symbol.favoriteAria"));
+  const escSym = escapeHtml(sym);
   const classes = active
-    ? "favorite-button favorite-active rounded-full border border-amber-300/30 bg-amber-300/12 px-3 py-2 text-amber-200"
-    : "favorite-button rounded-full border border-white/10 bg-white/5 px-3 py-2 text-slate-300";
-  return `<button type="button" class="${classes}" data-favorite-symbol="${symbol}" aria-label="${label}">${active ? "★" : "☆"}</button>`;
+    ? "favorite-button favorite-active rounded-full border border-amber-500/40 bg-amber-100 px-3 py-2 text-amber-950"
+    : "favorite-button rounded-full border border-neutral-200/90 bg-white px-3 py-2 font-semibold text-neutral-800";
+  return `<button type="button" class="${classes}" data-favorite-symbol="${escSym}" aria-label="${label}">${active ? "★" : "☆"}</button>`;
 }
 
 function bindFavoriteButtons(scope = document) {
@@ -3206,13 +3251,13 @@ function renderFavorites() {
     favoritesSection.hidden = true;
   }
   const favoriteItems = state.watchlist.filter((item) => isFavoriteSymbol(item.symbol));
-  elements.favoritesMeta.textContent = `${favoriteItems.length} saved`;
+  elements.favoritesMeta.textContent = tf("favorites.metaCount", { n: favoriteItems.length });
 
   if (!favoriteItems.length) {
     elements.favoritesBody.innerHTML = `
-      <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-        <p class="text-sm font-semibold text-white">No favorites</p>
-        <p class="mt-2 text-sm leading-6 text-slate-400">☆ Star to pin.</p>
+      <article class="rounded-2xl border border-neutral-200/90 bg-white p-4">
+        <p class="text-sm font-semibold text-neutral-900">${escapeHtml(t("favorites.emptyTitle"))}</p>
+        <p class="mt-2 text-sm leading-6 text-neutral-600">${escapeHtml(t("favorites.emptyBody"))}</p>
       </article>
     `;
     return;
@@ -3220,22 +3265,23 @@ function renderFavorites() {
 
   elements.favoritesBody.innerHTML = favoriteItems
     .map((item) => {
-      const tone = item.change_percent >= 0 ? "text-emerald-300" : "text-rose-300";
+      const tone = item.change_percent >= 0 ? "text-emerald-700" : "text-rose-700";
+      const sym = String(item.symbol || "");
       return `
         <button
           type="button"
-          class="favorite-card w-full rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-left transition hover:bg-slate-900/90"
-          data-symbol="${item.symbol}"
+          class="favorite-card w-full rounded-2xl border border-neutral-200/90 bg-white p-4 text-left transition hover:bg-neutral-100"
+          data-symbol="${escapeHtml(sym)}"
         >
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
-              <p class="text-sm font-semibold text-white">${item.symbol}</p>
-              <p class="mt-1 truncate text-xs text-slate-400">${item.name}</p>
+              <p class="text-sm font-semibold text-neutral-900">${escapeHtml(sym)}</p>
+              <p class="mt-1 truncate text-xs text-neutral-600">${escapeHtml(item.name || "")}</p>
             </div>
-            ${renderFavoriteButton(item.symbol)}
+            ${renderFavoriteButton(sym)}
           </div>
           <div class="mt-4 flex items-center justify-between gap-3">
-            <p class="text-sm font-semibold text-white">${currency(item.price)}</p>
+            <p class="text-sm font-semibold text-neutral-900">${currency(item.price)}</p>
             <p class="text-xs font-medium ${tone}">${percent(item.change_percent)}</p>
           </div>
         </button>
@@ -3261,7 +3307,10 @@ function hydrateDashboardFromCache() {
 
   if (Array.isArray(cachedWatchlist) && cachedWatchlist.length) {
     state.watchlist = cachedWatchlist;
-    elements.watchlistMeta.textContent = `${MAX_SIDEBAR_SLOTS}/${MAX_SIDEBAR_SLOTS} visible`;
+    elements.watchlistMeta.textContent = tf("watchlist.metaVisible", {
+      visible: MAX_SIDEBAR_SLOTS,
+      max: MAX_SIDEBAR_SLOTS,
+    });
     renderWatchlist(cachedWatchlist);
     renderFavorites();
   }
@@ -3295,7 +3344,7 @@ async function loadLearningStats(forceRefresh = false) {
     renderLearningStats(cachedLearningStats);
     elements.learningMeta.textContent = t("dashboard.refreshing");
     elements.learningMeta.className =
-      "min-w-0 max-w-full shrink whitespace-normal rounded-full border border-white/10 bg-slate-950/60 px-3 py-2 text-right text-[0.68rem] font-medium leading-snug text-slate-400 sm:max-w-[min(100%,14rem)]";
+      "min-w-0 max-w-full shrink whitespace-normal rounded-full border border-neutral-200/90 bg-white px-3 py-2 text-right text-[0.68rem] font-medium leading-snug text-neutral-600 sm:max-w-[min(100%,14rem)]";
   }
 
   try {
@@ -3310,7 +3359,7 @@ async function loadLearningStats(forceRefresh = false) {
       renderLearningStats(cachedLearningStats);
       elements.learningMeta.textContent = t("learning.cached");
       elements.learningMeta.className =
-        "min-w-0 max-w-full shrink whitespace-normal rounded-full border border-white/10 bg-slate-950/60 px-3 py-2 text-right text-[0.68rem] font-medium leading-snug text-slate-400 sm:max-w-[min(100%,14rem)]";
+        "min-w-0 max-w-full shrink whitespace-normal rounded-full border border-neutral-200/90 bg-white px-3 py-2 text-right text-[0.68rem] font-medium leading-snug text-neutral-600 sm:max-w-[min(100%,14rem)]";
       return cachedLearningStats;
     }
     renderLearningStatsError(error.message || `⚠️ ${t("learning.loadFailed")}`);
@@ -3588,14 +3637,14 @@ function renderLoadingWatchlist() {
       ${Array.from({ length: MAX_SIDEBAR_SLOTS })
         .map(
           () => `
-            <div class="animate-pulse rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-4">
+            <div class="animate-pulse rounded-2xl border border-neutral-200/90 bg-neutral-50 px-4 py-4">
               <div class="flex items-start gap-4">
-                <div class="h-10 w-10 shrink-0 rounded-2xl bg-white/10"></div>
+                <div class="h-10 w-10 shrink-0 rounded-2xl bg-neutral-200/80"></div>
                 <div class="min-w-0 flex-1 space-y-2">
-                  <div class="h-4 w-20 rounded bg-white/10"></div>
-                  <div class="h-3 w-full max-w-[8rem] rounded bg-white/10"></div>
+                  <div class="h-4 w-20 rounded bg-neutral-200/80"></div>
+                  <div class="h-3 w-full max-w-[8rem] rounded bg-neutral-200/80"></div>
                 </div>
-                <div class="h-8 w-8 shrink-0 rounded-2xl bg-white/10"></div>
+                <div class="h-8 w-8 shrink-0 rounded-2xl bg-neutral-200/80"></div>
               </div>
             </div>
           `,
@@ -3617,24 +3666,29 @@ function safeWatchlistChange(value) {
 
 function renderWatchlist(items) {
   const visibleItems = getVisibleWatchlistItems(items);
-  elements.watchlistMeta.textContent = `${visibleItems.length}/${MAX_SIDEBAR_SLOTS} visible`;
+  elements.watchlistMeta.textContent = tf("watchlist.metaVisible", {
+    visible: visibleItems.length,
+    max: MAX_SIDEBAR_SLOTS,
+  });
   elements.watchlistBody.innerHTML = "";
 
   if (!visibleItems.length) {
+    const emptyLabel = state.selectedSymbol || t("watchlist.fallbackName");
+    const emptyMono = String(state.selectedSymbol || "WL").slice(0, 2);
     elements.watchlistBody.innerHTML = `
-      <div class="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-4">
+      <div class="rounded-2xl border border-neutral-200/90 bg-neutral-50 px-4 py-4">
         <div class="flex items-start gap-4">
-          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-[0.7rem] font-bold leading-none text-white/90">
-            ${String(state.selectedSymbol || "WL").slice(0, 2)}
+          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-neutral-200/90 bg-white text-[0.7rem] font-bold leading-none text-neutral-950">
+            ${escapeHtml(emptyMono)}
           </div>
           <div class="flex min-w-0 flex-1 flex-col gap-2">
             <div class="flex items-start justify-between gap-3">
-              <p class="truncate text-base font-semibold leading-tight tracking-tight text-white">${state.selectedSymbol || "Watchlist"}</p>
-              <p class="shrink-0 tabular-nums text-xs font-semibold text-slate-400">${percent(0)}</p>
+              <p class="truncate text-base font-semibold leading-tight tracking-tight text-neutral-900">${escapeHtml(emptyLabel)}</p>
+              <p class="shrink-0 tabular-nums text-xs font-semibold text-neutral-600">${percent(0)}</p>
             </div>
             <div class="flex items-start justify-between gap-3">
-              <p class="line-clamp-2 min-w-0 flex-1 text-xs leading-snug text-slate-400">Market data syncing</p>
-              <p class="shrink-0 tabular-nums text-sm font-semibold text-white">No Data</p>
+              <p class="line-clamp-2 min-w-0 flex-1 text-xs font-medium leading-snug text-neutral-800">${escapeHtml(t("watchlist.marketSyncing"))}</p>
+              <p class="shrink-0 tabular-nums text-sm font-bold text-neutral-950">${escapeHtml(t("watchlist.noData"))}</p>
             </div>
           </div>
         </div>
@@ -3649,40 +3703,44 @@ function renderWatchlist(items) {
     const priceValue = safeWatchlistPrice(item.price);
     const stale = Boolean(item.stale);
     const tone = stale
-      ? "text-amber-300"
+      ? "text-amber-900"
       : changeValue >= 0
-        ? "text-emerald-300"
-        : "text-rose-300";
+        ? "text-emerald-800"
+        : "text-rose-800";
     const active = item.symbol === state.selectedSymbol;
+    const sym = String(item.symbol || "");
+    const escSym = escapeHtml(sym);
+    const escName = escapeHtml(item.name || "");
+    const staleTitle = escapeHtml(t("watchlist.stalePriceTitle"));
     const card = document.createElement("button");
     card.type = "button";
-    card.dataset.symbol = item.symbol;
+    card.dataset.symbol = sym;
     card.className = [
       "watchlist-slot w-full rounded-2xl border px-4 py-4 text-left transition",
       active
-        ? "border-cyan-300/40 bg-cyan-300/10 shadow-lg shadow-cyan-500/10"
-        : "border-white/10 bg-slate-950/50 hover:bg-slate-900/90",
+        ? "border-[#005c39]/35 bg-[#005c39]/10 shadow-md shadow-black/10"
+        : "border-neutral-200/90 bg-neutral-50 hover:bg-neutral-100",
     ].join(" ");
     card.innerHTML = `
       <div class="flex items-start gap-4">
-        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-[0.7rem] font-bold leading-none tracking-tight text-white/90">
-          ${item.symbol.slice(0, 2)}
+        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-neutral-200/90 bg-white text-[0.7rem] font-bold leading-none tracking-tight text-neutral-950">
+          ${escapeHtml(sym.slice(0, 2))}
         </div>
         <div class="flex min-w-0 flex-1 flex-col gap-2">
           <div class="flex items-start justify-between gap-3">
-            <p class="watchlist-symbol min-w-0 truncate text-base font-semibold leading-tight tracking-tight text-white">${item.symbol}</p>
+            <p class="watchlist-symbol min-w-0 truncate text-base font-semibold leading-tight tracking-tight text-neutral-900">${escSym}</p>
             <p class="watchlist-change shrink-0 tabular-nums text-xs font-semibold leading-tight ${tone}">${percent(changeValue)}</p>
           </div>
           <div class="flex items-start justify-between gap-3">
-            <p class="watchlist-name line-clamp-2 min-w-0 flex-1 text-xs leading-snug text-slate-400">${item.name}</p>
+            <p class="watchlist-name line-clamp-2 min-w-0 flex-1 text-xs font-medium leading-snug text-neutral-800">${escName}</p>
             <div class="flex shrink-0 items-center gap-1.5 self-start pt-0.5">
-              ${stale ? '<span class="text-[10px] font-medium text-amber-300" title="Last known price">⚠️</span>' : ""}
-              <p class="watchlist-price tabular-nums text-sm font-semibold leading-none text-white">${displayMarketPrice(priceValue)}</p>
+              ${stale ? `<span class="text-[10px] font-semibold text-amber-900" title="${staleTitle}">⚠️</span>` : ""}
+              <p class="watchlist-price tabular-nums text-sm font-semibold leading-none text-neutral-900">${displayMarketPrice(priceValue)}</p>
             </div>
           </div>
         </div>
         <div class="flex shrink-0 self-start pt-0.5">
-          ${renderFavoriteButton(item.symbol)}
+          ${renderFavoriteButton(sym)}
         </div>
       </div>
     `;
@@ -3709,9 +3767,9 @@ function renderCompanyDetails(overview) {
       const l = escapeHtml(String(label));
       const v = escapeHtml(String(value));
       return `
-        <div class="company-detail-row flex min-w-0 flex-col gap-1 rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-3 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
-          <dt class="shrink-0 text-sm text-slate-400">${l}</dt>
-          <dd class="min-w-0 flex-1 text-sm font-medium leading-snug text-white sm:text-right">${v}</dd>
+        <div class="company-detail-row flex min-w-0 flex-col gap-1 rounded-2xl border border-neutral-200/90 bg-neutral-100 px-4 py-3 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+          <dt class="shrink-0 text-sm text-neutral-600">${l}</dt>
+          <dd class="min-w-0 flex-1 text-sm font-medium leading-snug text-neutral-900 sm:text-right">${v}</dd>
         </div>`;
     })
     .join("");
@@ -3970,9 +4028,9 @@ function renderOverview(overview) {
     "inline-flex w-fit rounded-full px-4 py-2 text-sm font-semibold",
     hasPrice
       ? positive
-        ? "bg-emerald-500/15 text-emerald-300"
-        : "bg-rose-500/15 text-rose-300"
-      : "bg-white/5 text-slate-300",
+        ? "bg-[#005c39]/12 text-[#004730]"
+        : "bg-rose-500/15 text-rose-700"
+      : "bg-neutral-100 text-neutral-600",
   ].join(" ");
 
   elements.companyHeadline.textContent = overview.name;
@@ -4000,7 +4058,7 @@ function renderOverviewFallback(symbol) {
   elements.selectedCompanyName.textContent = t("overview.liveUnavailable");
   elements.changeBadge.textContent = t("metric.noData");
   elements.changeBadge.className =
-    "inline-flex w-fit rounded-full bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300";
+    "inline-flex w-fit rounded-full bg-neutral-100 px-4 py-2 text-sm font-semibold text-neutral-600";
   elements.metricPrice.textContent = t("metric.noData");
   elements.metricHigh.textContent = t("metric.noData");
   elements.metricLow.textContent = t("metric.noData");
@@ -4345,7 +4403,7 @@ async function renderTradingView(symbol, exchange = "", requestId = state.chartR
 
 async function loadWatchlist(forceRefresh = false) {
   renderLoadingWatchlist();
-  elements.watchlistMeta.textContent = `0/${MAX_SIDEBAR_SLOTS} visible`;
+  elements.watchlistMeta.textContent = tf("watchlist.metaVisible", { visible: 0, max: MAX_SIDEBAR_SLOTS });
   const suffix = forceRefresh ? "?refresh=1" : "";
   const items = await api(`/api/dashboard/watchlist${suffix}`, {
     timeoutMs: 25000,

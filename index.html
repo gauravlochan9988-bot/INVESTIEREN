@@ -8,7 +8,7 @@
       content="Modern trading dashboard with Finnhub market data and TradingView charts."
     />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="light" />
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://s3.tradingview.com https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; media-src 'self' https://v1.pinimg.com data: blob:; connect-src 'self' http://127.0.0.1:8000 http://localhost:8000 http://127.0.0.1:8003 http://localhost:8003 https://investieren-production.up.railway.app https://*.tradingview.com https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com; frame-src 'self' https://*.tradingview.com https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com; child-src 'self' https://*.tradingview.com https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com; font-src 'self' https: data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
@@ -20,10 +20,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body class="min-h-screen max-w-full overflow-x-hidden bg-slate-950 text-slate-100 antialiased">
+  <body class="min-h-screen max-w-full overflow-x-hidden bg-[#F9F9F8] text-neutral-900 antialiased">
     <div
       id="authOverlay"
-      class="fixed inset-0 z-30 flex min-h-[100dvh] flex-col items-stretch justify-start overflow-x-hidden overflow-y-auto overscroll-y-contain bg-slate-950/90 pt-[env(safe-area-inset-top)] pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center sm:justify-center"
+      class="fixed inset-0 z-30 flex min-h-[100dvh] flex-col items-stretch justify-start overflow-x-hidden overflow-y-auto overscroll-y-contain pt-[env(safe-area-inset-top)] pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center sm:justify-center"
     >
       <div class="absolute inset-0 login-bg auth-photo-bg">
         <picture class="auth-photo-picture">
@@ -94,7 +94,7 @@
                     autocomplete="current-password"
                     aria-describedby="authPasswordHint"
                     aria-invalid="false"
-                    class="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-base text-white outline-none transition login-input"
+                    class="w-full rounded-2xl border border-neutral-200/90 bg-white px-5 py-4 text-base text-neutral-900 outline-none transition login-input"
                   />
                 </div>
 
@@ -102,7 +102,7 @@
                   <button type="submit" class="auth-private-button auth-landing-primary login-button">
                     <span data-i18n="auth.enterDashboard">Zum Dashboard</span>
                   </button>
-                  <a href="#systemSignals" class="auth-landing-secondary" data-i18n="auth.viewSignals">Signale</a>
+                  <a href="#authFeatures" class="auth-landing-secondary" data-i18n="auth.viewSignals">Signale</a>
                 </div>
 
                 <p id="authError" class="auth-error-text" role="alert" aria-live="polite" hidden>
@@ -114,7 +114,25 @@
               </div>
             </form>
 
-            <div class="auth-feature-grid">
+            <div class="auth-purchase-option" aria-labelledby="authPurchaseHeading">
+              <p id="authPurchaseHeading" class="auth-purchase-kicker" data-i18n="auth.purchaseKicker">
+                Noch keinen Code?
+              </p>
+              <p class="auth-purchase-text" data-i18n="auth.purchaseBody">
+                Pro-Zugang für €4.99 pro Monat — sicher bezahlen. Danach mit deinem Zugangscode einloggen.
+              </p>
+              <a
+                href="pricing.html"
+                class="auth-purchase-cta"
+                data-i18n="auth.purchaseCta"
+                data-i18n-aria="auth.purchaseCtaAria"
+              >
+                Zugang kaufen — €4.99 / Monat
+              </a>
+              <p class="auth-purchase-note" data-i18n="auth.purchaseNote">Apple Pay und Google Pay im Checkout.</p>
+            </div>
+
+            <div id="authFeatures" class="auth-feature-grid scroll-mt-8">
               <article class="auth-feature-card">
                 <h2 data-i18n="auth.features.liveSignalsTitle">Live-Signale</h2>
                 <p data-i18n="auth.features.liveSignalsBody">Konkrete Einstiegs- und Ausstiegssignale mit Echtzeit-Marktkontext.</p>
@@ -176,58 +194,47 @@
           </div>
         </div>
 
-        <div id="systemSignals" class="auth-system-grid scroll-mt-8">
-          <section class="auth-system-box">
-            <p class="auth-system-label" data-i18n="auth.system.inside">In deinem System</p>
-            <ul class="auth-benefit-list auth-system-list">
-              <li data-i18n="auth.system.liveSignals">Live-Signale</li>
-              <li data-i18n="auth.system.aiDecisions">KI-basierte Entscheidungen</li>
-              <li data-i18n="auth.system.strategyComparison">Strategie-Vergleich</li>
-            </ul>
-          </section>
-        </div>
-
         <footer class="auth-landing-footer">GQ Trading</footer>
       </section>
     </div>
 
     <div
       id="paywallOverlay"
-      class="fixed inset-0 z-20 hidden flex min-h-screen items-center justify-center overflow-hidden bg-slate-950/92"
+      class="fixed inset-0 z-20 hidden flex min-h-screen items-center justify-center overflow-hidden bg-[#F9F9F8]/90"
       hidden
     >
-      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(45,212,191,0.12),_transparent_35%),linear-gradient(180deg,rgba(2,6,23,0.94)_0%,rgba(2,6,23,0.98)_100%)]"></div>
-      <section class="relative z-10 mx-4 w-full max-w-xl rounded-[28px] border border-white/10 bg-slate-900/90 p-8 text-center shadow-2xl shadow-black/40 backdrop-blur">
-        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300" data-i18n="paywall.kicker">Pro-Zugang</p>
-        <h2 class="mt-4 text-3xl font-black tracking-[-0.04em] text-white" data-i18n="paywall.title">Upgrade fur vollen Dashboard-Zugriff</h2>
-        <p class="mt-4 text-sm leading-6 text-slate-300" data-i18n="paywall.body">Aktiviere Pro, um Live-Signale, Alerts und Watchlists zu nutzen.</p>
+      <div class="absolute inset-0 bg-[linear-gradient(180deg,rgba(249,249,248,0.7)_0%,rgba(242,242,240,0.95)_100%)]"></div>
+      <section class="relative z-10 mx-4 w-full max-w-xl rounded-[28px] border border-neutral-200/90 bg-white p-8 text-center shadow-2xl shadow-black/10 backdrop-blur">
+        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-600" data-i18n="paywall.kicker">Pro-Zugang</p>
+        <h2 class="mt-4 text-3xl font-black tracking-[-0.04em] text-neutral-900" data-i18n="paywall.title">Upgrade fur vollen Dashboard-Zugriff</h2>
+        <p class="mt-4 text-sm leading-6 text-neutral-600" data-i18n="paywall.body">Aktiviere Pro, um Live-Signale, Alerts und Watchlists zu nutzen.</p>
         <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <button
             id="paywallUpgradeButton"
             type="button"
-            class="rounded-2xl bg-gradient-to-r from-cyan-300 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px]"
+            class="rounded-full bg-[#005C39] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#005c39]/25 transition hover:translate-y-[-1px] hover:bg-[#004730]"
           >
             <span data-i18n="paywall.upgradeCta">Upgrade €4.99 / Monat</span>
           </button>
           <button
             id="paywallLogoutButton"
             type="button"
-            class="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+            class="rounded-full border border-[#F2D8C9] bg-[#F2D8C9] px-6 py-3 text-sm font-semibold text-neutral-900 transition hover:bg-[#ebd0bf]"
           >
             <span data-i18n="paywall.logout">Abmelden</span>
           </button>
         </div>
-        <p id="paywallMessage" class="mt-4 text-xs text-slate-400" data-i18n="paywall.note">Apple Pay und Google Pay sind im Stripe-Checkout verfugbar.</p>
+        <p id="paywallMessage" class="mt-4 text-xs text-neutral-500" data-i18n="paywall.note">Apple Pay und Google Pay sind im Stripe-Checkout verfugbar.</p>
       </section>
     </div>
 
     <div id="appShell" class="hidden min-h-[100dvh]">
       <div class="mx-auto flex min-h-[100dvh] w-full max-w-[1720px] flex-col px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:py-4 lg:px-6 xl:px-8 2xl:px-12 min-[1800px]:px-14">
         <header
-          class="dashboard-topbar mb-4 flex flex-col gap-4 rounded-[24px] border border-white/10 bg-slate-900/85 px-4 py-4 shadow-2xl shadow-black/30 backdrop-blur sm:mb-5 sm:rounded-[28px] sm:px-5 sm:py-5"
+          class="dashboard-topbar mb-4 flex flex-col gap-4 rounded-[24px] border border-neutral-200/90 bg-white px-4 py-4 shadow-lg shadow-black/[0.06] sm:mb-5 sm:rounded-[28px] sm:px-5 sm:py-5"
         >
           <div class="dashboard-topbar-row-1 flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
-          <button id="brandHomeButton" type="button" class="dashboard-brand flex shrink-0 items-center text-left" aria-label="Zur Dashboard-Startseite" data-i18n-aria="dashboard.homeAria">
+          <button id="brandHomeButton" type="button" class="dashboard-brand flex shrink-0 items-center justify-start self-center text-left" aria-label="Zur Dashboard-Startseite" data-i18n-aria="dashboard.homeAria">
             <span id="headerMonogram" aria-hidden="true">GQ</span>
             <span class="dashboard-brand-copy">
               <span class="dashboard-brand-name">GQ Trading</span>
@@ -235,18 +242,18 @@
             </span>
           </button>
 
-          <form id="searchForm" class="relative z-30 flex min-w-0 w-full flex-1 flex-col items-stretch gap-3 sm:flex-row sm:items-center">
-            <div class="relative flex-1">
+          <form id="searchForm" class="relative z-[120] flex min-w-0 w-full flex-1 flex-col items-stretch gap-3 overflow-visible sm:flex-row sm:items-center">
+            <div class="relative z-[1] min-w-0 flex-1 overflow-visible">
               <div
                 id="searchSuggestions"
-                class="absolute left-0 right-0 top-[calc(100%+10px)] z-[70] hidden max-h-80 overflow-y-auto rounded-3xl border border-white/10 bg-slate-950/95 p-2 shadow-2xl shadow-black/40 backdrop-blur"
+                class="absolute left-0 right-0 top-[calc(100%+10px)] z-[200] hidden max-h-80 overflow-y-auto rounded-3xl border border-neutral-200/90 bg-white p-2 shadow-xl shadow-black/[0.12]"
               ></div>
               <input
                 id="searchInput"
                 type="search"
                 placeholder="Suchen"
                 data-i18n-placeholder="dashboard.searchPlaceholder"
-                class="dashboard-search w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3.5 text-base text-white outline-none transition focus:border-cyan-300/50 sm:px-5 sm:py-4"
+                class="dashboard-search w-full rounded-2xl border border-neutral-200/90 bg-white/70 px-4 py-3.5 text-base text-neutral-900 outline-none transition focus:border-[#005C39]/55 focus:ring-2 focus:ring-[#005C39]/20 sm:px-5 sm:py-4"
                 autocomplete="off"
                 aria-autocomplete="list"
                 aria-controls="searchSuggestions"
@@ -256,7 +263,7 @@
           </div>
 
           <div
-            class="dashboard-topbar-row-2 dashboard-topbar-trailing flex w-full flex-col gap-3 border-t border-white/[0.06] pt-4 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between lg:gap-4 lg:border-t-0 lg:pt-0"
+            class="dashboard-topbar-row-2 dashboard-topbar-trailing flex w-full flex-col gap-3 border-t border-neutral-200/80 pt-4 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between lg:gap-4 lg:border-t-0 lg:pt-0"
           >
             <div
               class="auth-lang-switch order-first w-full justify-center self-center xl:order-none xl:w-auto xl:justify-end"
@@ -268,26 +275,26 @@
             </div>
             <div
               id="strategyToggle"
-              class="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/60 p-1"
+              class="flex flex-wrap items-center gap-2 rounded-2xl border border-neutral-200/90 bg-white/60 p-1"
               data-i18n-aria="dashboard.strategyToggleAria"
               aria-label="Handelsstrategie"
             >
               <span id="strategyToggleThumb" aria-hidden="true"></span>
-              <button type="button" class="strategy-button rounded-xl px-3 py-2 text-xs font-semibold text-slate-300 transition" data-strategy="simple">Simple</button>
-              <button type="button" class="strategy-button rounded-xl px-3 py-2 text-xs font-semibold text-slate-300 transition" data-strategy="ai">AI</button>
-              <button type="button" class="strategy-button rounded-xl px-3 py-2 text-xs font-semibold text-slate-300 transition" data-strategy="hedgefund">Hedgefund</button>
+              <button type="button" class="strategy-button rounded-xl px-3 py-2 text-xs font-semibold text-neutral-700 transition" data-strategy="simple">Simple</button>
+              <button type="button" class="strategy-button rounded-xl px-3 py-2 text-xs font-semibold text-neutral-700 transition" data-strategy="ai">AI</button>
+              <button type="button" class="strategy-button rounded-xl px-3 py-2 text-xs font-semibold text-neutral-700 transition" data-strategy="hedgefund">Hedgefund</button>
             </div>
-            <div id="backendStatus" class="dashboard-chip rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-300">
+            <div id="backendStatus" class="dashboard-chip rounded-full border border-neutral-200/90 bg-white/60 px-4 py-2 text-xs font-medium text-neutral-700">
               <span data-i18n="dashboard.backendConnecting">Backend wird verbunden...</span>
             </div>
             <div class="dashboard-topbar-cta-grid grid grid-cols-2 gap-3 min-[420px]:grid-cols-3">
-              <button id="subscribeButton" type="button" class="action-secondary rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-400/15 xl:min-w-[132px]">
+              <button id="subscribeButton" type="button" class="action-secondary rounded-2xl border border-neutral-200/90 bg-white/5 px-4 py-3 text-sm font-semibold text-neutral-800 transition hover:bg-white/10 xl:min-w-[132px]">
                 <span data-i18n="dashboard.subscribe">Upgrade €4.99</span>
               </button>
-              <button id="refreshButton" type="button" class="action-secondary rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 xl:min-w-[112px]">
+              <button id="refreshButton" type="button" class="action-secondary rounded-2xl border border-neutral-200/90 bg-white/5 px-4 py-3 text-sm font-semibold text-neutral-900 transition hover:bg-white/10 xl:min-w-[112px]">
                 <span data-i18n="dashboard.refresh">Aktualisieren</span>
               </button>
-              <button id="logoutButton" type="button" class="action-secondary rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 xl:min-w-[112px]">
+              <button id="logoutButton" type="button" class="action-secondary rounded-2xl border border-neutral-200/90 bg-white/5 px-4 py-3 text-sm font-semibold text-neutral-900 transition hover:bg-white/10 xl:min-w-[112px]">
                 <span data-i18n="dashboard.logout">Abmelden</span>
               </button>
             </div>
@@ -300,7 +307,7 @@
           data-i18n-aria="dashboard.quickActionsAria"
           aria-label="Schnellaktionen"
         >
-          <div class="grid grid-cols-3 gap-2 rounded-[18px] border border-white/10 bg-slate-950/82 p-2 shadow-xl shadow-black/20 backdrop-blur-xl">
+          <div class="grid grid-cols-3 gap-2 rounded-[18px] border border-neutral-200/90 bg-white/82 p-2 shadow-lg shadow-black/[0.06] backdrop-blur-xl">
             <button id="mobileFavoriteButton" type="button" class="mobile-quick-action" data-i18n-aria="dashboard.mobileFavoriteAria" aria-label="Favorit umschalten">
               <span class="text-lg">☆</span>
               <span data-i18n="dashboard.favorite">Favorit</span>
@@ -316,22 +323,22 @@
           </div>
         </nav>
 
-        <div id="errorBanner" class="mb-4 hidden rounded-2xl border border-rose-400/45 bg-rose-950/50 px-4 py-3 text-sm font-medium leading-relaxed text-rose-100"></div>
+        <div id="errorBanner" class="mb-4 hidden rounded-2xl border border-rose-300/80 bg-rose-50 px-4 py-3 text-sm font-medium leading-relaxed text-rose-900"></div>
         <section
           id="limitedAccessBanner"
-          class="mb-4 hidden flex-col gap-4 rounded-[24px] border border-emerald-400/20 bg-emerald-400/10 px-4 py-4 text-sm text-emerald-100 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5"
+          class="mb-4 hidden flex-col gap-4 rounded-[24px] border border-neutral-200/90 bg-white px-4 py-4 text-sm text-neutral-800 shadow-lg shadow-black/6 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5"
           hidden
         >
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300" data-i18n="limited.kicker">Eingeschrankter Zugriff</p>
-            <p id="limitedAccessMessage" class="mt-1 text-sm text-emerald-100" data-i18n="limited.body">
+            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-neutral-600" data-i18n="limited.kicker">Eingeschrankter Zugriff</p>
+            <p id="limitedAccessMessage" class="mt-1 text-sm text-neutral-700" data-i18n="limited.body">
               Du kannst das Dashboard ansehen. Aktiviere Live-Signale und Alerts fur vollen Zugriff.
             </p>
           </div>
           <button
             id="limitedAccessUpgradeButton"
             type="button"
-            class="shrink-0 rounded-2xl bg-gradient-to-r from-cyan-300 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:translate-y-[-1px]"
+            class="shrink-0 rounded-full bg-[#005C39] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#005c39]/22 transition hover:translate-y-[-1px] hover:bg-[#004730]"
           >
             <span data-i18n="limited.unlock">Freischalten €4.99</span>
           </button>
@@ -340,57 +347,57 @@
         <main id="dashboardWorkspace" class="grid flex-1 items-start gap-7 xl:gap-9 xl:grid-cols-[minmax(280px,340px)_minmax(0,1fr)_minmax(260px,320px)] 2xl:grid-cols-[minmax(300px,360px)_minmax(0,1fr)_minmax(280px,340px)]">
           <aside
             id="watchlistSection"
-            class="dashboard-panel flex min-h-0 min-w-0 flex-col rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5"
+            class="dashboard-panel flex min-h-0 min-w-0 flex-col rounded-[24px] border border-neutral-200/90 bg-white p-4 shadow-lg shadow-black/[0.06] sm:rounded-[28px] sm:p-5"
           >
             <div id="watchlistHeader" class="mb-4 flex shrink-0 items-end justify-between">
               <div>
-                <p class="text-xs font-medium text-slate-500" data-i18n="dashboard.kickerLive">LIVE</p>
-                <h2 class="mt-2 text-xl font-semibold" data-i18n="watchlist.quotes">Kurse</h2>
+                <p class="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-700" data-i18n="dashboard.kickerLive">LIVE</p>
+                <h2 class="mt-2 text-xl font-semibold text-neutral-950" data-i18n="watchlist.quotes">Kurse</h2>
               </div>
-              <span id="watchlistMeta" class="text-xs text-slate-500" data-i18n="watchlist.syncing">Synchronisiere...</span>
+              <span id="watchlistMeta" class="text-xs font-semibold text-neutral-700" data-i18n="watchlist.syncing">Synchronisiere...</span>
             </div>
             <div
               id="watchlistBody"
               class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain min-[1200px]:flex-none min-[1200px]:overflow-y-visible min-[1200px]:overscroll-auto"
             ></div>
-            <div id="watchlistHint" class="shrink-0 rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-3 text-xs text-slate-400">
-              <p class="font-semibold uppercase tracking-[0.18em] text-slate-300" data-i18n="watchlist.favoritesTitle">☆ Favoriten</p>
-              <p class="mt-2 leading-6" data-i18n="watchlist.favoritesHint">Mit Stern anheften.</p>
+            <div id="watchlistHint" class="shrink-0 rounded-2xl border border-neutral-200/90 bg-neutral-50 px-4 py-3 text-xs text-neutral-700">
+              <p class="font-semibold uppercase tracking-[0.18em] text-neutral-800" data-i18n="watchlist.favoritesTitle">☆ Favoriten</p>
+              <p class="mt-2 leading-6 text-neutral-700" data-i18n="watchlist.favoritesHint">Mit Stern anheften.</p>
             </div>
 
-            <div id="favoritesSection" class="mt-6 hidden shrink-0 border-t border-white/10 pt-5">
+            <div id="favoritesSection" class="mt-6 hidden shrink-0 border-t border-neutral-200/90 pt-5">
               <div class="mb-4 flex items-end justify-between">
                 <div>
-                  <p class="text-xs font-medium text-slate-500" data-i18n="favorites.label">Favoriten</p>
-                  <h3 class="mt-2 text-lg font-semibold" data-i18n="favorites.pinned">Angeheftete Symbole</h3>
+                  <p class="text-xs font-semibold text-neutral-700" data-i18n="favorites.label">Favoriten</p>
+                  <h3 class="mt-2 text-lg font-semibold text-neutral-950" data-i18n="favorites.pinned">Angeheftete Symbole</h3>
                 </div>
-                <span id="favoritesMeta" class="text-xs text-slate-500" data-i18n="favorites.meta">0 gespeichert</span>
+                <span id="favoritesMeta" class="text-xs font-semibold text-neutral-700" data-i18n="favorites.meta">0 gespeichert</span>
               </div>
               <div id="favoritesBody" class="space-y-3">
-                <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-sm font-semibold text-white" data-i18n="favorites.emptyTitle">Keine Favoriten</p>
-                  <p class="mt-2 text-sm leading-6 text-slate-400" data-i18n="favorites.emptyBody">Markiere eine Aktie mit Stern.</p>
+                <article class="rounded-2xl border border-neutral-200/90 bg-white/60 p-4">
+                  <p class="text-sm font-semibold text-neutral-900" data-i18n="favorites.emptyTitle">Keine Favoriten</p>
+                  <p class="mt-2 text-sm leading-6 text-neutral-500" data-i18n="favorites.emptyBody">Markiere eine Aktie mit Stern.</p>
                 </article>
               </div>
             </div>
           </aside>
 
           <section id="analysisCenterColumn" class="min-w-0 space-y-5">
-            <div id="selectedSymbolSection" class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
+            <div id="selectedSymbolSection" class="dashboard-panel min-w-0 rounded-[24px] border border-neutral-200/90 bg-white p-4 shadow-lg shadow-black/[0.06] sm:rounded-[28px] sm:p-5">
               <div id="selectedSymbolHero" class="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
-                  <p class="text-xs font-medium text-slate-500" data-i18n="symbol.selected">Ausgewahlt</p>
+                  <p class="text-xs font-medium text-neutral-600" data-i18n="symbol.selected">Ausgewahlt</p>
                   <h2 id="selectedSymbolName" class="mt-2 break-words text-2xl font-semibold tracking-tight xl:text-3xl">AAPL</h2>
-                  <p id="selectedCompanyName" class="mt-1 break-words text-sm text-slate-400">Apple Inc</p>
+                  <p id="selectedCompanyName" class="mt-1 break-words text-sm text-neutral-500">Apple Inc</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2 md:justify-end">
-                  <div id="changeBadge" class="inline-flex w-fit rounded-full bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-300">
+                  <div id="changeBadge" class="inline-flex w-fit rounded-full bg-[#005c39]/12 px-4 py-2 text-sm font-semibold text-[#004730]">
                     +0.00%
                   </div>
                   <button
                     id="selectedFavoriteButton"
                     type="button"
-                    class="favorite-button rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300"
+                    class="favorite-button rounded-full border border-neutral-200/90 bg-white px-4 py-2 text-sm font-semibold text-neutral-800"
                     data-i18n-aria="symbol.favoriteAria"
                     aria-label="Ausgewahltes Symbol zu Favoriten hinzufugen"
                   >
@@ -400,48 +407,48 @@
               </div>
 
               <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-5 2xl:gap-5">
-                <article id="metricPriceCard" class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-xs uppercase tracking-[0.24em] text-slate-500" data-i18n="metric.price">Preis</p>
+                <article id="metricPriceCard" class="dashboard-card rounded-2xl border border-neutral-200/90 bg-white/60 p-4">
+                  <p class="text-xs uppercase tracking-[0.24em] text-neutral-600" data-i18n="metric.price">Preis</p>
                   <p id="metricPrice" class="mt-3 text-3xl font-semibold">$--</p>
                 </article>
-                <article id="metricHighCard" class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-xs uppercase tracking-[0.24em] text-slate-500" data-i18n="metric.dayHigh">Tageshoch</p>
+                <article id="metricHighCard" class="dashboard-card rounded-2xl border border-neutral-200/90 bg-white/60 p-4">
+                  <p class="text-xs uppercase tracking-[0.24em] text-neutral-600" data-i18n="metric.dayHigh">Tageshoch</p>
                   <p id="metricHigh" class="mt-3 text-2xl font-semibold">$--</p>
                 </article>
-                <article id="metricLowCard" class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-xs uppercase tracking-[0.24em] text-slate-500" data-i18n="metric.dayLow">Tagestief</p>
+                <article id="metricLowCard" class="dashboard-card rounded-2xl border border-neutral-200/90 bg-white/60 p-4">
+                  <p class="text-xs uppercase tracking-[0.24em] text-neutral-600" data-i18n="metric.dayLow">Tagestief</p>
                   <p id="metricLow" class="mt-3 text-2xl font-semibold">$--</p>
                 </article>
-                <article id="metricOpenCard" class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-xs uppercase tracking-[0.24em] text-slate-500" data-i18n="metric.open">Eroffnung</p>
+                <article id="metricOpenCard" class="dashboard-card rounded-2xl border border-neutral-200/90 bg-white/60 p-4">
+                  <p class="text-xs uppercase tracking-[0.24em] text-neutral-600" data-i18n="metric.open">Eroffnung</p>
                   <p id="metricOpen" class="mt-3 text-2xl font-semibold">$--</p>
                 </article>
-                <article id="metricPrevCloseCard" class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-xs uppercase tracking-[0.24em] text-slate-500" data-i18n="metric.prevClose">Vortag Schluss</p>
+                <article id="metricPrevCloseCard" class="dashboard-card rounded-2xl border border-neutral-200/90 bg-white/60 p-4">
+                  <p class="text-xs uppercase tracking-[0.24em] text-neutral-600" data-i18n="metric.prevClose">Vortag Schluss</p>
                   <p id="metricPrevClose" class="mt-3 text-2xl font-semibold">$--</p>
                 </article>
               </div>
             </div>
 
-            <section id="tradeDecisionSection" class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
+            <section id="tradeDecisionSection" class="dashboard-panel min-w-0 rounded-[24px] border border-neutral-200/90 bg-white p-4 shadow-lg shadow-black/[0.06] sm:rounded-[28px] sm:p-5">
               <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
                 <div class="min-w-0">
-                  <p class="text-xs font-medium text-slate-500" data-i18n="decision.mainLabel">HAUPTENTSCHEIDUNG</p>
-                  <h3 class="mt-2 text-xl font-semibold" data-i18n="decision.setupTitle">Aktuelles Setup</h3>
+                  <p class="text-xs font-bold uppercase tracking-[0.2em] text-[#005c39]" data-i18n="decision.mainLabel">HAUPTENTSCHEIDUNG</p>
+                  <h3 class="mt-2 text-xl font-bold tracking-tight text-neutral-950" data-i18n="decision.setupTitle">Aktuelles Setup</h3>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
-                  <span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-xs font-semibold text-emerald-200" data-i18n="decision.signalActive">
+                  <span class="rounded-full border border-[#005c39]/22 bg-[#005c39]/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#004730]" data-i18n="decision.signalActive">
                     SIGNAL AKTIV
                   </span>
                   <span
                     id="selectedStrategyBadge"
-                    class="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-xs font-semibold text-cyan-200"
+                    class="rounded-full border border-neutral-200/90 bg-neutral-50 px-4 py-2 text-xs font-semibold text-neutral-900"
                   >
                     Hedgefund
                   </span>
                   <span
                     id="analysisGeneratedAt"
-                    class="rounded-full border border-white/10 bg-slate-950/60 px-4 py-2 text-xs font-medium text-slate-400"
+                    class="rounded-full border border-neutral-200/90 bg-white px-4 py-2 text-xs font-semibold text-neutral-700"
                   >
                     Waiting
                   </span>
@@ -450,16 +457,16 @@
 
               <article
                 id="recommendationCard"
-                class="signal-hero min-w-0 rounded-[24px] border border-white/10 bg-slate-950/70 p-4 sm:rounded-[28px] sm:p-5"
+                class="signal-hero min-w-0 rounded-[24px] border border-[#005c39]/14 bg-white p-4 shadow-sm shadow-black/[0.04] sm:rounded-[28px] sm:p-5"
               >
-                <p class="text-xs font-medium text-slate-500" data-i18n="decision.recommendation">Empfehlung</p>
+                <p class="text-xs font-bold uppercase tracking-[0.14em] text-[#005c39]" data-i18n="decision.recommendation">Empfehlung</p>
                 <div class="mt-4 signal-hero-layout">
                   <div class="signal-hero-top">
                     <div class="signal-primary-block">
                       <span id="recommendationIcon" class="signal-icon tone-muted" aria-hidden="true">•</span>
                       <div class="min-w-0">
-                        <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500" data-i18n="decision.mainDecision">Hauptentscheidung</p>
-                        <p id="recommendationValue" class="break-words text-5xl font-black tracking-[-0.06em] text-white xl:text-6xl">
+                        <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-700" data-i18n="decision.mainDecision">Hauptentscheidung</p>
+                        <p id="recommendationValue" class="break-words text-5xl font-black tracking-[-0.06em] text-neutral-950 xl:text-6xl">
                           Scan
                         </p>
                       </div>
@@ -467,14 +474,14 @@
                     <div class="signal-badges">
                       <span
                         id="signalQualityBadge"
-                        class="rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-200"
+                        class="rounded-full border border-amber-400/25 bg-amber-500/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-900"
                         hidden
                       >
                         <span data-i18n="decision.partialSignal">Teilsignal</span>
                       </span>
                       <span
                         id="conflictBadge"
-                        class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-200"
+                        class="rounded-full border border-amber-500/30 bg-amber-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-amber-950"
                         hidden
                       >
                         <span data-i18n="decision.mixedSignals">Gemischte Signale</span>
@@ -485,29 +492,29 @@
                   <div class="signal-confidence-shell">
                     <div class="flex items-end justify-between gap-3">
                       <div>
-                        <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.confidence">Konfidenz</p>
-                        <p id="confidenceValue" class="mt-2 text-3xl font-semibold text-white">--</p>
+                        <p class="text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-700" data-i18n="decision.confidence">Konfidenz</p>
+                        <p id="confidenceValue" class="mt-2 text-3xl font-bold tabular-nums text-neutral-950">--</p>
                       </div>
-                      <p id="confidenceHint" class="text-sm font-medium text-slate-300">⚠️ Scanning</p>
+                      <p id="confidenceHint" class="text-sm font-semibold text-neutral-800">⚠️ Scanning</p>
                     </div>
-                    <div class="mt-3 h-2.5 overflow-hidden rounded-full bg-white/10">
-                      <div id="confidenceBarFill" class="h-full w-0 rounded-full bg-cyan-300 transition-[width] duration-300 ease-out"></div>
+                    <div class="mt-3 h-2.5 overflow-hidden rounded-full bg-neutral-200/80">
+                      <div id="confidenceBarFill" class="h-full w-0 rounded-full bg-gradient-to-r from-[#F58220] to-[#FFC107] transition-[width] duration-300 ease-out"></div>
                     </div>
                   </div>
 
                   <div class="signal-reason-block">
-                    <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.reason">Begrundung</p>
-                    <p id="analysisSummary" class="decision-summary mt-3 break-words text-sm leading-6 text-slate-300">
+                    <p class="text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-700" data-i18n="decision.reason">Begrundung</p>
+                    <p id="analysisSummary" class="decision-summary mt-3 break-words text-sm font-medium leading-relaxed text-neutral-800">
                       Loading signal.
                     </p>
                   </div>
 
-                  <div class="decision-context-box rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div class="decision-context-box rounded-2xl border border-[#e0c4b4] bg-[#f2d8c9]/45 p-4">
                     <div class="flex flex-wrap items-center justify-between gap-3">
-                      <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.context">Kontext</p>
-                      <p id="biasValue" class="break-words text-sm font-semibold text-white">Balanced signal</p>
+                      <p class="text-[11px] font-bold uppercase tracking-[0.16em] text-[#005c39]" data-i18n="decision.context">Kontext</p>
+                      <p id="biasValue" class="break-words text-sm font-bold text-neutral-950">Balanced signal</p>
                     </div>
-                    <p id="noTradeReason" class="decision-context-copy mt-3 break-words text-sm leading-6 text-slate-400">Waiting.</p>
+                    <p id="noTradeReason" class="decision-context-copy mt-3 break-words text-sm font-medium leading-relaxed text-neutral-800">Waiting.</p>
                   </div>
                 </div>
               </article>
@@ -515,96 +522,96 @@
               <div id="mobileStrategyCards" class="mobile-only min-w-0 space-y-3"></div>
 
               <div id="mobileDecisionDetails" class="mobile-only min-w-0 space-y-3">
-                <article class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                <article class="dashboard-card rounded-2xl border border-neutral-200/90 bg-white/60 p-4">
                   <div class="flex items-end justify-between gap-3">
                     <div>
-                      <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.confidence">Konfidenz</p>
-                      <p id="mobileConfidenceValue" class="mt-2 text-2xl font-semibold text-white">--</p>
+                      <p class="text-[11px] font-medium text-neutral-600" data-i18n="decision.confidence">Konfidenz</p>
+                      <p id="mobileConfidenceValue" class="mt-2 text-2xl font-semibold text-neutral-900">--</p>
                     </div>
-                    <p id="mobileConfidenceHint" class="text-sm font-medium text-slate-300">⚠️ Scanning</p>
+                    <p id="mobileConfidenceHint" class="text-sm font-medium text-neutral-700">⚠️ Scanning</p>
                   </div>
-                  <div class="mt-3 h-2.5 overflow-hidden rounded-full bg-white/10">
-                    <div id="mobileConfidenceBarFill" class="h-full w-0 rounded-full bg-cyan-300 transition-[width] duration-300 ease-out"></div>
+                  <div class="mt-3 h-2.5 overflow-hidden rounded-full bg-neutral-200/80">
+                    <div id="mobileConfidenceBarFill" class="h-full w-0 rounded-full bg-gradient-to-r from-[#F58220] to-[#FFC107] transition-[width] duration-300 ease-out"></div>
                   </div>
                 </article>
 
-                <article class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.reason">Begrundung</p>
-                  <p id="mobileAnalysisSummary" class="mt-3 break-words text-sm leading-6 text-slate-300">
+                <article class="dashboard-card rounded-2xl border border-neutral-200/90 bg-white/60 p-4">
+                  <p class="text-[11px] font-medium text-neutral-600" data-i18n="decision.reason">Begrundung</p>
+                  <p id="mobileAnalysisSummary" class="mt-3 break-words text-sm leading-6 text-neutral-700">
                     Loading signal.
                   </p>
                 </article>
 
-                <article class="dashboard-card rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                <article class="dashboard-card rounded-2xl border border-neutral-200/90 bg-white/60 p-4">
                   <div class="flex flex-wrap items-center justify-between gap-3">
-                    <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.context">Kontext</p>
-                    <p id="mobileBiasValue" class="break-words text-sm font-semibold text-white">Balanced signal</p>
+                    <p class="text-[11px] font-medium text-neutral-600" data-i18n="decision.context">Kontext</p>
+                    <p id="mobileBiasValue" class="break-words text-sm font-semibold text-neutral-900">Balanced signal</p>
                   </div>
-                  <p id="mobileNoTradeReason" class="mt-3 break-words text-sm leading-6 text-slate-400">Waiting.</p>
+                  <p id="mobileNoTradeReason" class="mt-3 break-words text-sm leading-6 text-neutral-500">Waiting.</p>
                 </article>
               </div>
 
               <div class="decision-context-grid mt-4 grid gap-3 sm:grid-cols-2">
-                <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.riskLevel">Risikostufe</p>
-                  <p id="riskValue" class="mt-3 text-2xl font-semibold text-white">--</p>
+                <article class="dashboard-card min-w-0 rounded-2xl border border-neutral-200/90 bg-white/60 p-4">
+                  <p class="text-[11px] font-medium text-neutral-600" data-i18n="decision.riskLevel">Risikostufe</p>
+                  <p id="riskValue" class="mt-3 text-2xl font-semibold text-neutral-900">--</p>
                 </article>
-                <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.timeframe">Zeitrahmen</p>
-                  <p id="timeframeValue" class="mt-3 text-2xl font-semibold text-white">--</p>
+                <article class="dashboard-card min-w-0 rounded-2xl border border-neutral-200/90 bg-white/60 p-4">
+                  <p class="text-[11px] font-medium text-neutral-600" data-i18n="decision.timeframe">Zeitrahmen</p>
+                  <p id="timeframeValue" class="mt-3 text-2xl font-semibold text-neutral-900">--</p>
                 </article>
-                <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.dataQuality">Datenqualitat</p>
-                  <p id="coverageValue" class="mt-3 text-2xl font-semibold text-white">--</p>
-                  <p id="coverageReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting.</p>
+                <article class="dashboard-card min-w-0 rounded-2xl border border-neutral-200/90 bg-white/60 p-4">
+                  <p class="text-[11px] font-medium text-neutral-600" data-i18n="decision.dataQuality">Datenqualitat</p>
+                  <p id="coverageValue" class="mt-3 text-2xl font-semibold text-neutral-900">--</p>
+                  <p id="coverageReason" class="mt-2 text-sm leading-6 text-neutral-500">Waiting.</p>
                 </article>
-                <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.positionSize">Positionsgrosse</p>
-                  <p id="positionSizeValue" class="mt-3 text-2xl font-semibold text-white">--</p>
-                  <p id="positionSizeReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting.</p>
+                <article class="dashboard-card min-w-0 rounded-2xl border border-neutral-200/90 bg-white/60 p-4">
+                  <p class="text-[11px] font-medium text-neutral-600" data-i18n="decision.positionSize">Positionsgrosse</p>
+                  <p id="positionSizeValue" class="mt-3 text-2xl font-semibold text-neutral-900">--</p>
+                  <p id="positionSizeReason" class="mt-2 text-sm leading-6 text-neutral-500">Waiting.</p>
                 </article>
               </div>
 
               <div class="trade-details-block mt-4">
                 <div class="mb-3 flex items-center justify-between gap-3">
                   <div>
-                    <p class="text-xs font-medium text-slate-500" data-i18n="decision.tradeDetails">TRADE-DETAILS</p>
-                    <h4 class="mt-2 text-lg font-semibold text-white" data-i18n="decision.executionPlan">Ausfuhrungsplan</h4>
+                    <p class="text-xs font-medium text-neutral-600" data-i18n="decision.tradeDetails">TRADE-DETAILS</p>
+                    <h4 class="mt-2 text-lg font-semibold text-neutral-900" data-i18n="decision.executionPlan">Ausfuhrungsplan</h4>
                   </div>
-                  <span class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-300" data-i18n="decision.updated">
+                  <span class="rounded-full border border-neutral-200/90 bg-neutral-100 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-neutral-800" data-i18n="decision.updated">
                     Aktualisiert
                   </span>
                 </div>
                 <div class="trade-details-grid grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.entry">Einstieg</p>
-                  <p id="entryValue" class="mt-3 text-2xl font-semibold text-white">--</p>
-                  <p id="entryReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting.</p>
+                <article class="dashboard-card min-w-0 rounded-2xl border border-neutral-200/90 bg-white/60 p-4">
+                  <p class="text-[11px] font-medium text-neutral-600" data-i18n="decision.entry">Einstieg</p>
+                  <p id="entryValue" class="mt-3 text-2xl font-semibold text-neutral-900">--</p>
+                  <p id="entryReason" class="mt-2 text-sm leading-6 text-neutral-500">Waiting.</p>
                 </article>
-                <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.exit">Ausstieg</p>
-                  <p id="exitValue" class="mt-3 text-2xl font-semibold text-white">--</p>
-                  <p id="exitReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting.</p>
+                <article class="dashboard-card min-w-0 rounded-2xl border border-neutral-200/90 bg-white/60 p-4">
+                  <p class="text-[11px] font-medium text-neutral-600" data-i18n="decision.exit">Ausstieg</p>
+                  <p id="exitValue" class="mt-3 text-2xl font-semibold text-neutral-900">--</p>
+                  <p id="exitReason" class="mt-2 text-sm leading-6 text-neutral-500">Waiting.</p>
                 </article>
-                <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.stopLoss">Stop-Loss</p>
-                  <p id="stopLossValue" class="mt-3 text-2xl font-semibold text-white">--</p>
-                  <p id="stopLossReason" class="mt-2 text-sm leading-6 text-slate-400">Waiting.</p>
+                <article class="dashboard-card min-w-0 rounded-2xl border border-neutral-200/90 bg-white/60 p-4">
+                  <p class="text-[11px] font-medium text-neutral-600" data-i18n="decision.stopLoss">Stop-Loss</p>
+                  <p id="stopLossValue" class="mt-3 text-2xl font-semibold text-neutral-900">--</p>
+                  <p id="stopLossReason" class="mt-2 text-sm leading-6 text-neutral-500">Waiting.</p>
                 </article>
-                <article class="dashboard-card min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-[11px] font-medium text-slate-500" data-i18n="decision.warnings">Warnungen</p>
+                <article class="dashboard-card min-w-0 rounded-2xl border border-neutral-200/90 bg-white/60 p-4">
+                  <p class="text-[11px] font-medium text-neutral-600" data-i18n="decision.warnings">Warnungen</p>
                   <div id="warningsList" class="mt-3 flex min-h-[44px] flex-wrap gap-2">
-                    <span class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-400">Waiting</span>
+                    <span class="rounded-full border border-neutral-200/90 bg-white/5 px-3 py-2 text-xs font-medium text-neutral-500">Waiting</span>
                   </div>
                 </article>
                 </div>
               </div>
             </section>
 
-            <div id="chartSection" class="dashboard-panel chart-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px]">
+            <div id="chartSection" class="dashboard-panel chart-panel min-w-0 rounded-[24px] border border-neutral-200/90 bg-white p-4 shadow-lg shadow-black/[0.06] sm:rounded-[28px]">
               <div class="mb-4 flex flex-wrap items-center justify-between gap-3 px-1">
                 <div class="min-w-0">
-                  <p class="text-xs font-medium text-slate-500" data-i18n="chart.label">Chart</p>
+                  <p class="text-xs font-medium text-neutral-600" data-i18n="chart.label">Chart</p>
                   <h3 class="mt-2 text-xl font-semibold" data-i18n="chart.tradingView">TradingView</h3>
                 </div>
                 <div class="chart-toolbar">
@@ -625,7 +632,7 @@
               </div>
               <div id="chartCompareLegend" class="chart-compare-legend hidden" aria-live="polite"></div>
               <div id="tradingviewChartFrame" class="chart-frame chart-locked">
-                <div id="tradingviewChart" class="h-[320px] overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/70 sm:h-[420px] lg:h-[500px] 2xl:h-[560px]"></div>
+                <div id="tradingviewChart" class="h-[320px] overflow-hidden rounded-[24px] border border-neutral-200/90 bg-white/70 sm:h-[420px] lg:h-[500px] 2xl:h-[560px]"></div>
                 <button id="chartInteractionGuard" type="button" class="chart-interaction-guard" data-i18n-aria="chart.tapAria" aria-label="Chart-Interaktion aktivieren">
                   <span data-i18n="chart.tap">Chart antippen</span>
                 </button>
@@ -635,19 +642,19 @@
             <div id="signalsOverviewRow" class="min-w-0 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(280px,320px)]">
               <aside
                 id="opportunitySection"
-                class="dashboard-panel rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5"
+                class="dashboard-panel rounded-[24px] border border-neutral-200/90 bg-white p-4 shadow-lg shadow-black/[0.06] sm:rounded-[28px] sm:p-5"
               >
                 <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <p class="text-xs font-medium text-slate-500" data-i18n="signals.label">SIGNALE</p>
+                    <p class="text-xs font-medium text-neutral-600" data-i18n="signals.label">SIGNALE</p>
                     <h2 class="mt-2 text-xl font-semibold" data-i18n="signals.setups">Setups</h2>
                   </div>
-                  <span id="opportunityMeta" class="text-xs text-slate-500">Rangliste...</span>
+                  <span id="opportunityMeta" class="text-xs text-neutral-600">Rangliste...</span>
                 </div>
                 <div id="opportunityList" class="space-y-3">
-                  <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                    <p class="text-sm font-semibold text-white" data-i18n="signals.rankingTitle">Rangliste</p>
-                    <p class="mt-2 text-sm leading-6 text-slate-400" data-i18n="signals.rankingHint">Beste Bewegungen zuerst.</p>
+                  <article class="rounded-2xl border border-neutral-200/90 bg-white/60 p-4">
+                    <p class="text-sm font-semibold text-neutral-900" data-i18n="signals.rankingTitle">Rangliste</p>
+                    <p class="mt-2 text-sm leading-6 text-neutral-500" data-i18n="signals.rankingHint">Beste Bewegungen zuerst.</p>
                   </article>
                 </div>
               </aside>
@@ -655,35 +662,35 @@
           </section>
 
           <aside id="decisionRail" class="flex min-w-0 flex-col gap-8">
-            <section id="alertsSection" class="dashboard-panel rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
+            <section id="alertsSection" class="dashboard-panel rounded-[24px] border border-neutral-200/90 bg-white p-4 shadow-lg shadow-black/[0.06] sm:rounded-[28px] sm:p-5">
               <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <p class="text-xs font-medium text-slate-500" data-i18n="dashboard.kickerLive">LIVE</p>
+                  <p class="text-xs font-medium text-neutral-600" data-i18n="dashboard.kickerLive">LIVE</p>
                   <h2 class="mt-2 text-xl font-semibold" data-i18n="alerts.title">Alerts</h2>
                 </div>
-                <span id="alertsMeta" class="text-xs text-slate-500">Scannt...</span>
+                <span id="alertsMeta" class="text-xs text-neutral-600">Scannt...</span>
               </div>
               <div id="alertsList" class="grid gap-3">
-                <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-sm font-semibold text-white" data-i18n="alerts.scanningTitle">Scannt</p>
-                  <p class="mt-2 text-sm leading-6 text-slate-400" data-i18n="alerts.scanningHint">Bewegungen werden gepruft.</p>
+                <article class="rounded-2xl border border-neutral-200/90 bg-white/60 p-4">
+                  <p class="text-sm font-semibold text-neutral-900" data-i18n="alerts.scanningTitle">Scannt</p>
+                  <p class="mt-2 text-sm leading-6 text-neutral-500" data-i18n="alerts.scanningHint">Bewegungen werden gepruft.</p>
                 </article>
               </div>
             </section>
 
             <aside id="companySection" class="flex min-w-0 flex-col gap-8">
-            <section class="dashboard-panel min-w-0 rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5">
-              <p class="text-xs font-medium text-slate-500" data-i18n="dashboard.kickerStats">STATS</p>
+            <section class="dashboard-panel min-w-0 rounded-[24px] border border-neutral-200/90 bg-white p-4 shadow-lg shadow-black/[0.06] sm:rounded-[28px] sm:p-5">
+              <p class="text-xs font-medium text-neutral-600" data-i18n="dashboard.kickerStats">STATS</p>
               <div class="mt-5 flex items-center gap-4">
                 <img
                   id="companyLogo"
                   src=""
                   alt=""
-                  class="hidden h-14 w-14 rounded-2xl border border-white/10 bg-white object-contain p-2"
+                  class="hidden h-14 w-14 rounded-2xl border border-neutral-200/90 bg-white object-contain p-2"
                 />
                 <div>
                   <h3 id="companyHeadline" class="text-xl font-semibold">Symbol wahlen</h3>
-                  <p id="companyExchange" class="text-sm text-slate-400">Borse erscheint hier</p>
+                  <p id="companyExchange" class="text-sm text-neutral-500">Borse erscheint hier</p>
                 </div>
               </div>
               <dl id="companyDetails" class="mt-6 min-w-0 max-w-full"></dl>
@@ -691,27 +698,27 @@
 
             <section
               id="learningSection"
-              class="dashboard-panel min-w-0 max-w-full rounded-[24px] border border-white/10 bg-slate-900/85 p-4 shadow-2xl shadow-black/20 sm:rounded-[28px] sm:p-5"
+              class="dashboard-panel min-w-0 max-w-full rounded-[24px] border border-neutral-200/90 bg-white p-4 shadow-lg shadow-black/[0.06] sm:rounded-[28px] sm:p-5"
             >
               <div class="flex flex-wrap items-start justify-between gap-3">
                 <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-500" data-i18n="dashboard.kickerUpdated">AKTUALISIERT</p>
+                  <p class="text-xs font-medium text-neutral-600" data-i18n="dashboard.kickerUpdated">AKTUALISIERT</p>
                   <h3 class="mt-2 text-xl font-semibold" data-i18n="learning.performance">Performance</h3>
                 </div>
                 <span
                   id="learningMeta"
-                  class="min-w-0 max-w-full shrink rounded-full border border-white/10 bg-slate-950/60 px-3 py-2 text-right text-[0.68rem] font-medium leading-snug text-slate-400 sm:max-w-[min(100%,14rem)]"
+                  class="min-w-0 max-w-full shrink rounded-full border border-neutral-200/90 bg-white/60 px-3 py-2 text-right text-[0.68rem] font-medium leading-snug text-neutral-500 sm:max-w-[min(100%,14rem)]"
                   >Laden</span>
               </div>
               <div id="learningList" class="mt-5 min-w-0 space-y-3">
-                <article class="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                  <p class="text-sm font-semibold text-white" data-i18n="learning.loadingTitle">Laden</p>
-                  <p class="mt-2 text-sm leading-6 text-slate-400" data-i18n="learning.loadingHint">Trades werden gelesen.</p>
+                <article class="rounded-2xl border border-neutral-200/90 bg-white/60 p-4">
+                  <p class="text-sm font-semibold text-neutral-900" data-i18n="learning.loadingTitle">Laden</p>
+                  <p class="mt-2 text-sm leading-6 text-neutral-500" data-i18n="learning.loadingHint">Trades werden gelesen.</p>
                 </article>
               </div>
-              <div class="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
-                <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-500" data-i18n="learning.rules">Regeln</p>
-                <p class="mt-3 text-sm leading-6 text-slate-400" data-i18n="learning.rulesHint">Startet nach 50 abgeschlossenen Trades.</p>
+              <div class="mt-4 rounded-2xl border border-neutral-200/90 bg-white/5 px-4 py-4">
+                <p class="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-600" data-i18n="learning.rules">Regeln</p>
+                <p class="mt-3 text-sm leading-6 text-neutral-500" data-i18n="learning.rulesHint">Startet nach 50 abgeschlossenen Trades.</p>
               </div>
             </section>
             </aside>
@@ -720,14 +727,14 @@
       </div>
     </div>
 
-    <div id="portfolioSheetBackdrop" class="mobile-only hidden fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm"></div>
-    <section id="portfolioSheet" class="mobile-only hidden fixed inset-x-0 bottom-0 z-50 max-h-[78vh] overflow-y-auto rounded-t-[28px] border border-white/10 bg-slate-950/95 p-4 shadow-2xl shadow-black/50">
+    <div id="portfolioSheetBackdrop" class="mobile-only hidden fixed inset-0 z-40 bg-white/70 backdrop-blur-sm"></div>
+    <section id="portfolioSheet" class="mobile-only hidden fixed inset-x-0 bottom-0 z-50 max-h-[78vh] overflow-y-auto rounded-t-[28px] border border-neutral-200/90 bg-white/95 p-4 shadow-2xl shadow-black/15">
       <div class="flex items-center justify-between gap-3">
         <div>
-          <p class="text-xs font-medium text-slate-500" data-i18n="portfolio.sheetTitle">Portfolio</p>
-          <h3 class="mt-2 text-xl font-semibold text-white" data-i18n="portfolio.allocation">Allokation</h3>
+          <p class="text-xs font-medium text-neutral-600" data-i18n="portfolio.sheetTitle">Portfolio</p>
+          <h3 class="mt-2 text-xl font-semibold text-neutral-900" data-i18n="portfolio.allocation">Allokation</h3>
         </div>
-        <button id="portfolioSheetClose" type="button" class="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200" data-i18n="portfolio.close">
+        <button id="portfolioSheetClose" type="button" class="rounded-full border border-neutral-200/90 bg-white/5 px-3 py-2 text-xs font-semibold text-neutral-800" data-i18n="portfolio.close">
           Schliessen
         </button>
       </div>

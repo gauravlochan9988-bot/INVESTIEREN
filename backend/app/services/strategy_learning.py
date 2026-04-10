@@ -149,7 +149,7 @@ class StrategyLearningService:
                 effective_thresholds=persisted,
                 adjustment_count=adjustment_count,
                 note=(
-                    f"No realized trades are logged for {normalized_strategy} yet, so learning "
+                    f"No realized trades are logged for strategy {normalized_strategy} yet, so learning "
                     "stays neutral."
                 ),
             )
