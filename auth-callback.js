@@ -19,6 +19,17 @@ function setError(message) {
   }
 }
 
+function formatAuthCallbackError(error) {
+  const rawMessage =
+    String(error?.errors?.[0]?.longMessage || error?.errors?.[0]?.message || error?.message || "").trim() ||
+    "Login callback failed.";
+  const lower = rawMessage.toLowerCase();
+  if (lower.includes("captcha")) {
+    return "CAPTCHA could not load. Disable blockers/extensions and retry.";
+  }
+  return rawMessage;
+}
+
 function resolveApiBaseUrl() {
   const protocol = window.location.protocol || "https:";
   const hostname = window.location.hostname || "";
@@ -131,9 +142,15 @@ async function bootstrapCallback() {
     setStatus("Redirecting...");
     window.location.replace(returnTo);
   } catch (error) {
-    console.error("[frontend] auth callback failed", error);
+    const debug = {
+      message: error?.message || null,
+      clerkErrors: error?.errors || null,
+      name: error?.name || null,
+      stack: error?.stack || null,
+    };
+    console.error("[frontend] auth callback failed", debug);
     window.localStorage.removeItem(AUTHENTICATED_STORAGE_KEY);
-    setError(error?.message || "Login callback failed.");
+    setError(formatAuthCallbackError(error));
   }
 }
 
