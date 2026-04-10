@@ -1530,18 +1530,26 @@ async function initializeManagedAuth() {
 
 async function loginWithManagedProvider(mode = "login") {
   if (!state.auth.ready) {
-    return;
+    await initializeManagedAuth();
   }
   renderManagedAuthView(mode);
+}
+
+async function ensureManagedAuthClient() {
+  if (state.auth.enabled && state.auth.client) {
+    return true;
+  }
+  await initializeManagedAuth();
+  return Boolean(state.auth.enabled && state.auth.client);
 }
 
 async function continueWithOAuth(strategy) {
   if (!state.auth.ready) {
     setAuthLoading(true, t("auth.loadingLogin"));
-    return;
+    await initializeManagedAuth();
   }
 
-  if (!state.auth.enabled || !state.auth.client) {
+  if (!(await ensureManagedAuthClient())) {
     setAuthError("Login is unavailable.");
     return;
   }
@@ -1577,7 +1585,7 @@ async function continueWithOAuth(strategy) {
 }
 
 async function authenticateWithEmailPassword({ mode, username, email, password }) {
-  if (!state.auth.enabled || !state.auth.client) {
+  if (!(await ensureManagedAuthClient())) {
     throw new Error("Login is unavailable.");
   }
   const clerk = state.auth.client;
@@ -1622,7 +1630,7 @@ async function authenticateWithEmailPassword({ mode, username, email, password }
 }
 
 async function completeSignupVerification(code) {
-  if (!state.auth.enabled || !state.auth.client) {
+  if (!(await ensureManagedAuthClient())) {
     throw new Error("Login is unavailable.");
   }
   const normalizedCode = String(code || "").trim();
@@ -1644,7 +1652,7 @@ async function completeSignupVerification(code) {
 }
 
 async function startPasswordResetFlow(email) {
-  if (!state.auth.enabled || !state.auth.client) {
+  if (!(await ensureManagedAuthClient())) {
     throw new Error("Login is unavailable.");
   }
   const normalizedEmail = String(email || "").trim().toLowerCase();
