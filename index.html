@@ -26,29 +26,12 @@
       id="authOverlay"
       class="fixed inset-0 z-30 flex min-h-[100dvh] flex-col items-stretch justify-start overflow-x-hidden overflow-y-auto overscroll-y-contain pt-[env(safe-area-inset-top)] pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center sm:justify-center"
     >
-      <div class="absolute inset-0 login-bg auth-photo-bg">
-        <picture class="auth-photo-picture">
-          <source media="(max-width: 768px)" srcset="/auth-hero-lounge.png" />
-          <img
-            id="authHeroImage"
-            src="/auth-hero-lounge.png"
-            alt=""
-            class="auth-photo-img h-full w-full object-cover"
-            width="1600"
-            height="2400"
-            decoding="async"
-            fetchpriority="high"
-          />
-        </picture>
-        <div id="authOverlayShade" class="auth-photo-vignette" aria-hidden="true"></div>
-      </div>
-
       <section
         class="relative z-10 mx-auto w-full min-w-0 auth-landing-shell login-container"
         aria-label="Login"
       >
         <div class="auth-landing-grid">
-          <div class="auth-landing-copy">
+          <div class="auth-landing-copy auth-block-main">
             <div class="auth-landing-topline">
               <div class="auth-brand-mark auth-landing-mark" aria-hidden="true">GQ</div>
               <div>
@@ -71,6 +54,10 @@
 
             <form id="authForm" class="auth-landing-form" novalidate>
               <div class="auth-login-card">
+                <div class="auth-card-intro">
+                  <p class="auth-card-kicker">Member Login</p>
+                  <p class="auth-card-title">Enter the terminal</p>
+                </div>
                 <div class="auth-landing-actions auth-social-row">
                   <button
                     id="authGoogleButton"
@@ -265,10 +252,10 @@
 
             <div class="auth-purchase-option" aria-labelledby="authPurchaseHeading">
               <p id="authPurchaseHeading" class="auth-purchase-kicker" data-i18n="auth.purchaseKicker">
-                Noch keinen Code?
+                Access Flow
               </p>
               <p class="auth-purchase-text" data-i18n="auth.purchaseBody">
-                Pro-Zugang für €4.99 pro Monat — sicher bezahlen. Danach mit deinem Zugangscode einloggen.
+                1) Get Pro access (€4.99/month) 2) Create account 3) Enter your trading terminal.
               </p>
               <a
                 href="pricing.html"
@@ -281,23 +268,9 @@
               <p class="auth-purchase-note" data-i18n="auth.purchaseNote">Apple Pay und Google Pay im Checkout.</p>
             </div>
 
-            <div id="authFeatures" class="auth-feature-grid scroll-mt-8">
-              <article class="auth-feature-card">
-                <h2 data-i18n="auth.features.liveSignalsTitle">Live-Signale</h2>
-                <p data-i18n="auth.features.liveSignalsBody">Konkrete Einstiegs- und Ausstiegssignale mit Echtzeit-Marktkontext.</p>
-              </article>
-              <article class="auth-feature-card">
-                <h2 data-i18n="auth.features.aiTitle">KI-Strategie-Engine</h2>
-                <p data-i18n="auth.features.aiBody">Modellgestutzte Entscheidungen fur schnelle Richtungsanalysen.</p>
-              </article>
-              <article class="auth-feature-card">
-                <h2 data-i18n="auth.features.riskTitle">Risikoanalyse</h2>
-                <p data-i18n="auth.features.riskBody">Klare Markteinschatzung vor Trades mit hoher Ueberzeugung.</p>
-              </article>
-            </div>
           </div>
 
-          <div class="auth-visual-column">
+          <div class="auth-visual-column auth-block-preview">
             <div class="auth-visual-panel">
               <div class="auth-visual-art">
                 <span class="auth-visual-focus" aria-hidden="true"></span>
@@ -324,7 +297,6 @@
                   <p class="auth-mini-game-hint" data-i18n="auth.miniGame.hint">Tippe das leuchtende Feld</p>
                 </div>
               </div>
-
               <div class="auth-stat-grid">
                 <article class="auth-stat-card">
                   <span data-i18n="auth.stat.winRate">Trefferquote</span>
@@ -341,6 +313,21 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <div id="authFeatures" class="auth-feature-grid auth-benefits-strip scroll-mt-8">
+          <article class="auth-feature-card auth-feature-card-highlight">
+            <h2>Live Signals</h2>
+            <p>Action-ready BUY/SELL decisions with confidence context.</p>
+          </article>
+          <article class="auth-feature-card">
+            <h2>AI + Hedgefund Modes</h2>
+            <p>Switch strategies in one tap with server-side premium gating.</p>
+          </article>
+          <article class="auth-feature-card">
+            <h2>Smart Alerts</h2>
+            <p>Favorites trigger signal-change notifications automatically.</p>
+          </article>
         </div>
 
         <footer class="auth-landing-footer">GQ Trading</footer>
