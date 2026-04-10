@@ -77,9 +77,11 @@ class Settings(BaseSettings):
             "VITE_CLERK_FAPI",
         )
     )
+    clerk_secret_key: str = Field(default_factory=lambda: env_first("CLERK_SECRET_KEY"))
     clerk_jwt_key: str = Field(
         default_factory=lambda: env_first("CLERK_JWT_KEY", "CLERK_PEM_PUBLIC_KEY")
     )
+    clerk_authorized_parties: str = Field(default_factory=lambda: env_first("CLERK_AUTHORIZED_PARTIES"))
     clerk_plan_slug: str = "pro"
     clerk_plan_name: str = "Investieren Pro Monthly"
     frontend_origin: str = "https://gauravtrades.de"
@@ -115,6 +117,23 @@ class Settings(BaseSettings):
 
     def get_owner_subjects(self) -> List[str]:
         return [part.strip() for part in self.owner_auth_subjects.split(",") if part.strip()]
+
+    def get_clerk_authorized_parties(self) -> List[str]:
+        parties: list[str] = []
+        if self.frontend_origin:
+            parties.append(self.frontend_origin.strip())
+        if self.cors_allow_origins:
+            parties.extend(part.strip() for part in self.cors_allow_origins.split(",") if part.strip())
+        if self.clerk_authorized_parties:
+            parties.extend(part.strip() for part in self.clerk_authorized_parties.split(",") if part.strip())
+
+        normalized: list[str] = []
+        for value in parties:
+            item = value.rstrip("/")
+            if item.startswith("http://") or item.startswith("https://"):
+                normalized.append(item)
+        # Preserve insertion order while deduplicating.
+        return list(dict.fromkeys(normalized))
 
     @field_validator("database_url", mode="before")
     @classmethod

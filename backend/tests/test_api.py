@@ -126,9 +126,10 @@ def test_auth_config_accepts_clerk_alias_env_vars(client, monkeypatch):
     monkeypatch.delenv("CLERK_FRONTEND_API_URL", raising=False)
     monkeypatch.delenv("CLERK_FAPI", raising=False)
     monkeypatch.delenv("CLERK_JWT_KEY", raising=False)
+    monkeypatch.delenv("CLERK_SECRET_KEY", raising=False)
     monkeypatch.setenv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "pk_test_placeholder")
     monkeypatch.setenv("NEXT_PUBLIC_CLERK_FAPI", "https://example.clerk.accounts.dev")
-    monkeypatch.setenv("CLERK_PEM_PUBLIC_KEY", "-----BEGIN PUBLIC KEY-----\nMIIB\n-----END PUBLIC KEY-----")
+    monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_placeholder")
     get_settings.cache_clear()
 
     response = client.get("/api/auth/config")

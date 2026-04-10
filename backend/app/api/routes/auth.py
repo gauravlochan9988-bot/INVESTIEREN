@@ -108,7 +108,7 @@ def get_auth_config() -> AuthConfigResponse:
     enabled = bool(
         settings.clerk_publishable_key.strip()
         and frontend_api_url
-        and settings.clerk_jwt_key.strip()
+        and (settings.clerk_jwt_key.strip() or settings.clerk_secret_key.strip())
     )
     return AuthConfigResponse(
         enabled=enabled,

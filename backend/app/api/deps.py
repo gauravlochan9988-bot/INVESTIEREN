@@ -299,7 +299,9 @@ def get_clerk_verifier_instance() -> ClerkTokenVerifier:
     settings = get_settings()
     return ClerkTokenVerifier(
         jwt_key=settings.clerk_jwt_key,
-        authorized_party=settings.frontend_origin,
+        secret_key=settings.clerk_secret_key,
+        publishable_key=settings.clerk_publishable_key,
+        authorized_parties=settings.get_clerk_authorized_parties(),
     )
 
 
