@@ -129,6 +129,7 @@ def add_favorite(
         user_key=user_context.user_key,
         symbol=payload.symbol,
         app_user_id=user_context.app_user_id,
+        strategy=payload.strategy,
     )
     return FavoriteSymbolResponse(symbol=symbol, user_key=user_context.user_key)
 

@@ -6,6 +6,7 @@ from typing import Optional, Sequence
 from sqlalchemy.orm import Session
 
 from app.repositories.alert_repository import AlertRepository
+from app.repositories.alert_rule import AlertRuleRepository
 from app.repositories.favorite_symbol import FavoriteSymbolRepository
 from app.schemas.analysis import AnalysisAlert, AnalysisResponse, Strategy
 from app.services.analysis import AnalysisService
@@ -20,6 +21,7 @@ class AlertService:
         market_data_service: MarketDataService,
         alert_repository: AlertRepository,
         favorite_repository: FavoriteSymbolRepository,
+        alert_rule_repository: AlertRuleRepository,
         default_symbols: Sequence[str],
         price_move_threshold_percent: float = 1.0,
     ) -> None:
@@ -27,6 +29,7 @@ class AlertService:
         self.market_data_service = market_data_service
         self.alert_repository = alert_repository
         self.favorite_repository = favorite_repository
+        self.alert_rule_repository = alert_rule_repository
         self.default_symbols = tuple(default_symbols)
         self.price_move_threshold_percent = price_move_threshold_percent
 
@@ -46,6 +49,7 @@ class AlertService:
         user_key: str,
         symbol: str,
         app_user_id: Optional[int] = None,
+        strategy: Strategy = "hedgefund",
     ) -> str:
         normalized = self.market_data_service.ensure_supported_symbol(symbol)
         self.favorite_repository.create(
@@ -54,6 +58,23 @@ class AlertService:
             symbol=normalized,
             app_user_id=app_user_id,
         )
+        if app_user_id is not None:
+            self.alert_rule_repository.create(
+                db,
+                user_id=app_user_id,
+                symbol=normalized,
+                strategy=strategy,
+                enabled=True,
+                notify_on_buy=True,
+                notify_on_sell=True,
+                min_confidence=60.0,
+            )
+            self._prime_alert_rule_from_analysis(
+                db,
+                user_id=app_user_id,
+                symbol=normalized,
+                strategy=strategy,
+            )
         return normalized
 
     def remove_favorite(
@@ -65,12 +86,48 @@ class AlertService:
         app_user_id: Optional[int] = None,
     ) -> bool:
         normalized = self.market_data_service.ensure_supported_symbol(symbol)
-        return self.favorite_repository.delete(
+        deleted = self.favorite_repository.delete(
             db,
             user_key=user_key,
             symbol=normalized,
             app_user_id=app_user_id,
         )
+        if deleted and app_user_id is not None:
+            self.alert_rule_repository.delete_all_for_user_symbol(
+                db,
+                user_id=app_user_id,
+                symbol=normalized,
+            )
+        return deleted
+
+    def _prime_alert_rule_from_analysis(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        symbol: str,
+        strategy: Strategy,
+    ) -> None:
+        rule = self.alert_rule_repository.get_by_user_symbol_strategy(
+            db,
+            user_id=user_id,
+            symbol=symbol,
+            strategy=strategy,
+        )
+        if rule is None:
+            return
+        analysis = self.analysis_service.analyze_symbol(
+            symbol,
+            force_refresh=False,
+            strategy=strategy,
+            db=db,
+        )
+        if analysis.no_data or analysis.data_quality == "NO_DATA" or analysis.recommendation is None:
+            rule.last_evaluated_signal = "NO_DATA"
+        else:
+            rule.last_evaluated_signal = analysis.recommendation
+        db.add(rule)
+        db.commit()
 
     def sync_alerts(
         self,

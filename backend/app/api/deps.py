@@ -435,6 +435,7 @@ def get_alert_service_instance() -> AlertService:
         market_data_service=get_market_data_service_instance(),
         alert_repository=get_alert_repository_instance(),
         favorite_repository=get_favorite_symbol_repository_instance(),
+        alert_rule_repository=get_alert_rule_repository_instance(),
         default_symbols=tuple(settings.watchlist.keys()),
     )
 
@@ -451,6 +452,8 @@ def get_favorite_signal_monitor_service_instance() -> FavoriteSignalMonitorServi
         market_data_service=get_market_data_service_instance(),
         alert_repository=get_alert_repository_instance(),
         favorite_repository=get_favorite_symbol_repository_instance(),
+        alert_rule_repository=get_alert_rule_repository_instance(),
+        notification_repository=get_user_notification_repository_instance(),
         min_confidence_partial=float(settings.favorite_signal_min_confidence_partial),
     )
 
@@ -465,6 +468,7 @@ def get_user_alert_service_instance() -> UserAlertService:
         analysis_service=get_analysis_service_instance(),
         alert_rule_repository=get_alert_rule_repository_instance(),
         notification_repository=get_user_notification_repository_instance(),
+        favorite_repository=get_favorite_symbol_repository_instance(),
     )
 
 

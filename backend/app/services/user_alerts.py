@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 
 from app.models.alert_rule import AlertRule
 from app.repositories.alert_rule import AlertRuleRepository
+from app.repositories.favorite_symbol import FavoriteSymbolRepository
 from app.repositories.user_notification import UserNotificationRepository
+from app.services.alert_signal_eligibility import smart_alert_allowed
 from app.schemas.analysis import AnalysisResponse
 from app.schemas.user_alerts import AlertRuleCreate, AlertRuleUpdate, UserAlertScanSummary
 from app.services.analysis import AnalysisService
@@ -20,10 +22,12 @@ class UserAlertService:
         analysis_service: AnalysisService,
         alert_rule_repository: AlertRuleRepository,
         notification_repository: UserNotificationRepository,
+        favorite_repository: FavoriteSymbolRepository,
     ) -> None:
         self.analysis_service = analysis_service
         self.alert_rule_repository = alert_rule_repository
         self.notification_repository = notification_repository
+        self.favorite_repository = favorite_repository
 
     def list_rules(self, db: Session, *, user_id: int) -> list[AlertRule]:
         return self.alert_rule_repository.list_for_user(db, user_id=user_id)
@@ -104,6 +108,13 @@ class UserAlertService:
         rule: AlertRule,
         force_refresh: bool,
     ) -> tuple[int, int, int]:
+        if self.favorite_repository.exists_for_app_user_symbol(
+            db,
+            app_user_id=rule.user_id,
+            symbol=rule.symbol,
+        ):
+            return (0, 0, 0)
+
         analysis = self.analysis_service.analyze_symbol(
             rule.symbol,
             force_refresh=force_refresh,
@@ -125,8 +136,11 @@ class UserAlertService:
         should_notify = (
             current_signal in {"BUY", "SELL"}
             and current_signal != previous_signal
-            and current_confidence >= float(rule.min_confidence or 0.0)
-            and self._rule_allows_signal(rule, current_signal)
+            and smart_alert_allowed(
+                analysis,
+                rule=rule,
+                default_partial_min=float(rule.min_confidence or 0.0),
+            )
         )
 
         created = 0
@@ -155,14 +169,6 @@ class UserAlertService:
         if analysis.no_data or analysis.data_quality == "NO_DATA" or analysis.recommendation is None:
             return "NO_DATA"
         return analysis.recommendation
-
-    @staticmethod
-    def _rule_allows_signal(rule: AlertRule, signal: str) -> bool:
-        if signal == "BUY":
-            return bool(rule.notify_on_buy)
-        if signal == "SELL":
-            return bool(rule.notify_on_sell)
-        return False
 
     @staticmethod
     def _notification_message(symbol: str, analysis: AnalysisResponse, signal: str, confidence: float) -> str:

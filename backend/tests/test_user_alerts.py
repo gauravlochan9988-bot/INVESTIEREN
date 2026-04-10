@@ -9,6 +9,7 @@ from app.schemas.analysis import AnalysisResponse
 from app.schemas.user_alerts import AlertRuleCreate
 from app.services.user_alerts import UserAlertService
 from app.repositories.alert_rule import AlertRuleRepository
+from app.repositories.favorite_symbol import FavoriteSymbolRepository
 from app.repositories.user_notification import UserNotificationRepository
 
 
@@ -167,6 +168,7 @@ def test_user_alert_scan_notifies_only_on_real_signal_change_and_skips_no_data(d
         ),
         alert_rule_repository=AlertRuleRepository(),
         notification_repository=UserNotificationRepository(),
+        favorite_repository=FavoriteSymbolRepository(),
     )
 
     rule = service.create_rule(

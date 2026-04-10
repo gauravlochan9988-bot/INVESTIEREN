@@ -97,6 +97,7 @@ class AnalysisAlert(BaseModel):
 class FavoriteSymbolCreate(BaseModel):
     symbol: str
     user_key: str = "default"
+    strategy: Strategy = "hedgefund"
 
 
 class FavoriteSymbolResponse(BaseModel):

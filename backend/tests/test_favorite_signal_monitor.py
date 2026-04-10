@@ -10,12 +10,14 @@ from app.core.config import get_settings
 from app.models.alert_event import AlertEvent
 from app.models.alert_state import AlertState
 from app.repositories.alert_repository import AlertRepository
+from app.repositories.alert_rule import AlertRuleRepository
 from app.repositories.favorite_symbol import FavoriteSymbolRepository
+from app.repositories.user_notification import UserNotificationRepository
 from app.schemas.analysis import AnalysisResponse
+from app.services.alert_signal_eligibility import eligible_for_buy_sell_notification
 from app.services.favorite_signal_monitor import (
     FavoriteSignalMonitorService,
     FavoriteSignalScanSummary,
-    _eligible_for_buy_sell_notification,
 )
 from app.services.market_data import MarketDataService
 from tests.conftest import FakeMarketDataProvider
@@ -77,7 +79,7 @@ def market_for_monitor(fake_market_data_provider: FakeMarketDataProvider) -> Mar
 
 def test_eligible_full_buy():
     a = _base_response(recommendation="BUY", data_quality="FULL", signal_quality="FULL", confidence=80.0)
-    assert _eligible_for_buy_sell_notification(a, min_confidence_partial=58.0) is True
+    assert eligible_for_buy_sell_notification(a, min_confidence_partial=58.0) is True
 
 
 def test_eligible_partial_below_threshold():
@@ -87,7 +89,7 @@ def test_eligible_partial_below_threshold():
         signal_quality="FULL",
         confidence=40.0,
     )
-    assert _eligible_for_buy_sell_notification(a, min_confidence_partial=58.0) is False
+    assert eligible_for_buy_sell_notification(a, min_confidence_partial=58.0) is False
 
 
 def test_eligible_partial_at_threshold():
@@ -97,12 +99,12 @@ def test_eligible_partial_at_threshold():
         signal_quality="FULL",
         confidence=58.0,
     )
-    assert _eligible_for_buy_sell_notification(a, min_confidence_partial=58.0) is True
+    assert eligible_for_buy_sell_notification(a, min_confidence_partial=58.0) is True
 
 
 def test_eligible_no_trade_blocked():
     a = _base_response(recommendation="BUY", no_trade=True)
-    assert _eligible_for_buy_sell_notification(a, min_confidence_partial=58.0) is False
+    assert eligible_for_buy_sell_notification(a, min_confidence_partial=58.0) is False
 
 
 def test_baseline_then_buy_creates_one_event(db_session, market_for_monitor: MarketDataService):
@@ -119,6 +121,8 @@ def test_baseline_then_buy_creates_one_event(db_session, market_for_monitor: Mar
         market_data_service=market_for_monitor,
         alert_repository=AlertRepository(),
         favorite_repository=fav,
+        alert_rule_repository=AlertRuleRepository(),
+        notification_repository=UserNotificationRepository(),
         min_confidence_partial=58.0,
     )
     s1 = monitor.run_scan(db_session, strategy="hedgefund", force_refresh=True)
@@ -149,6 +153,8 @@ def test_buy_to_buy_no_second_event(db_session, market_for_monitor: MarketDataSe
         market_data_service=market_for_monitor,
         alert_repository=AlertRepository(),
         favorite_repository=fav,
+        alert_rule_repository=AlertRuleRepository(),
+        notification_repository=UserNotificationRepository(),
         min_confidence_partial=58.0,
     )
     monitor.run_scan(db_session, strategy="hedgefund", force_refresh=True)
@@ -175,6 +181,8 @@ def test_no_data_does_not_seed_state(db_session, market_for_monitor: MarketDataS
         market_data_service=market_for_monitor,
         alert_repository=AlertRepository(),
         favorite_repository=fav,
+        alert_rule_repository=AlertRuleRepository(),
+        notification_repository=UserNotificationRepository(),
         min_confidence_partial=58.0,
     )
     summary = monitor.run_scan(db_session, strategy="hedgefund", force_refresh=True)

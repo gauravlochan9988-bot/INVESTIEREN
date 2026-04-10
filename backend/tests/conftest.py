@@ -171,17 +171,20 @@ def client(
         tolerance_percent=3.0,
         max_adjustment_step=0.5,
     )
+    fav_repo = FavoriteSymbolRepository()
     alert_service = AlertService(
         analysis_service=analysis_service,
         market_data_service=market_data_service,
         alert_repository=AlertRepository(),
-        favorite_repository=FavoriteSymbolRepository(),
+        favorite_repository=fav_repo,
+        alert_rule_repository=AlertRuleRepository(),
         default_symbols=tuple(market_data_service.allowed_symbols.keys()),
     )
     user_alert_service = UserAlertService(
         analysis_service=analysis_service,
         alert_rule_repository=AlertRuleRepository(),
         notification_repository=UserNotificationRepository(),
+        favorite_repository=fav_repo,
     )
     trade_history_service = TradeHistoryService(
         market_data_service=market_data_service,

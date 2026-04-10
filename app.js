@@ -3259,6 +3259,7 @@ async function toggleFavorite(symbol) {
         body: JSON.stringify({
           symbol: normalized,
           user_key: currentUserKey(),
+          strategy: state.selectedStrategy || "hedgefund",
         }),
       });
       void loadAlerts(true).catch(() => {});

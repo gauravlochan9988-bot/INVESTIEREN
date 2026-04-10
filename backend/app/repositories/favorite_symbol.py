@@ -40,6 +40,14 @@ class FavoriteSymbolRepository:
     ) -> list[str]:
         return [row.symbol for row in self.list_entries(db, user_key=user_key, app_user_id=app_user_id)]
 
+    def exists_for_app_user_symbol(self, db: Session, *, app_user_id: int, symbol: str) -> bool:
+        statement = (
+            select(FavoriteSymbol.id)
+            .where(FavoriteSymbol.app_user_id == app_user_id, FavoriteSymbol.symbol == symbol)
+            .limit(1)
+        )
+        return db.scalar(statement) is not None
+
     def get_app_user_id_for_user_key(self, db: Session, *, user_key: str) -> Optional[int]:
         row = db.scalar(
             select(FavoriteSymbol.app_user_id)

@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
 
 from app.repositories.alert_repository import AlertRepository
+from app.repositories.alert_rule import AlertRuleRepository
 from app.repositories.favorite_symbol import FavoriteSymbolRepository
+from app.repositories.user_notification import UserNotificationRepository
 from app.schemas.analysis import AnalysisResponse, Strategy
+from app.services.alert_signal_eligibility import smart_alert_allowed
 from app.services.analysis import AnalysisService
 from app.services.market_data import MarketDataService
 
@@ -24,26 +28,8 @@ class FavoriteSignalScanSummary:
     skipped_no_data: int
 
 
-def _eligible_for_buy_sell_notification(
-    analysis: AnalysisResponse,
-    *,
-    min_confidence_partial: float,
-) -> bool:
-    if analysis.no_data or analysis.data_quality == "NO_DATA":
-        return False
-    if analysis.recommendation not in ("BUY", "SELL"):
-        return False
-    if analysis.no_trade:
-        return False
-    if analysis.data_quality == "FULL" and analysis.signal_quality == "FULL":
-        return True
-    if analysis.data_quality == "PARTIAL" or analysis.signal_quality == "PARTIAL":
-        return float(analysis.confidence or 0.0) >= min_confidence_partial
-    return False
-
-
 class FavoriteSignalMonitorService:
-    """Background scan: favorites only, BUY/SELL transitions, uses alert_states + alert_events."""
+    """Background scan: favorites only, BUY/SELL transitions, alert_events + user_notifications + alert_rules."""
 
     def __init__(
         self,
@@ -52,12 +38,16 @@ class FavoriteSignalMonitorService:
         market_data_service: MarketDataService,
         alert_repository: AlertRepository,
         favorite_repository: FavoriteSymbolRepository,
+        alert_rule_repository: AlertRuleRepository,
+        notification_repository: UserNotificationRepository,
         min_confidence_partial: float = 58.0,
     ) -> None:
         self.analysis_service = analysis_service
         self.market_data_service = market_data_service
         self.alert_repository = alert_repository
         self.favorite_repository = favorite_repository
+        self.alert_rule_repository = alert_rule_repository
+        self.notification_repository = notification_repository
         self.min_confidence_partial = min_confidence_partial
 
     def run_scan(
@@ -111,6 +101,39 @@ class FavoriteSignalMonitorService:
         )
         return summary
 
+    def _load_rule(
+        self,
+        db: Session,
+        *,
+        app_user_id: Optional[int],
+        symbol: str,
+        strategy: Strategy,
+    ):
+        if app_user_id is None:
+            return None
+        return self.alert_rule_repository.get_by_user_symbol_strategy(
+            db,
+            user_id=app_user_id,
+            symbol=symbol,
+            strategy=strategy,
+        )
+
+    def _signal_str(self, analysis: AnalysisResponse) -> str:
+        if analysis.no_data or analysis.data_quality == "NO_DATA" or analysis.recommendation is None:
+            return "NO_DATA"
+        return analysis.recommendation
+
+    def _sync_rule_evaluated(
+        self,
+        db: Session,
+        *,
+        rule,
+        analysis: AnalysisResponse,
+    ) -> None:
+        if rule is None:
+            return
+        rule.last_evaluated_signal = self._signal_str(analysis)
+
     def _process_favorite_symbol(
         self,
         db: Session,
@@ -128,8 +151,11 @@ class FavoriteSignalMonitorService:
             strategy=strategy,
             db=db,
         )
+        rule = self._load_rule(db, app_user_id=app_user_id, symbol=symbol, strategy=strategy)
 
         if analysis.no_data or analysis.data_quality == "NO_DATA" or analysis.recommendation is None:
+            if rule is not None:
+                rule.last_evaluated_signal = "NO_DATA"
             return (0, 0, 1)
 
         quote = None
@@ -148,11 +174,12 @@ class FavoriteSignalMonitorService:
             symbol=symbol,
             strategy=strategy,
         )
-        eligible = _eligible_for_buy_sell_notification(
-            analysis,
-            min_confidence_partial=self.min_confidence_partial,
-        )
         new_rec = analysis.recommendation
+        eligible = smart_alert_allowed(
+            analysis,
+            rule=rule,
+            default_partial_min=self.min_confidence_partial,
+        )
         events_created = 0
         baseline_seeded = 0
 
@@ -170,6 +197,7 @@ class FavoriteSignalMonitorService:
                 is_favorite=True,
                 commit=False,
             )
+            self._sync_rule_evaluated(db, rule=rule, analysis=analysis)
             baseline_seeded = 1
             return (events_created, baseline_seeded, 0)
 
@@ -205,6 +233,27 @@ class FavoriteSignalMonitorService:
             )
             events_created = 1
 
+            if app_user_id is not None and rule is not None:
+                now = datetime.now(timezone.utc)
+                rule.last_notified_signal = new_rec
+                rule.last_notified_at = now
+                self._sync_rule_evaluated(db, rule=rule, analysis=analysis)
+                self.notification_repository.create(
+                    db,
+                    user_id=app_user_id,
+                    alert_rule_id=rule.id,
+                    symbol=symbol,
+                    strategy=strategy,
+                    signal=new_rec,
+                    confidence=float(analysis.confidence or 0.0),
+                    title=f"{symbol} · Smart Alert: {new_rec}",
+                    message=(
+                        f"{symbol} wechselte auf {new_rec} ({strategy}). "
+                        f"Konfidenz {conf}%, Datenqualität {analysis.data_quality}."
+                    ),
+                    commit=False,
+                )
+
         self.alert_repository.save_state(
             db,
             user_key=user_key,
@@ -218,4 +267,7 @@ class FavoriteSignalMonitorService:
             is_favorite=True,
             commit=False,
         )
+        if not (eligible and new_rec in ("BUY", "SELL") and prev_rec != new_rec):
+            self._sync_rule_evaluated(db, rule=rule, analysis=analysis)
+
         return (events_created, baseline_seeded, 0)

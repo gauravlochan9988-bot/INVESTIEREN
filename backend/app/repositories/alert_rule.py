@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.models.alert_rule import AlertRule
@@ -28,6 +28,28 @@ class AlertRuleRepository:
     def get_for_user(self, db: Session, *, user_id: int, rule_id: int) -> AlertRule | None:
         statement = select(AlertRule).where(AlertRule.id == rule_id, AlertRule.user_id == user_id)
         return db.scalar(statement)
+
+    def get_by_user_symbol_strategy(
+        self,
+        db: Session,
+        *,
+        user_id: int,
+        symbol: str,
+        strategy: str,
+    ) -> AlertRule | None:
+        statement = select(AlertRule).where(
+            AlertRule.user_id == user_id,
+            AlertRule.symbol == symbol,
+            AlertRule.strategy == strategy,
+        )
+        return db.scalar(statement)
+
+    def delete_all_for_user_symbol(self, db: Session, *, user_id: int, symbol: str) -> int:
+        result = db.execute(
+            delete(AlertRule).where(AlertRule.user_id == user_id, AlertRule.symbol == symbol)
+        )
+        db.commit()
+        return int(result.rowcount or 0)
 
     def create(
         self,
