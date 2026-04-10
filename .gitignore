@@ -1,4 +1,5 @@
 node_modules/
+my-clerk-app/
 .cursor/
 .DS_Store
 .env
