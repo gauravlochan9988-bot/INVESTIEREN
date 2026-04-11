@@ -189,6 +189,22 @@ def create_app() -> FastAPI:
     def pricing_script() -> FileResponse:
         return FileResponse(FRONTEND_DIR / "pricing.js", media_type="application/javascript")
 
+    @app.get("/settings.html")
+    def settings_page() -> FileResponse:
+        return FileResponse(FRONTEND_DIR / "settings.html", media_type="text/html")
+
+    @app.get("/settings")
+    def settings_page_short() -> FileResponse:
+        return settings_page()
+
+    @app.get("/settings.css")
+    def settings_styles() -> FileResponse:
+        return FileResponse(FRONTEND_DIR / "settings.css", media_type="text/css")
+
+    @app.get("/settings.js")
+    def settings_script() -> FileResponse:
+        return FileResponse(FRONTEND_DIR / "settings.js", media_type="application/javascript")
+
     @app.get("/auth-hero-hq.png")
     def root_auth_hero_hq() -> FileResponse:
         return FileResponse(FRONTEND_DIR / "auth-hero-hq.png", media_type="image/png")

@@ -4,6 +4,7 @@ from app.repositories.alert_rule import AlertRuleRepository
 from app.repositories.alert_repository import AlertRepository
 from app.repositories.analysis_log import AnalysisLogRepository
 from app.repositories.app_subscription import AppSubscriptionRepository
+from app.repositories.app_user_preference import AppUserPreferenceRepository
 from app.repositories.favorite_symbol import FavoriteSymbolRepository
 from app.repositories.portfolio import PortfolioRepository
 from app.repositories.strategy_learning_adjustment import StrategyLearningAdjustmentRepository
@@ -14,6 +15,7 @@ __all__ = [
     "AlertRuleRepository",
     "AlertRepository",
     "AppSubscriptionRepository",
+    "AppUserPreferenceRepository",
     "PortfolioRepository",
     "AnalysisLogRepository",
     "FavoriteSymbolRepository",

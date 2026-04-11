@@ -14,6 +14,7 @@ from app.repositories.alert_rule import AlertRuleRepository
 from app.repositories.analysis_log import AnalysisLogRepository
 from app.repositories.analysis_threshold import AnalysisThresholdRepository
 from app.repositories.app_subscription import AppSubscriptionRepository
+from app.repositories.app_user_preference import AppUserPreferenceRepository
 from app.repositories.app_user import AppUserRepository
 from app.repositories.favorite_symbol import FavoriteSymbolRepository
 from app.repositories.portfolio import PortfolioRepository
@@ -201,6 +202,11 @@ def get_app_subscription_repository_instance() -> AppSubscriptionRepository:
 
 
 @lru_cache
+def get_app_user_preference_repository_instance() -> AppUserPreferenceRepository:
+    return AppUserPreferenceRepository()
+
+
+@lru_cache
 def get_alert_repository_instance() -> AlertRepository:
     return AlertRepository()
 
@@ -325,6 +331,10 @@ def get_app_user_repository() -> AppUserRepository:
 
 def get_app_subscription_repository() -> AppSubscriptionRepository:
     return get_app_subscription_repository_instance()
+
+
+def get_app_user_preference_repository() -> AppUserPreferenceRepository:
+    return get_app_user_preference_repository_instance()
 
 
 def get_request_user_context(

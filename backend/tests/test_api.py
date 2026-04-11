@@ -144,6 +144,57 @@ def test_auth_config_accepts_clerk_alias_env_vars(client, monkeypatch):
     get_settings.cache_clear()
 
 
+def test_settings_preferences_roundtrip_persists_and_gates_free_strategy(client):
+    client.app.dependency_overrides[get_request_user_context] = lambda: RequestUserContext(
+        user_key="clerk|desk",
+        app_user_id=5,
+        is_authenticated=True,
+        is_admin=False,
+        role="user",
+        plan="free",
+    )
+    try:
+        initial = client.get("/api/settings/me")
+        assert initial.status_code == 200
+        assert initial.json()["default_strategy"] == "simple"
+
+        response = client.patch(
+            "/api/settings/me",
+            json={
+                "profile_language": "English",
+                "default_strategy": "ai",
+                "chart_timeframe": "4H",
+                "chart_style": "Candles",
+                "market_focus": "US + Europe",
+                "market_timezone": "Europe/Berlin",
+                "favorite_symbols": ["aapl", "msft"],
+                "favorites_only_alerts": True,
+                "alert_sensitivity": "Balanced",
+                "quiet_hours": "22:00 - 07:00",
+                "email_alerts": True,
+                "push_alerts": True,
+                "daily_digest": False,
+                "two_step_required": True,
+                "auto_logout_enabled": True,
+                "new_device_notify": True,
+                "legal_analytics": True,
+                "legal_personalized": True,
+            },
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["default_strategy"] == "simple"
+        assert payload["chart_timeframe"] == "4H"
+        assert payload["favorite_symbols"] == ["AAPL", "MSFT"]
+        assert payload["favorites_only_alerts"] is True
+
+        reread = client.get("/api/settings/me")
+        assert reread.status_code == 200
+        assert reread.json()["chart_timeframe"] == "4H"
+    finally:
+        client.app.dependency_overrides.pop(get_request_user_context, None)
+
+
 def test_search_endpoint_matches_companies_outside_watchlist(client):
     response = client.get("/api/search", params={"q": "co"})
 

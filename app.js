@@ -1109,6 +1109,69 @@ function extractClerkErrorMessage(error, fallback = "Authentication failed.") {
   return explicit || fallback;
 }
 
+function getOAuthProviderLabel(strategy) {
+  if (strategy === "oauth_google") {
+    return "Google";
+  }
+  if (strategy === "oauth_apple") {
+    return "Apple";
+  }
+  return "OAuth";
+}
+
+function isPopupFallbackCandidate(error) {
+  const message = extractClerkErrorMessage(error, "").toLowerCase();
+  if (!message) {
+    return false;
+  }
+  if (!message.includes("popup")) {
+    return false;
+  }
+  return (
+    message.includes("blocked") ||
+    message.includes("unsupported") ||
+    message.includes("not supported") ||
+    message.includes("cross-origin-opener-policy") ||
+    message.includes("opener")
+  );
+}
+
+function formatOAuthFailure(error) {
+  const message = extractClerkErrorMessage(error, "Please try again.").trim();
+  const lower = message.toLowerCase();
+  if (lower.includes("captcha")) {
+    return "CAPTCHA failed to load. Disable blockers or strict privacy extensions and retry.";
+  }
+  if (lower.includes("popup") && lower.includes("blocked")) {
+    return "Popup was blocked by your browser. Allow popups for this site and retry.";
+  }
+  if (
+    lower.includes("oauth") ||
+    lower.includes("provider") ||
+    lower.includes("redirect") ||
+    lower.includes("callback")
+  ) {
+    return `Provider callback failed: ${message}`;
+  }
+  return message;
+}
+
+async function completePostAuthEntry() {
+  await syncAuthenticatedUserWithRetry({ forceRefresh: true, attempts: 4 });
+  setAuthenticated(true);
+  setAdminSessionToken("");
+  await loadSubscriptionStatus();
+  enforceFreeStrategySelection();
+  await handleBillingRedirectState();
+  setAuthError("");
+  if (/\/login\/?$/i.test(String(window.location.pathname || ""))) {
+    window.history.replaceState({}, document.title, "/");
+  }
+  showAppShell();
+  await bootDashboard();
+  maybePromptUsernameSetup();
+}
+
 function readClerkPublishableKeyFromDom() {
   const node = document.querySelector('meta[name="clerk-publishable-key"]');
   return String(node?.getAttribute("content") || "").trim();
@@ -1776,13 +1839,33 @@ async function initializeManagedAuth() {
     state.auth.ready = true;
 
     if (clerk.user && clerk.session) {
-      setAuthenticated(true);
-      await syncAuthenticatedUserWithRetry({ forceRefresh: true, attempts: 4 });
-      await loadSubscriptionStatus();
-      enforceFreeStrategySelection();
-      await handleBillingRedirectState();
-      setAuthError("");
-      maybePromptUsernameSetup();
+      try {
+        setAuthenticated(true);
+        await syncAuthenticatedUserWithRetry({ forceRefresh: true, attempts: 4 });
+        await loadSubscriptionStatus();
+        enforceFreeStrategySelection();
+        await handleBillingRedirectState();
+        setAuthError("");
+        maybePromptUsernameSetup();
+      } catch (sessionSyncError) {
+        console.warn(
+          "[frontend] stale/invalid Clerk session during init, resetting session before new login",
+          sessionSyncError,
+        );
+        try {
+          await clerk.signOut?.();
+        } catch (signOutError) {
+          console.warn("[frontend] failed to clear stale Clerk session", signOutError);
+        }
+        state.auth.accessToken = "";
+        state.auth.tokenFetchedAt = 0;
+        state.auth.currentUser = null;
+        state.auth.subscription = null;
+        state.auth.lastInitError = "";
+        setAuthenticated(false);
+        renderSubscriptionButton();
+        setAuthError("");
+      }
     } else {
       setAuthenticated(false);
       state.auth.subscription = null;
@@ -1833,21 +1916,54 @@ async function continueWithOAuth(strategy) {
   }
 
   if (!(await ensureManagedAuthClient())) {
-    const providerLabel = strategy === "oauth_apple" ? "Apple" : strategy === "oauth_google" ? "Google" : "OAuth";
+    const providerLabel = getOAuthProviderLabel(strategy);
     const detail = state.auth.lastInitError || "Clerk auth client could not be initialized.";
     setAuthError(`${providerLabel} login is unavailable: ${detail}`);
     return;
   }
 
+  const providerLabel = getOAuthProviderLabel(strategy);
   setAuthError("");
   setAuthLoading(true);
+  let isRedirecting = false;
 
   try {
     const redirectBaseUrl = resolveOAuthRedirectBaseUrl();
     const callbackUrl = resolveOAuthCallbackUrl();
     const signIn = state.auth.client.client?.signIn;
 
+    if (signIn?.authenticateWithPopup) {
+      try {
+        const popupResult = await signIn.authenticateWithPopup({
+          strategy,
+          redirectUrlComplete: redirectBaseUrl,
+          signInForceRedirectUrl: callbackUrl,
+          signUpForceRedirectUrl: callbackUrl,
+        });
+        const popupSessionId =
+          popupResult?.createdSessionId ||
+          popupResult?.sessionId ||
+          popupResult?.session?.id ||
+          "";
+        if (popupSessionId && typeof state.auth.client.setActive === "function") {
+          await state.auth.client.setActive({ session: popupSessionId });
+        }
+        await waitForClerkSession(state.auth.client, { attempts: 18, intervalMs: 140 });
+        if (!state.auth.client.session || !state.auth.client.user) {
+          throw new Error("OAuth finished but no active Clerk session was created.");
+        }
+        await completePostAuthEntry();
+        return;
+      } catch (popupError) {
+        if (!isPopupFallbackCandidate(popupError)) {
+          throw popupError;
+        }
+        console.warn("[frontend] OAuth popup unavailable, falling back to redirect", popupError);
+      }
+    }
+
     if (signIn?.authenticateWithRedirect) {
+      isRedirecting = true;
       await signIn.authenticateWithRedirect({
         strategy,
         redirectUrl: callbackUrl,
@@ -1858,21 +1974,15 @@ async function continueWithOAuth(strategy) {
       return;
     }
 
-    if (typeof state.auth.client.redirectToSignIn === "function") {
-      await state.auth.client.redirectToSignIn({
-        forceRedirectUrl: callbackUrl,
-        fallbackRedirectUrl: callbackUrl,
-      });
-      return;
-    }
+    throw new Error("Clerk OAuth methods are unavailable in this browser.");
   } catch (error) {
-    console.error("[frontend] oauth redirect failed", error);
-    const providerLabel = strategy === "oauth_apple" ? "Apple" : strategy === "oauth_google" ? "Google" : "OAuth";
-    setAuthError(`${providerLabel} login failed: ${extractClerkErrorMessage(error, "Please try again.")}`);
+    console.error("[frontend] oauth login failed", error);
+    setAuthError(`${providerLabel} login failed: ${formatOAuthFailure(error)}`);
+  } finally {
+    if (!isRedirecting) {
+      setAuthLoading(false);
+    }
   }
-
-  setAuthLoading(false);
-  await loginWithManagedProvider("login");
 }
 
 async function authenticateWithEmailPassword({ mode, username, email, password }) {
@@ -5697,7 +5807,7 @@ function bindApp() {
   });
 
   elements.settingsButton?.addEventListener("click", () => {
-    openSettingsOverlay("manual");
+    window.location.href = "settings.html";
   });
 
   elements.limitedAccessUpgradeButton?.addEventListener("click", () => {

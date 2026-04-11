@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Account and product settings for GQ Trading private members."
+    />
+    <meta name="color-scheme" content="light" />
+    <title>GQ Trading | Settings</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="settings.css" />
+  </head>
+  <body>
+    <div class="settings-shell">
+      <header class="settings-topbar">
+        <div class="settings-brand">
+          <span class="settings-brand-mark">GQ</span>
+          <div>
+            <p class="settings-brand-name">GQ Trading</p>
+            <p class="settings-brand-subtitle">Private Settings Console</p>
+          </div>
+        </div>
+        <div class="settings-topbar-actions">
+          <span class="plan-chip plan-chip-pro" id="currentPlanBadge">PRO PLAN</span>
+          <a href="/" class="ghost-button">Back to Dashboard</a>
+          <button type="button" id="saveSettingsButton" class="primary-button">Save Changes</button>
+        </div>
+      </header>
+      <p id="settingsStatusMessage" class="settings-status" hidden></p>
+
+      <main class="settings-layout">
+        <aside class="settings-sidebar">
+          <p class="sidebar-label">Settings</p>
+          <nav class="settings-nav" aria-label="Settings sections">
+            <a href="#profile" data-settings-nav>Profile / Account</a>
+            <a href="#billing" data-settings-nav>Subscription / Billing</a>
+            <a href="#security" data-settings-nav>Security</a>
+            <a href="#notifications" data-settings-nav>Notifications</a>
+            <a href="#trading" data-settings-nav>Trading Preferences</a>
+            <a href="#legal" data-settings-nav>Legal / Privacy / Terms</a>
+            <a href="#support" data-settings-nav>Support</a>
+          </nav>
+          <div class="sidebar-plan-card">
+            <p class="sidebar-plan-kicker">Current Access</p>
+            <h3>Pro Member</h3>
+            <p>AI + Hedgefund modes, premium alerts, and full analytics enabled.</p>
+            <div class="sidebar-plan-grid">
+              <div>
+                <span>Plan</span>
+                <strong>PRO</strong>
+              </div>
+              <div>
+                <span>Status</span>
+                <strong>Active</strong>
+              </div>
+              <div>
+                <span>Renewal</span>
+                <strong>10 Apr 2026</strong>
+              </div>
+              <div>
+                <span>Owner</span>
+                <strong>No</strong>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <section class="settings-content">
+          <div class="mobile-nav-shell">
+            <label for="settingsSectionSelect">Jump to section</label>
+            <select id="settingsSectionSelect">
+              <option value="profile">Profile / Account</option>
+              <option value="billing">Subscription / Billing</option>
+              <option value="security">Security</option>
+              <option value="notifications">Notifications</option>
+              <option value="trading">Trading Preferences</option>
+              <option value="legal">Legal / Privacy / Terms</option>
+              <option value="support">Support</option>
+            </select>
+          </div>
+
+          <section id="profile" class="settings-section">
+            <div class="section-heading">
+              <p class="section-kicker">Identity</p>
+              <h2>Profile / Account</h2>
+              <p>Manage your profile, public trading identity, and account state.</p>
+            </div>
+            <div class="settings-card-grid">
+              <article class="settings-card">
+                <h3>Account details</h3>
+                <div class="settings-form-grid">
+                  <label>
+                    Display name
+                    <input id="profileDisplayName" type="text" placeholder="Gaurav Lochan" />
+                  </label>
+                  <label>
+                    Email ID
+                    <input id="profileEmail" type="email" placeholder="you@company.com" readonly />
+                  </label>
+                  <label>
+                    Username
+                    <input id="profileUsername" type="text" placeholder="gauravtrades" />
+                  </label>
+                  <label>
+                    Language
+                    <select id="profileLanguage">
+                      <option>English</option>
+                      <option>Deutsch</option>
+                    </select>
+                  </label>
+                </div>
+              </article>
+              <article class="settings-card">
+                <h3>Plan visibility</h3>
+                <p class="muted-copy">
+                  Show plan level clearly across your account and dashboard.
+                </p>
+                <div class="plan-state-grid">
+                  <div class="plan-state-row">
+                    <span class="plan-chip plan-chip-free">FREE</span>
+                    <p>Simple strategy only. Basic delayed data and limited alerts.</p>
+                  </div>
+                  <div class="plan-state-row active">
+                    <span class="plan-chip plan-chip-pro">PRO</span>
+                    <p>Simple + AI + Hedgefund strategies with full premium workflow.</p>
+                  </div>
+                  <div class="plan-state-row">
+                    <span class="plan-chip plan-chip-owner">OWNER</span>
+                    <p>Administrative controls, owner-only operations, and override access.</p>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section id="billing" class="settings-section">
+            <div class="section-heading">
+              <p class="section-kicker">Payments</p>
+              <h2>Subscription / Billing / Contract</h2>
+              <p>Control your plan, invoices, payment methods, and contract lifecycle.</p>
+            </div>
+            <div class="settings-card-grid">
+              <article class="settings-card">
+                <h3>Subscription status</h3>
+                <ul class="list-clean">
+                  <li><span>Current plan</span><strong id="billingPlanName">Investieren Pro Monthly</strong></li>
+                  <li><span>Price</span><strong id="billingPlanPrice">EUR 4.99 / month</strong></li>
+                  <li><span>Status</span><strong id="billingPlanStatus">Active</strong></li>
+                  <li><span>Renewal date</span><strong id="billingPlanRenewal">10 Apr 2026</strong></li>
+                  <li><span>Contract</span><strong id="billingContract">Monthly, cancellable anytime</strong></li>
+                </ul>
+                <div class="card-actions">
+                  <button type="button" id="managePlanButton" class="primary-button">Manage plan</button>
+                  <button type="button" class="ghost-button">Upgrade options</button>
+                </div>
+              </article>
+
+              <article class="settings-card">
+                <h3>Payment method</h3>
+                <ul class="list-clean">
+                  <li><span>Default method</span><strong id="billingPaymentMethod">Not available from API</strong></li>
+                  <li><span>Billing name</span><strong id="billingName">GQ Trading Member</strong></li>
+                  <li><span>Billing country</span><strong id="billingCountry">Germany</strong></li>
+                </ul>
+                <div class="card-actions">
+                  <button type="button" class="ghost-button">Update payment method</button>
+                  <button type="button" class="ghost-button">Add backup card</button>
+                </div>
+              </article>
+
+              <article class="settings-card full-width">
+                <h3>Billing history</h3>
+                <div class="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Invoice</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td colspan="5" id="billingHistoryPlaceholder">Billing history endpoint not connected yet.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+
+              <article class="settings-card danger-card full-width">
+                <h3>Cancel plan</h3>
+                <p>
+                  Cancel your subscription at the end of your current billing period.
+                  Your account downgrades to Free and keeps access to Simple strategy.
+                </p>
+                <div class="card-actions">
+                  <button type="button" id="cancelSubscriptionButton" class="danger-button">Cancel subscription</button>
+                  <button type="button" class="ghost-button">View cancellation terms</button>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section id="security" class="settings-section">
+            <div class="section-heading">
+              <p class="section-kicker">Protection</p>
+              <h2>Security</h2>
+              <p>Harden account access and monitor critical sign-in activity.</p>
+            </div>
+            <div class="settings-card-grid">
+              <article class="settings-card">
+                <h3>Sign-in methods</h3>
+                <ul class="list-clean">
+                  <li><span>Email + password</span><strong>Enabled</strong></li>
+                  <li><span>Google OAuth</span><strong>Connected</strong></li>
+                  <li><span>Apple OAuth</span><strong>Connected</strong></li>
+                </ul>
+                <div class="toggle-row">
+                  <span>Require 2-step verification</span>
+                  <button type="button" class="toggle is-on" id="securityTwoStepToggle" aria-pressed="true">On</button>
+                </div>
+              </article>
+              <article class="settings-card">
+                <h3>Session controls</h3>
+                <div class="toggle-row">
+                  <span>Auto logout inactive sessions (24h)</span>
+                  <button type="button" class="toggle is-on" id="securityAutoLogoutToggle" aria-pressed="true">On</button>
+                </div>
+                <div class="toggle-row">
+                  <span>Notify on new device login</span>
+                  <button type="button" class="toggle is-on" id="securityNewDeviceToggle" aria-pressed="true">On</button>
+                </div>
+                <div class="card-actions">
+                  <button type="button" class="ghost-button">View active sessions</button>
+                  <button type="button" class="ghost-button">Sign out all devices</button>
+                </div>
+              </article>
+              <article class="settings-card danger-card full-width">
+                <h3>Delete account</h3>
+                <p>
+                  Permanently delete your account, profile data, and subscription metadata.
+                  This action is irreversible.
+                </p>
+                <div class="card-actions">
+                  <button type="button" id="deleteAccountButton" class="danger-button">Delete account permanently</button>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section id="notifications" class="settings-section">
+            <div class="section-heading">
+              <p class="section-kicker">Comms</p>
+              <h2>Notifications</h2>
+              <p>Control alert channels and how fast you receive market updates.</p>
+            </div>
+            <div class="settings-card-grid">
+              <article class="settings-card">
+                <h3>Alert channels</h3>
+                <div class="toggle-row">
+                  <span>Email alerts</span>
+                  <button type="button" id="notificationsEmailToggle" class="toggle is-on">On</button>
+                </div>
+                <div class="toggle-row">
+                  <span>Push alerts</span>
+                  <button type="button" id="notificationsPushToggle" class="toggle is-on">On</button>
+                </div>
+                <div class="toggle-row">
+                  <span>Daily performance digest</span>
+                  <button type="button" id="notificationsDigestToggle" class="toggle">Off</button>
+                </div>
+              </article>
+              <article class="settings-card">
+                <h3>Signal urgency</h3>
+                <label>
+                  Alert sensitivity
+                  <select id="notificationsSensitivity">
+                    <option>Balanced</option>
+                    <option>Aggressive</option>
+                    <option>Conservative</option>
+                  </select>
+                </label>
+                <label>
+                  Quiet hours
+                  <input id="notificationsQuietHours" type="text" placeholder="22:00 - 07:00 local time" />
+                </label>
+              </article>
+            </div>
+          </section>
+
+          <section id="trading" class="settings-section">
+            <div class="section-heading">
+              <p class="section-kicker">Execution Setup</p>
+              <h2>Trading Preferences</h2>
+              <p>Customize how your terminal behaves for strategies, charts, and signals.</p>
+            </div>
+            <div class="settings-card-grid">
+              <article class="settings-card">
+                <h3>Default strategy</h3>
+                <div class="option-group">
+                  <label class="option-pill"><input type="radio" name="strategy" value="simple" checked /> Simple</label>
+                  <label class="option-pill"><input type="radio" name="strategy" value="ai" /> AI (Pro)</label>
+                  <label class="option-pill"><input type="radio" name="strategy" value="hedgefund" /> Hedgefund (Pro)</label>
+                </div>
+              </article>
+              <article class="settings-card">
+                <h3>Chart defaults</h3>
+                <label>
+                  Primary timeframe
+                  <select id="tradingTimeframe">
+                    <option>1D</option>
+                    <option>4H</option>
+                    <option>1H</option>
+                    <option>1W</option>
+                  </select>
+                </label>
+                <label>
+                  Preferred chart style
+                  <select id="tradingChartStyle">
+                    <option>Candles</option>
+                    <option>Bars</option>
+                    <option>Area</option>
+                  </select>
+                </label>
+              </article>
+              <article class="settings-card">
+                <h3>Favorites and watchlist</h3>
+                <label>
+                  Favorite symbols
+                  <input id="tradingFavoritesInput" type="text" placeholder="AAPL, MSFT, NVDA, SAP.DE" />
+                </label>
+                <div class="toggle-row">
+                  <span>Alerts only for favorites</span>
+                  <button type="button" id="tradingFavoritesOnlyToggle" class="toggle">Off</button>
+                </div>
+              </article>
+              <article class="settings-card">
+                <h3>Market preferences</h3>
+                <label>
+                  Primary market focus
+                  <select id="tradingMarketFocus">
+                    <option>US + Europe</option>
+                    <option>US only</option>
+                    <option>Europe only</option>
+                    <option>Global mixed</option>
+                  </select>
+                </label>
+                <label>
+                  Market timezone
+                  <select id="tradingMarketTimezone">
+                    <option>Europe/Berlin</option>
+                    <option>America/New_York</option>
+                    <option>UTC</option>
+                  </select>
+                </label>
+              </article>
+            </div>
+          </section>
+
+          <section id="legal" class="settings-section">
+            <div class="section-heading">
+              <p class="section-kicker">Compliance</p>
+              <h2>Legal / Privacy / Terms</h2>
+              <p>Transparent legal controls and privacy preferences.</p>
+            </div>
+            <div class="settings-card-grid">
+              <article class="settings-card">
+                <h3>Privacy controls</h3>
+                <div class="toggle-row">
+                  <span>Product analytics</span>
+                  <button type="button" id="legalAnalyticsToggle" class="toggle is-on">On</button>
+                </div>
+                <div class="toggle-row">
+                  <span>Personalized recommendations</span>
+                  <button type="button" id="legalPersonalizedToggle" class="toggle is-on">On</button>
+                </div>
+                <div class="card-actions">
+                  <button type="button" class="ghost-button">Export my data</button>
+                </div>
+              </article>
+              <article class="settings-card">
+                <h3>Documents</h3>
+                <ul class="link-list">
+                  <li><a href="#">Terms of Service</a></li>
+                  <li><a href="#">Privacy Policy</a></li>
+                  <li><a href="#">Risk Disclosure</a></li>
+                  <li><a href="#">Data Processing Agreement</a></li>
+                </ul>
+              </article>
+            </div>
+          </section>
+
+          <section id="support" class="settings-section">
+            <div class="section-heading">
+              <p class="section-kicker">Help</p>
+              <h2>Support</h2>
+              <p>Fast contact options for billing, account, and trading signal issues.</p>
+            </div>
+            <div class="settings-card-grid">
+              <article class="settings-card">
+                <h3>Support channels</h3>
+                <ul class="list-clean">
+                  <li><span>Priority email</span><strong>support@gauravtrades.de</strong></li>
+                  <li><span>Response SLA (Pro)</span><strong>&lt; 24 hours</strong></li>
+                  <li><span>Status page</span><strong>Operational</strong></li>
+                </ul>
+                <div class="card-actions">
+                  <button type="button" class="primary-button">Contact support</button>
+                  <button type="button" class="ghost-button">Open help center</button>
+                </div>
+              </article>
+              <article class="settings-card">
+                <h3>Diagnostics for support</h3>
+                <label>
+                  Session ID
+                  <input type="text" value="sess_live_01H9..." readonly />
+                </label>
+                <label>
+                  Account ID
+                  <input type="text" value="usr_live_97..." readonly />
+                </label>
+              </article>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="settings.js" defer></script>
+  </body>
+</html>

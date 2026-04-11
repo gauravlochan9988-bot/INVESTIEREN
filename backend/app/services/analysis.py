@@ -421,9 +421,9 @@ class AnalysisService:
         try:
             history = self.market_data_service.get_history(symbol, "1y", force_refresh=force_refresh)
             if len(history) < MIN_HISTORY_POINTS:
-                return self._no_data_response(
+                return self._partial_data_response(
                     symbol,
-                    f"Not enough market history for a meaningful analysis: only {len(history)} daily closes are available.",
+                    available_points=len(history),
                     strategy=strategy,
                 )
             prepared = self._get_prepared_inputs(
@@ -445,6 +445,13 @@ class AnalysisService:
             )
         except ExternalServiceError as error:
             message = error.message.rstrip(".")
+            fallback = self._quote_fallback_response(
+                symbol,
+                reason=f"{message}.",
+                strategy=strategy,
+            )
+            if fallback is not None:
+                return fallback
             return self._no_data_response(
                 symbol,
                 f"{message}.",
@@ -2298,31 +2305,129 @@ class AnalysisService:
         return AnalysisResponse(
             symbol=normalized_symbol,
             strategy=strategy,
-            no_data=True,
-            no_data_reason=message,
-            recommendation=None,
-            signal_quality=None,
-            score=None,
-            probability_up=None,
-            probability_down=None,
-            confidence=0.0,
-            risk_level=None,
+            no_data=False,
+            no_data_reason=None,
+            recommendation="HOLD",
+            signal_quality="PARTIAL",
+            score=0,
+            probability_up=0.5,
+            probability_down=0.5,
+            confidence=42.0,
+            risk_level="MEDIUM",
             data_quality="PARTIAL",
             data_quality_reason=message,
             macro=None,
             no_trade=True,
-            no_trade_reason=message,
+            no_trade_reason="Fallback mode keeps new entries paused until full history is available.",
             entry_signal=False,
-            entry_reason=message,
+            entry_reason="Waiting for a full history window before confirming a new entry.",
             exit_signal=False,
-            exit_reason=message,
+            exit_reason="No forced exit because fallback history does not indicate a clear break.",
             stop_loss_level=None,
-            stop_loss_reason=message,
-            position_size_percent=None,
-            position_size_reason=message,
-            timeframe=None,
-            warnings=[],
-            summary=message,
+            stop_loss_reason="Stop loss requires full technical context.",
+            position_size_percent=0.0,
+            position_size_reason="Position sizing is disabled while only partial history is available.",
+            timeframe="unclear",
+            warnings=["Partial historical data fallback is active."],
+            summary="HOLD because only partial history is available and full signal validation is not possible yet.",
+            generated_at=datetime.now(timezone.utc),
+            signals=None,
+        )
+
+    def _quote_fallback_response(
+        self,
+        symbol: str,
+        *,
+        reason: str,
+        strategy: Strategy,
+    ) -> AnalysisResponse | None:
+        try:
+            quote = self.market_data_service.get_latest_quote(symbol, force_refresh=False)
+        except (ExternalServiceError, NotFoundError, ValidationError):
+            return None
+
+        normalized_symbol = symbol.strip().upper()
+        move = round(float(quote.change_percent or 0.0), 2)
+        recommendation: Recommendation = "HOLD"
+        score = 0
+        entry_signal = False
+        exit_signal = False
+        no_trade = True
+        no_trade_reason = "Quote-only fallback keeps entries conservative."
+        entry_reason = "No entry until full history is restored."
+        exit_reason = "No forced exit in quote-only fallback mode."
+        stop_loss_level = None
+        stop_loss_reason = "Fallback mode does not have enough context for a precise stop loss."
+        position_size_percent = 0.0
+        position_size_reason = "Position sizing is paused while only delayed quote data is available."
+        probability_up = 0.5
+        probability_down = 0.5
+        confidence = min(72.0, max(40.0, 44.0 + min(abs(move), 4.0) * 5.0))
+        risk_level: RiskLevel = "HIGH" if abs(move) >= 3.0 else "MEDIUM"
+
+        if move >= 1.25:
+            recommendation = "BUY"
+            score = 2
+            entry_signal = True
+            no_trade = False
+            no_trade_reason = "Fallback data indicates short-term bullish momentum."
+            entry_reason = f"Delayed quote momentum is positive at {move:+.2f}%."
+            probability_up = min(0.68, 0.52 + min(move, 4.0) * 0.03)
+            probability_down = round(1.0 - probability_up, 3)
+            position_size_percent = 6.0
+            position_size_reason = "Reduced size because this signal is generated from delayed fallback data."
+            stop_loss_level = round(float(quote.price) * 0.97, 4)
+            stop_loss_reason = "Tighter fallback stop to limit risk while full feeds recover."
+        elif move <= -1.25:
+            recommendation = "SELL"
+            score = -2
+            exit_signal = True
+            no_trade = False
+            no_trade_reason = "Fallback data indicates short-term bearish momentum."
+            exit_reason = f"Delayed quote momentum is negative at {move:+.2f}%."
+            probability_down = min(0.68, 0.52 + min(abs(move), 4.0) * 0.03)
+            probability_up = round(1.0 - probability_down, 3)
+            position_size_percent = 6.0
+            position_size_reason = "Reduced size because this signal is generated from delayed fallback data."
+            stop_loss_level = round(float(quote.price) * 1.03, 4)
+            stop_loss_reason = "Tighter fallback stop to limit risk while full feeds recover."
+
+        fallback_note = (
+            f"Live history unavailable ({reason.rstrip('.')}). "
+            f"Using delayed quote fallback at {quote.price:.2f} ({move:+.2f}%)."
+        )
+
+        return AnalysisResponse(
+            symbol=normalized_symbol,
+            strategy=strategy,
+            no_data=False,
+            no_data_reason=None,
+            recommendation=recommendation,
+            signal_quality="PARTIAL",
+            score=score,
+            probability_up=round(float(probability_up), 3),
+            probability_down=round(float(probability_down), 3),
+            confidence=round(float(confidence), 2),
+            risk_level=risk_level,
+            data_quality="PARTIAL",
+            data_quality_reason=fallback_note,
+            macro=None,
+            no_trade=no_trade,
+            no_trade_reason=no_trade_reason,
+            entry_signal=entry_signal,
+            entry_reason=entry_reason,
+            exit_signal=exit_signal,
+            exit_reason=exit_reason,
+            stop_loss_level=stop_loss_level,
+            stop_loss_reason=stop_loss_reason,
+            position_size_percent=position_size_percent,
+            position_size_reason=position_size_reason,
+            timeframe="short_term",
+            warnings=["Delayed quote fallback is active; full market history is temporarily unavailable."],
+            summary=(
+                f"{recommendation} ({strategy}) with partial confidence because full history is unavailable. "
+                f"{fallback_note}"
+            ),
             generated_at=datetime.now(timezone.utc),
             signals=None,
         )

@@ -5,6 +5,7 @@ from app.models.trade_performance_log import TradePerformanceLog
 from app.services.analysis import AnalysisService
 from app.services.macro import MacroContextService
 from app.services.market_data import MarketDataService
+from app.services.market_data import QuoteSnapshot
 from app.services.news import NewsSentimentSnapshot
 from app.services.news import NewsSentimentService
 from app.services.strategy_learning import LEARNING_LAYER_VERSION
@@ -30,6 +31,26 @@ class ShortHistoryMarketDataProvider:
 
     def fetch_history(self, symbol, period):
         return build_history(start=100.0, drift=0.4)[:40]
+
+
+class QuoteOnlyFallbackMarketDataProvider:
+    def fetch_quotes(self, symbols, names):
+        now = datetime.now(timezone.utc)
+        return [
+            QuoteSnapshot(
+                symbol=symbol,
+                name=names[symbol],
+                price=184.5,
+                change_percent=1.8,
+                volume=0,
+                updated_at=now,
+                stale=True,
+            )
+            for symbol in symbols
+        ]
+
+    def fetch_history(self, symbol, period):
+        raise ExternalServiceError("Primary history feed failed.")
 
 
 def test_buy_setup_can_still_block_fresh_entry_when_overbought(analysis_service):
@@ -311,9 +332,44 @@ def test_analyze_symbol_marks_partial_data_when_history_window_is_too_short():
     result = analysis_service.analyze_symbol("AAPL")
 
     assert result.symbol == "AAPL"
-    assert result.no_data is True
-    assert result.data_quality == "NO_DATA"
-    assert "Not enough market history" in result.data_quality_reason
+    assert result.no_data is False
+    assert result.recommendation == "HOLD"
+    assert result.signal_quality == "PARTIAL"
+    assert result.data_quality == "PARTIAL"
+    assert "Partial market history only" in result.data_quality_reason
+    assert result.decision_label == "PARTIAL"
+
+
+def test_analyze_symbol_uses_quote_fallback_when_history_feed_fails():
+    analysis_service = AnalysisService(
+        market_data_service=MarketDataService(
+            provider=QuoteOnlyFallbackMarketDataProvider(),
+            allowed_symbols={"AAPL": "Apple"},
+            ttl_seconds=3600,
+        ),
+        macro_context_service=MacroContextService(
+            provider=FakeMarketDataProvider(),
+            ttl_seconds=3600,
+            market_symbol="SPY",
+            usd_symbol="DXY",
+            interest_rate_effect="neutral",
+        ),
+        news_sentiment_service=NewsSentimentService(
+            provider=FakeNewsProvider(),
+            ttl_seconds=3600,
+            headline_limit=8,
+        ),
+        summary_service=FakeSummaryService(),
+    )
+
+    result = analysis_service.analyze_symbol("AAPL", strategy="simple")
+
+    assert result.symbol == "AAPL"
+    assert result.no_data is False
+    assert result.data_quality == "PARTIAL"
+    assert result.recommendation in {"BUY", "SELL", "HOLD"}
+    assert result.signal_quality == "PARTIAL"
+    assert "delayed quote fallback" in result.data_quality_reason.lower()
 
 
 def test_analyze_symbol_returns_structured_no_data_for_invalid_symbol_format(
