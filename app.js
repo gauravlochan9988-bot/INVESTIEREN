@@ -1142,6 +1142,9 @@ function isPopupFallbackCandidate(error) {
 function formatOAuthFailure(error) {
   const message = extractClerkErrorMessage(error, "Please try again.").trim();
   const lower = message.toLowerCase();
+  if (lower.includes("failed to construct 'url'") || lower.includes("invalid url")) {
+    return "OAuth provider URL setup is invalid. Please retry, and if it persists, check Clerk redirect configuration.";
+  }
   if (lower.includes("captcha")) {
     return "CAPTCHA failed to load. Disable blockers or strict privacy extensions and retry.";
   }
@@ -1940,9 +1943,6 @@ async function continueWithOAuth(strategy) {
         const popupResult = await signIn.authenticateWithPopup({
           strategy,
           popup: true,
-          redirectUrlComplete: redirectBaseUrl,
-          signInForceRedirectUrl: callbackUrl,
-          signUpForceRedirectUrl: callbackUrl,
         });
         const popupSessionId =
           popupResult?.createdSessionId ||
