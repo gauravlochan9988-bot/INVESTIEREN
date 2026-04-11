@@ -142,10 +142,21 @@ class ClerkTokenVerifier:
             )
             raise self._configuration_error()
 
+        # Prefer secret-key verification when available. This avoids hard failures
+        # from stale CLERK_JWT_KEY values and matches Clerk's recommended server flow.
+        if self.secret_key:
+            try:
+                return self._verify_with_secret_key(token)
+            except HTTPException as secret_exc:
+                if secret_exc.status_code == status.HTTP_503_SERVICE_UNAVAILABLE and self.jwt_key:
+                    logger.warning(
+                        "Clerk secret-key verification unavailable, falling back to JWT key.",
+                        extra={"auth_reason": "secret_verify_unavailable_fallback_jwt"},
+                    )
+                    return self._verify_with_jwt_key(token)
+                raise
         if self.jwt_key:
             return self._verify_with_jwt_key(token)
-        if self.secret_key:
-            return self._verify_with_secret_key(token)
         logger.error(
             "Clerk auth verifier was enabled but no JWT or secret key was available.",
             extra={"auth_reason": "missing_verifier_key"},
