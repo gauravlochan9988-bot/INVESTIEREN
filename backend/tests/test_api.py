@@ -60,6 +60,12 @@ class StubBillingService:
             "session_id": "cs_test_123",
         }
 
+    def create_public_checkout_session(self, *, email):
+        return {
+            "url": "https://checkout.stripe.test/session-public",
+            "session_id": "cs_public_123",
+        }
+
     def get_subscription_status(self, db, *, app_user_id):
         return {
             "active": False,
@@ -771,6 +777,19 @@ def test_billing_checkout_creates_checkout_session_for_authenticated_user(client
         }
     finally:
         client.app.dependency_overrides.pop(get_request_user_context, None)
+        client.app.dependency_overrides.pop(get_billing_service, None)
+
+
+def test_public_billing_checkout_creates_session_without_auth(client):
+    client.app.dependency_overrides[get_billing_service] = lambda: StubBillingService()
+    try:
+        response = client.post("/api/billing/checkout-public", json={"email": "guest@example.com"})
+        assert response.status_code == 200
+        assert response.json() == {
+            "url": "https://checkout.stripe.test/session-public",
+            "session_id": "cs_public_123",
+        }
+    finally:
         client.app.dependency_overrides.pop(get_billing_service, None)
 
 

@@ -9,6 +9,10 @@ class CheckoutSessionResponse(BaseModel):
     session_id: str
 
 
+class PublicCheckoutRequest(BaseModel):
+    email: str
+
+
 class SubscriptionStatusResponse(BaseModel):
     active: bool
     status: str

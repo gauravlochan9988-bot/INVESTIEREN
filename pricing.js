@@ -66,35 +66,56 @@ async function ensureClerkFrontendLoaded(config) {
 async function initializePricing() {
   const button = document.getElementById("pricingCheckoutButton");
   const status = document.getElementById("pricingStatus");
+  const emailWrap = document.getElementById("pricingEmailWrap");
+  const emailInput = document.getElementById("pricingCheckoutEmail");
+  let authToken = "";
 
   try {
-    const config = await pricingApi("/api/auth/config");
-    if (!config?.enabled || config.provider !== "clerk") {
-      throw new Error("Clerk auth is not configured.");
+    try {
+      const config = await pricingApi("/api/auth/config");
+      if (config?.enabled && config.provider === "clerk") {
+        const clerk = await ensureClerkFrontendLoaded(config);
+        await clerk.load();
+        if (clerk.user && clerk.session) {
+          authToken = await clerk.session.getToken();
+        }
+      }
+    } catch (authError) {
+      console.warn("[pricing] auth init skipped", authError);
     }
 
-    const clerk = await ensureClerkFrontendLoaded(config);
-    await clerk.load();
-
-    if (!clerk.user || !clerk.session) {
-      window.location.replace("/");
-      return;
+    const isAuthenticated = Boolean(authToken);
+    if (emailWrap) {
+      emailWrap.hidden = isAuthenticated;
     }
-
-    const token = await clerk.session.getToken();
 
     button?.addEventListener("click", async () => {
       try {
         button.disabled = true;
         status.textContent = "Redirecting to Stripe Checkout…";
-        const session = await pricingApi("/api/billing/checkout", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({}),
-        });
+        let session = null;
+        if (isAuthenticated) {
+          session = await pricingApi("/api/billing/checkout", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${authToken}`,
+            },
+            body: JSON.stringify({}),
+          });
+        } else {
+          const email = String(emailInput?.value || "").trim().toLowerCase();
+          if (!email || !email.includes("@")) {
+            throw new Error("Please enter a valid email to continue checkout.");
+          }
+          session = await pricingApi("/api/billing/checkout-public", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email }),
+          });
+        }
         if (!session?.url) {
           throw new Error("Checkout is unavailable.");
         }
@@ -105,7 +126,9 @@ async function initializePricing() {
       }
     });
 
-    status.textContent = "Secure payment via Stripe Checkout.";
+    status.textContent = isAuthenticated
+      ? "Secure payment via Stripe Checkout."
+      : "Checkout works without login. Use the same email when creating your account.";
   } catch (error) {
     console.error("[pricing] init failed", error);
     status.textContent = error.message || "Pricing is unavailable.";

@@ -95,6 +95,29 @@ class BillingService:
 
         return {"url": session["url"], "session_id": session["id"]}
 
+    def create_public_checkout_session(self, *, email: str) -> Dict[str, str]:
+        self._ensure_enabled()
+        normalized_email = str(email or "").strip().lower()
+        if "@" not in normalized_email or "." not in normalized_email.rsplit("@", 1)[-1]:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="A valid email is required for checkout.",
+            )
+
+        session = stripe.checkout.Session.create(
+            mode="subscription",
+            success_url=self._frontend_url("/?checkout=success&session_id={CHECKOUT_SESSION_ID}"),
+            cancel_url=self._frontend_url("/?checkout=cancel"),
+            line_items=self._checkout_line_items(),
+            allow_promotion_codes=True,
+            customer_email=normalized_email,
+            metadata={
+                "public_checkout": "1",
+                "checkout_email": normalized_email,
+            },
+        )
+        return {"url": session["url"], "session_id": session["id"]}
+
     def sync_checkout_session(self, db: Session, *, app_user: AppUser, session_id: str) -> Dict[str, Any]:
         self._ensure_enabled()
         session = stripe.checkout.Session.retrieve(session_id, expand=["subscription"])

@@ -5627,6 +5627,7 @@ function bindAuth() {
       setAdminSessionToken("");
       await loadSubscriptionStatus();
       enforceFreeStrategySelection();
+      await handleBillingRedirectState();
       showAppShell();
       await bootDashboard();
       maybePromptUsernameSetup();
@@ -5707,6 +5708,7 @@ function bindAuth() {
       setAdminSessionToken("");
       await loadSubscriptionStatus();
       enforceFreeStrategySelection();
+      await handleBillingRedirectState();
       showAppShell();
       await bootDashboard();
       maybePromptUsernameSetup();

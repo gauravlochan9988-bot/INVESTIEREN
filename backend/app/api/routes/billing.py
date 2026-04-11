@@ -15,6 +15,7 @@ from app.schemas.billing import (
     BillingStateSyncRequest,
     BillingSyncResponse,
     CheckoutSessionResponse,
+    PublicCheckoutRequest,
     SubscriptionStatusResponse,
 )
 from app.services.billing import BillingService
@@ -51,6 +52,15 @@ def create_checkout(
 ) -> CheckoutSessionResponse:
     user = _require_authenticated_user(db, user_context, app_user_repository)
     session = billing_service.create_checkout_session(db, app_user=user)
+    return CheckoutSessionResponse(**session)
+
+
+@router.post("/checkout-public", response_model=CheckoutSessionResponse)
+def create_public_checkout(
+    payload: PublicCheckoutRequest,
+    billing_service: BillingService = Depends(get_billing_service),
+) -> CheckoutSessionResponse:
+    session = billing_service.create_public_checkout_session(email=payload.email)
     return CheckoutSessionResponse(**session)
 
 
