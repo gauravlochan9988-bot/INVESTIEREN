@@ -22,6 +22,7 @@ class AppUserRepository:
         email: Optional[str],
         name: Optional[str],
         picture_url: Optional[str],
+        preserve_existing_name: bool = True,
     ) -> AppUser:
         row = self.get_by_subject(db, auth_subject=auth_subject)
         normalized_email = (email or "").strip().lower() or None
@@ -43,9 +44,19 @@ class AppUserRepository:
             row.auth_subject = auth_subject
             row.provider = resolved_provider
             row.email = normalized_email
-            row.name = name
+            if not preserve_existing_name or not (row.name or "").strip():
+                row.name = name
             row.picture_url = picture_url
 
+        db.commit()
+        db.refresh(row)
+        return row
+
+    def update_name(self, db: Session, *, auth_subject: str, name: str) -> Optional[AppUser]:
+        row = self.get_by_subject(db, auth_subject=auth_subject)
+        if row is None:
+            return None
+        row.name = (name or "").strip()
         db.commit()
         db.refresh(row)
         return row

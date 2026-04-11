@@ -27,6 +27,10 @@ class AppUserResponse(BaseModel):
     plan: str = "free"
 
 
+class AppUserUpdateRequest(BaseModel):
+    name: str
+
+
 class AdminAccessRequest(BaseModel):
     code: str
 

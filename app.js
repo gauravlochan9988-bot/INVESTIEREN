@@ -667,6 +667,7 @@ const state = {
     resendCooldownUntil: 0,
     resetSignIn: null,
     paywallMode: "default",
+    usernamePromptShown: false,
   },
   appBindingsReady: false,
 };
@@ -678,6 +679,13 @@ const elements = {
   paywallContinueFreeButton: document.getElementById("paywallContinueFreeButton"),
   paywallLogoutButton: document.getElementById("paywallLogoutButton"),
   paywallMessage: document.getElementById("paywallMessage"),
+  settingsButton: document.getElementById("settingsButton"),
+  settingsOverlay: document.getElementById("settingsOverlay"),
+  settingsUsernameInput: document.getElementById("settingsUsernameInput"),
+  settingsSaveButton: document.getElementById("settingsSaveButton"),
+  settingsCancelButton: document.getElementById("settingsCancelButton"),
+  settingsDescription: document.getElementById("settingsDescription"),
+  settingsError: document.getElementById("settingsError"),
   authForm: document.getElementById("authForm"),
   authGoogleButton: document.getElementById("authGoogleButton"),
   authAppleButton: document.getElementById("authAppleButton"),
@@ -1481,6 +1489,7 @@ function redirectToPricingPage() {
 }
 
 function showPaywall(message = t("paywall.defaultMessage"), mode = "default") {
+  closeSettingsOverlay();
   state.auth.paywallMode = mode;
   elements.authOverlay.classList.add("hidden");
   elements.authOverlay.hidden = true;
@@ -1519,6 +1528,106 @@ function showPremiumStrategyPrompt(nextStrategy) {
     `${strategyLabel} ist nur fur Pro verfugbar. Upgrade oder weiter mit der Free-Version (Simple).`,
     "strategy_gate",
   );
+}
+
+function setSettingsError(message = "") {
+  if (!elements.settingsError) {
+    return;
+  }
+  const text = String(message || "").trim();
+  elements.settingsError.hidden = !text;
+  elements.settingsError.textContent = text;
+}
+
+function normalizeUsername(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function validateUsername(value) {
+  const normalized = normalizeUsername(value);
+  if (normalized.length < 3) {
+    return "Benutzername muss mindestens 3 Zeichen haben.";
+  }
+  if (normalized.length > 40) {
+    return "Benutzername darf maximal 40 Zeichen haben.";
+  }
+  return "";
+}
+
+function openSettingsOverlay(reason = "manual") {
+  if (!elements.settingsOverlay) {
+    return;
+  }
+  const existing = normalizeUsername(state.auth.currentUser?.name || "");
+  if (elements.settingsUsernameInput) {
+    elements.settingsUsernameInput.value = existing;
+    elements.settingsUsernameInput.focus();
+    elements.settingsUsernameInput.select();
+  }
+  if (elements.settingsDescription) {
+    elements.settingsDescription.textContent =
+      reason === "first_login"
+        ? "Willkommen! Bitte wähle jetzt deinen Benutzernamen."
+        : "Wähle deinen Namen fur dein GQ Trading Konto.";
+  }
+  setSettingsError("");
+  elements.settingsOverlay.classList.remove("hidden");
+  elements.settingsOverlay.hidden = false;
+}
+
+function closeSettingsOverlay() {
+  if (!elements.settingsOverlay) {
+    return;
+  }
+  elements.settingsOverlay.classList.add("hidden");
+  elements.settingsOverlay.hidden = true;
+  setSettingsError("");
+}
+
+function maybePromptUsernameSetup() {
+  if (!isAuthenticated()) {
+    return;
+  }
+  if (state.auth.usernamePromptShown) {
+    return;
+  }
+  const currentName = normalizeUsername(state.auth.currentUser?.name || "");
+  if (currentName.length >= 3) {
+    return;
+  }
+  state.auth.usernamePromptShown = true;
+  openSettingsOverlay("first_login");
+}
+
+async function saveUsernameFromSettings() {
+  const nextName = normalizeUsername(elements.settingsUsernameInput?.value || "");
+  const validationError = validateUsername(nextName);
+  if (validationError) {
+    setSettingsError(validationError);
+    return;
+  }
+  if (!isAuthenticated()) {
+    setSettingsError("Bitte zuerst einloggen.");
+    return;
+  }
+  try {
+    elements.settingsSaveButton && (elements.settingsSaveButton.disabled = true);
+    setSettingsError("");
+    const updated = await api("/api/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify({ name: nextName }),
+      timeoutMs: 12000,
+      retryCount: 0,
+    });
+    state.auth.currentUser = updated;
+    closeSettingsOverlay();
+  } catch (error) {
+    setSettingsError(error?.message || "Benutzername konnte nicht gespeichert werden.");
+  } finally {
+    elements.settingsSaveButton && (elements.settingsSaveButton.disabled = false);
+  }
 }
 
 function syncLimitedAccessBanner() {
@@ -1663,6 +1772,7 @@ async function initializeManagedAuth() {
       enforceFreeStrategySelection();
       await handleBillingRedirectState();
       setAuthError("");
+      maybePromptUsernameSetup();
     } else {
       setAuthenticated(false);
       state.auth.subscription = null;
@@ -3562,6 +3672,7 @@ function setAuthenticated(value) {
   state.auth.currentUser = null;
   state.auth.accessToken = "";
   state.auth.tokenFetchedAt = 0;
+  state.auth.usernamePromptShown = false;
   setAdminSessionToken("");
 }
 
@@ -3980,6 +4091,7 @@ function showAppShell() {
 }
 
 function showLoginOverlay() {
+  closeSettingsOverlay();
   hidePaywall();
   elements.appShell.classList.add("hidden");
   elements.appShell.hidden = true;
@@ -5412,6 +5524,7 @@ function bindAuth() {
       enforceFreeStrategySelection();
       showAppShell();
       await bootDashboard();
+      maybePromptUsernameSetup();
       elements.authForm?.reset();
       state.auth.formMode = "login";
       state.auth.verifyStep = false;
@@ -5491,6 +5604,7 @@ function bindAuth() {
       enforceFreeStrategySelection();
       showAppShell();
       await bootDashboard();
+      maybePromptUsernameSetup();
       elements.authForm?.reset();
       state.auth.formMode = "login";
       state.auth.verifyStep = false;
@@ -5563,6 +5677,10 @@ function bindApp() {
     void startCheckout();
   });
 
+  elements.settingsButton?.addEventListener("click", () => {
+    openSettingsOverlay("manual");
+  });
+
   elements.limitedAccessUpgradeButton?.addEventListener("click", () => {
     void startCheckout();
   });
@@ -5578,6 +5696,20 @@ function bindApp() {
     showAppShell();
     if (isAuthenticated()) {
       await loadSymbol(state.selectedSymbol, true);
+    }
+  });
+
+  elements.settingsSaveButton?.addEventListener("click", async () => {
+    await saveUsernameFromSettings();
+  });
+
+  elements.settingsCancelButton?.addEventListener("click", () => {
+    closeSettingsOverlay();
+  });
+
+  elements.settingsOverlay?.addEventListener("click", (event) => {
+    if (event.target === elements.settingsOverlay) {
+      closeSettingsOverlay();
     }
   });
 
@@ -5622,6 +5754,10 @@ function bindApp() {
   });
 
   window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && elements.settingsOverlay && !elements.settingsOverlay.hidden) {
+      closeSettingsOverlay();
+      return;
+    }
     if (event.key === "Escape" && state.chartInteractionEnabled) {
       setChartInteractionEnabled(false);
     }
@@ -5789,6 +5925,7 @@ async function initializeApp() {
     }
     showAppShell();
     void bootDashboard();
+    maybePromptUsernameSetup();
     return;
   }
 

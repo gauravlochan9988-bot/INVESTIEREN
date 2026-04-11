@@ -20,6 +20,7 @@ from app.schemas.auth import (
     AdminAccessRequest,
     AdminAccessResponse,
     AppUserResponse,
+    AppUserUpdateRequest,
     AuthConfigResponse,
 )
 from app.services.cache import TTLCache
@@ -247,6 +248,54 @@ def get_current_user(
         name=(claims.get("full_name") or claims.get("name") or claims.get("username") or None),
         picture_url=(claims.get("image_url") or claims.get("picture") or None),
     )
+    role, plan = _derive_role_plan(
+        user=user,
+        is_admin=False,
+        settings=settings,
+        subscription_repository=subscription_repository,
+        db=db,
+    )
+    return _serialize_user(user, is_admin=False, role=role, plan=plan)
+
+
+@router.patch("/me", response_model=AppUserResponse)
+def update_current_user(
+    payload: AppUserUpdateRequest,
+    authorization: Optional[str] = Header(default=None),
+    db: Session = Depends(get_db),
+    verifier: ClerkTokenVerifier = Depends(get_clerk_verifier),
+    app_user_repository: AppUserRepository = Depends(get_app_user_repository),
+    subscription_repository: AppSubscriptionRepository = Depends(get_app_subscription_repository),
+    settings=Depends(get_settings),
+) -> AppUserResponse:
+    token = extract_bearer_token(authorization)
+    claims = verifier.verify(token)
+    auth_subject = str(claims.get("sub") or "").strip()
+    if not auth_subject:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token missing subject claim.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    candidate_name = " ".join(str(payload.name or "").split()).strip()
+    if len(candidate_name) < 3:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Username too short.")
+    if len(candidate_name) > 40:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Username too long.")
+
+    user = app_user_repository.update_name(db, auth_subject=auth_subject, name=candidate_name)
+    if user is None:
+        user = app_user_repository.upsert_from_claims(
+            db,
+            auth_subject=auth_subject,
+            provider="clerk",
+            email=(claims.get("email") or None),
+            name=candidate_name,
+            picture_url=(claims.get("image_url") or claims.get("picture") or None),
+            preserve_existing_name=False,
+        )
+
     role, plan = _derive_role_plan(
         user=user,
         is_admin=False,
