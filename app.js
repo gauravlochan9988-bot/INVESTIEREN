@@ -1124,6 +1124,9 @@ function isPopupFallbackCandidate(error) {
   if (!message) {
     return false;
   }
+  if (message.includes("missing 'popup' option") || message.includes("missing \"popup\" option")) {
+    return true;
+  }
   if (!message.includes("popup")) {
     return false;
   }
@@ -1936,6 +1939,7 @@ async function continueWithOAuth(strategy) {
       try {
         const popupResult = await signIn.authenticateWithPopup({
           strategy,
+          popup: true,
           redirectUrlComplete: redirectBaseUrl,
           signInForceRedirectUrl: callbackUrl,
           signUpForceRedirectUrl: callbackUrl,
