@@ -1938,34 +1938,6 @@ async function continueWithOAuth(strategy) {
     const callbackUrl = resolveOAuthCallbackUrl();
     const signIn = state.auth.client.client?.signIn;
 
-    if (signIn?.authenticateWithPopup) {
-      try {
-        const popupResult = await signIn.authenticateWithPopup({
-          strategy,
-          popup: true,
-        });
-        const popupSessionId =
-          popupResult?.createdSessionId ||
-          popupResult?.sessionId ||
-          popupResult?.session?.id ||
-          "";
-        if (popupSessionId && typeof state.auth.client.setActive === "function") {
-          await state.auth.client.setActive({ session: popupSessionId });
-        }
-        await waitForClerkSession(state.auth.client, { attempts: 18, intervalMs: 140 });
-        if (!state.auth.client.session || !state.auth.client.user) {
-          throw new Error("OAuth finished but no active Clerk session was created.");
-        }
-        await completePostAuthEntry();
-        return;
-      } catch (popupError) {
-        if (!isPopupFallbackCandidate(popupError)) {
-          throw popupError;
-        }
-        console.warn("[frontend] OAuth popup unavailable, falling back to redirect", popupError);
-      }
-    }
-
     if (signIn?.authenticateWithRedirect) {
       isRedirecting = true;
       await signIn.authenticateWithRedirect({
