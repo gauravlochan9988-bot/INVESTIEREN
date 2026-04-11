@@ -1101,6 +1101,13 @@ function setAuthError(message = "") {
   elements.authResetNewPassword?.setAttribute("aria-invalid", "true");
 }
 
+function extractClerkErrorMessage(error, fallback = "Authentication failed.") {
+  const explicit = String(
+    error?.errors?.[0]?.longMessage || error?.errors?.[0]?.message || error?.message || ""
+  ).trim();
+  return explicit || fallback;
+}
+
 function readClerkPublishableKeyFromDom() {
   const node = document.querySelector('meta[name="clerk-publishable-key"]');
   return String(node?.getAttribute("content") || "").trim();
@@ -1850,6 +1857,8 @@ async function continueWithOAuth(strategy) {
     }
   } catch (error) {
     console.error("[frontend] oauth redirect failed", error);
+    const providerLabel = strategy === "oauth_apple" ? "Apple" : strategy === "oauth_google" ? "Google" : "OAuth";
+    setAuthError(`${providerLabel} login failed: ${extractClerkErrorMessage(error, "Please try again.")}`);
   }
 
   setAuthLoading(false);
