@@ -668,6 +668,7 @@ const state = {
     resetSignIn: null,
     paywallMode: "default",
     usernamePromptShown: false,
+    lastInitError: "",
   },
   appBindingsReady: false,
 };
@@ -1749,6 +1750,7 @@ async function restoreAdminSessionUser() {
 }
 
 async function initializeManagedAuth() {
+  state.auth.lastInitError = "";
   state.auth.ready = false;
   state.auth.enabled = false;
   state.auth.client = null;
@@ -1758,6 +1760,7 @@ async function initializeManagedAuth() {
   try {
     const config = await fetchAuthConfig();
     if (!config?.enabled) {
+      state.auth.lastInitError = "Clerk auth config is disabled.";
       state.auth.ready = true;
       renderSubscriptionButton();
       return false;
@@ -1795,6 +1798,7 @@ async function initializeManagedAuth() {
     return true;
   } catch (error) {
     console.error("[frontend] managed auth init failed", error);
+    state.auth.lastInitError = extractClerkErrorMessage(error, "Failed to initialize Clerk auth.");
     state.auth.enabled = false;
     state.auth.client = null;
     state.auth.ready = true;
@@ -1815,6 +1819,10 @@ async function ensureManagedAuthClient() {
     return true;
   }
   await initializeManagedAuth();
+  if (!(state.auth.enabled && state.auth.client)) {
+    await delay(220);
+    await initializeManagedAuth();
+  }
   return Boolean(state.auth.enabled && state.auth.client);
 }
 
@@ -1825,7 +1833,9 @@ async function continueWithOAuth(strategy) {
   }
 
   if (!(await ensureManagedAuthClient())) {
-    setAuthError("Login is unavailable.");
+    const providerLabel = strategy === "oauth_apple" ? "Apple" : strategy === "oauth_google" ? "Google" : "OAuth";
+    const detail = state.auth.lastInitError || "Clerk auth client could not be initialized.";
+    setAuthError(`${providerLabel} login is unavailable: ${detail}`);
     return;
   }
 
