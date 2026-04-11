@@ -666,6 +666,7 @@ const state = {
     verifyMode: "signup",
     resendCooldownUntil: 0,
     resetSignIn: null,
+    paywallMode: "default",
   },
   appBindingsReady: false,
 };
@@ -674,6 +675,7 @@ const elements = {
   authOverlay: document.getElementById("authOverlay"),
   paywallOverlay: document.getElementById("paywallOverlay"),
   paywallUpgradeButton: document.getElementById("paywallUpgradeButton"),
+  paywallContinueFreeButton: document.getElementById("paywallContinueFreeButton"),
   paywallLogoutButton: document.getElementById("paywallLogoutButton"),
   paywallMessage: document.getElementById("paywallMessage"),
   authForm: document.getElementById("authForm"),
@@ -1436,6 +1438,13 @@ function hasProAccess() {
   return hasActiveSubscription();
 }
 
+function enforceFreeStrategySelection() {
+  if (strategyRequiresPro(state.selectedStrategy) && !hasProAccess()) {
+    persistSelectedStrategy("simple");
+    renderStrategyButtons();
+  }
+}
+
 function strategyRequiresPro(strategy) {
   const normalized = String(strategy || "").toLowerCase();
   return normalized === "ai" || normalized === "hedgefund";
@@ -1471,7 +1480,8 @@ function redirectToPricingPage() {
   window.location.replace(pricingPageUrl());
 }
 
-function showPaywall(message = t("paywall.defaultMessage")) {
+function showPaywall(message = t("paywall.defaultMessage"), mode = "default") {
+  state.auth.paywallMode = mode;
   elements.authOverlay.classList.add("hidden");
   elements.authOverlay.hidden = true;
   elements.appShell.classList.add("hidden");
@@ -1479,14 +1489,36 @@ function showPaywall(message = t("paywall.defaultMessage")) {
   elements.mobileQuickActions?.classList.add("hidden");
   elements.paywallOverlay?.classList.remove("hidden");
   elements.paywallOverlay.hidden = false;
+  if (elements.paywallContinueFreeButton) {
+    const showFreeContinue = mode === "strategy_gate";
+    elements.paywallContinueFreeButton.hidden = !showFreeContinue;
+  }
+  if (elements.paywallLogoutButton) {
+    elements.paywallLogoutButton.hidden = mode === "strategy_gate";
+  }
   if (elements.paywallMessage) {
     elements.paywallMessage.textContent = message;
   }
 }
 
 function hidePaywall() {
+  state.auth.paywallMode = "default";
   elements.paywallOverlay?.classList.add("hidden");
   elements.paywallOverlay.hidden = true;
+  if (elements.paywallContinueFreeButton) {
+    elements.paywallContinueFreeButton.hidden = true;
+  }
+  if (elements.paywallLogoutButton) {
+    elements.paywallLogoutButton.hidden = false;
+  }
+}
+
+function showPremiumStrategyPrompt(nextStrategy) {
+  const strategyLabel = getStrategyLabel(nextStrategy);
+  showPaywall(
+    `${strategyLabel} ist nur fur Pro verfugbar. Upgrade oder weiter mit der Free-Version (Simple).`,
+    "strategy_gate",
+  );
 }
 
 function syncLimitedAccessBanner() {
@@ -1524,6 +1556,7 @@ async function loadSubscriptionStatus() {
   }
   renderSubscriptionButton();
   syncLimitedAccessBanner();
+  enforceFreeStrategySelection();
   return state.auth.subscription;
 }
 
@@ -1627,6 +1660,7 @@ async function initializeManagedAuth() {
       setAuthenticated(true);
       await syncAuthenticatedUserWithRetry({ forceRefresh: true, attempts: 4 });
       await loadSubscriptionStatus();
+      enforceFreeStrategySelection();
       await handleBillingRedirectState();
       setAuthError("");
     } else {
@@ -3403,7 +3437,7 @@ function bindMobileStrategyCards() {
         return;
       }
       if (strategyRequiresPro(nextStrategy) && !hasProAccess()) {
-        showPaywall("AI and Hedgefund strategies require Pro subscription.");
+        showPremiumStrategyPrompt(nextStrategy);
         return;
       }
       persistSelectedStrategy(nextStrategy);
@@ -5375,6 +5409,7 @@ function bindAuth() {
       setAuthenticated(true);
       setAdminSessionToken("");
       await loadSubscriptionStatus();
+      enforceFreeStrategySelection();
       showAppShell();
       await bootDashboard();
       elements.authForm?.reset();
@@ -5453,6 +5488,7 @@ function bindAuth() {
       setAuthenticated(true);
       setAdminSessionToken("");
       await loadSubscriptionStatus();
+      enforceFreeStrategySelection();
       showAppShell();
       await bootDashboard();
       elements.authForm?.reset();
@@ -5485,7 +5521,7 @@ function bindApp() {
       return;
     }
     if (strategyRequiresPro(nextStrategy) && !hasProAccess()) {
-      showPaywall("AI and Hedgefund strategies require Pro subscription.");
+      showPremiumStrategyPrompt(nextStrategy);
       return;
     }
     persistSelectedStrategy(nextStrategy);
@@ -5533,6 +5569,16 @@ function bindApp() {
 
   elements.paywallUpgradeButton?.addEventListener("click", () => {
     void startCheckout();
+  });
+
+  elements.paywallContinueFreeButton?.addEventListener("click", async () => {
+    hidePaywall();
+    persistSelectedStrategy("simple");
+    renderStrategyButtons();
+    showAppShell();
+    if (isAuthenticated()) {
+      await loadSymbol(state.selectedSymbol, true);
+    }
   });
 
   elements.paywallLogoutButton?.addEventListener("click", async () => {
