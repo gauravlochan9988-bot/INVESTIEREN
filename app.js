@@ -1239,7 +1239,15 @@ function resolveOAuthCallbackUrl() {
   return callback.toString();
 }
 
+function isLegacyClerkCallbackPath() {
+  const path = String(window.location.pathname || "").trim().toLowerCase();
+  return path === "/clerk" || path === "/clerk/" || path === "/sso-callback" || path === "/sso-callback/";
+}
+
 function hasClerkCallbackParams() {
+  if (isLegacyClerkCallbackPath()) {
+    return true;
+  }
   const params = new URLSearchParams(window.location.search);
   for (const key of params.keys()) {
     const lower = String(key || "").toLowerCase();
@@ -1276,6 +1284,25 @@ function removeClerkCallbackParamsFromUrl() {
 async function handleOAuthRedirectCallbackIfPresent(clerk) {
   if (!hasClerkCallbackParams()) {
     return { handled: false, failed: false };
+  }
+  if (isLegacyClerkCallbackPath()) {
+    try {
+      const callback = new URL(resolveOAuthCallbackUrl());
+      const params = new URLSearchParams(window.location.search);
+      if (!callback.searchParams.get("return_to")) {
+        callback.searchParams.set("return_to", `${window.location.origin}/`);
+      }
+      const oauthCallback = params.get("oauth_callback");
+      if (oauthCallback) {
+        callback.searchParams.set("oauth_callback", oauthCallback);
+      }
+      const nextHref = `${callback.toString()}${window.location.hash || ""}`;
+      window.location.replace(nextHref);
+      return { handled: true, failed: false };
+    } catch (redirectError) {
+      console.error("[frontend] failed to normalize legacy Clerk callback path", redirectError);
+      return { handled: true, failed: true };
+    }
   }
   if (typeof clerk?.handleRedirectCallback !== "function") {
     console.warn("[frontend] Clerk callback params found but handleRedirectCallback is unavailable");
@@ -1838,7 +1865,7 @@ async function initializeManagedAuth() {
     await clerk.load();
     const callbackState = await handleOAuthRedirectCallbackIfPresent(clerk);
     if (callbackState.handled) {
-      await waitForClerkSession(clerk, { attempts: 18, intervalMs: 140 });
+      await waitForClerkSession(clerk, { attempts: 40, intervalMs: 140 });
     }
     state.auth.client = clerk;
     state.auth.enabled = true;
@@ -1854,9 +1881,13 @@ async function initializeManagedAuth() {
         setAuthError("");
         maybePromptUsernameSetup();
       } catch (sessionSyncError) {
+        const sessionDetail = extractClerkErrorMessage(
+          sessionSyncError,
+          "Session sync failed after provider sign-in.",
+        );
         console.warn(
           "[frontend] stale/invalid Clerk session during init, resetting session before new login",
-          sessionSyncError,
+          { error: sessionDetail, raw: sessionSyncError },
         );
         try {
           await clerk.signOut?.();
@@ -1867,10 +1898,10 @@ async function initializeManagedAuth() {
         state.auth.tokenFetchedAt = 0;
         state.auth.currentUser = null;
         state.auth.subscription = null;
-        state.auth.lastInitError = "";
         setAuthenticated(false);
+        state.auth.lastInitError = `Login could not be finalized: ${sessionDetail}`;
         renderSubscriptionButton();
-        setAuthError("");
+        setAuthError(state.auth.lastInitError);
       }
     } else {
       setAuthenticated(false);
@@ -1916,6 +1947,7 @@ async function ensureManagedAuthClient() {
 }
 
 async function continueWithOAuth(strategy) {
+  state.auth.lastInitError = "";
   if (!state.auth.ready) {
     setAuthLoading(true, t("auth.loadingLogin"));
     await initializeManagedAuth();
@@ -3778,6 +3810,7 @@ function setAuthenticated(value) {
   state.auth.accessToken = "";
   state.auth.tokenFetchedAt = 0;
   state.auth.usernamePromptShown = false;
+  state.auth.lastInitError = "";
   setAdminSessionToken("");
 }
 
@@ -4196,6 +4229,7 @@ function showAppShell() {
 }
 
 function showLoginOverlay() {
+  const loginInitError = String(state.auth.lastInitError || "").trim();
   closeSettingsOverlay();
   hidePaywall();
   elements.appShell.classList.add("hidden");
@@ -4209,7 +4243,7 @@ function showLoginOverlay() {
   elements.authOverlay.hidden = false;
   elements.mobileQuickActions?.classList.add("hidden");
   closePortfolioSheet();
-  setAuthError("");
+  setAuthError(loginInitError);
   elements.authForm?.reset();
   resetAuthOverlayPosition();
   state.auth.showManagedAuth = false;
