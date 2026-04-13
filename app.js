@@ -1719,21 +1719,45 @@ async function handleBillingRedirectState() {
     return;
   }
 
+  async function activateProWithPolling(maxAttempts = 6) {
+    setAuthInfo("Activating Pro on your account...");
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      try {
+        await syncAuthenticatedUser(true);
+        const subscription = await loadSubscriptionStatus();
+        const isActive = Boolean(subscription?.active || state.auth.currentUser?.plan === "pro");
+        if (isActive) {
+          return true;
+        }
+      } catch (pollError) {
+        console.warn("[frontend] Pro activation poll attempt failed", pollError);
+      }
+      await delay(1200);
+    }
+    return false;
+  }
+
   try {
     if (checkoutState === "success" && sessionId && isAuthenticated()) {
       await api(`/api/billing/checkout-session/${encodeURIComponent(sessionId)}`, {
         timeoutMs: 15000,
         retryCount: 0,
       });
-      await syncAuthenticatedUser(true);
-      await loadSubscriptionStatus();
+      const activated = await activateProWithPolling();
       const accountEmail = String(state.auth.currentUser?.email || "").trim();
-      setBackendStatus("Subscription active", "ok");
-      setAuthInfo(
-        accountEmail
-          ? `Pro is now active on this account: ${accountEmail}`
-          : "Pro is now active on your signed-in account.",
-      );
+      if (activated) {
+        setBackendStatus("Subscription active", "ok");
+        setAuthInfo(
+          accountEmail
+            ? `Pro is now active on this account: ${accountEmail}`
+            : "Pro is now active on your signed-in account.",
+        );
+      } else {
+        setBackendStatus("Subscription pending sync", "warning");
+        throw new Error(
+          "Payment succeeded, but Pro activation is still syncing. Please refresh in a moment. If it persists, contact support with your checkout session ID.",
+        );
+      }
     } else if (checkoutState === "cancel") {
       setBackendStatus("Checkout canceled", "warning");
     }

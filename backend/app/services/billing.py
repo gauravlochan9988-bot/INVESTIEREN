@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import logging
 from typing import Any, Dict, Optional
 
 import stripe
@@ -10,6 +11,8 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.models.app_user import AppUser
 from app.repositories.app_subscription import AppSubscriptionRepository
+
+logger = logging.getLogger(__name__)
 
 
 class BillingService:
@@ -83,6 +86,15 @@ class BillingService:
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Your account requires a valid email before checkout.",
             )
+        metadata = {
+            "user_id": str(app_user.id),
+            "app_user_id": str(app_user.id),
+            "auth_subject": app_user.auth_subject,
+            "account_email": normalized_email,
+            "selected_plan": "pro",
+            "plan_slug": "pro",
+            "plan_interval": "month",
+        }
         session = stripe.checkout.Session.create(
             mode="subscription",
             success_url=self._frontend_url("/?checkout=success&session_id={CHECKOUT_SESSION_ID}"),
@@ -92,13 +104,8 @@ class BillingService:
             customer=customer,
             customer_email=None if customer else normalized_email,
             client_reference_id=str(app_user.id),
-            metadata={
-                "app_user_id": str(app_user.id),
-                "auth_subject": app_user.auth_subject,
-                "account_email": normalized_email,
-                "plan_slug": "pro",
-                "plan_interval": "month",
-            },
+            metadata=metadata,
+            subscription_data={"metadata": metadata},
         )
 
         self.subscription_repository.upsert_for_user(
@@ -121,7 +128,7 @@ class BillingService:
 
     def _require_checkout_ownership(self, session: Any, *, app_user: AppUser) -> None:
         metadata = (session.get("metadata") or {}) if hasattr(session, "get") else {}
-        session_user_id = str(metadata.get("app_user_id") or "").strip()
+        session_user_id = str(metadata.get("user_id") or metadata.get("app_user_id") or "").strip()
         session_subject = str(metadata.get("auth_subject") or "").strip()
         if not session_user_id or not session_subject:
             raise HTTPException(
@@ -239,28 +246,58 @@ class BillingService:
 
         if event_type == "checkout.session.completed":
             metadata = data.get("metadata") or {}
-            app_user_id = int(metadata.get("app_user_id") or 0)
+            app_user_id = int(metadata.get("user_id") or metadata.get("app_user_id") or 0)
             auth_subject = str(metadata.get("auth_subject") or "").strip()
             subscription_id = data.get("subscription")
             customer_id = data.get("customer")
-            if app_user_id and auth_subject:
-                self.subscription_repository.upsert_for_user(
-                    db,
-                    app_user_id=app_user_id,
-                    auth_subject=auth_subject,
-                    stripe_customer_id=customer_id,
-                    stripe_subscription_id=subscription_id,
-                    stripe_checkout_session_id=data.get("id"),
-                    status="active",
+            if not app_user_id or not auth_subject:
+                logger.error(
+                    "Stripe checkout.session.completed missing required identity metadata.",
+                    extra={"event_type": event_type, "session_id": data.get("id")},
                 )
-        elif event_type in {"customer.subscription.updated", "customer.subscription.deleted", "customer.subscription.created"}:
-            self.subscription_repository.mark_from_subscription(
+                return {"status": "ignored_missing_metadata"}
+            self.subscription_repository.upsert_for_user(
                 db,
-                stripe_subscription_id=str(data.get("id") or ""),
-                status=str(data.get("status") or "inactive"),
+                app_user_id=app_user_id,
+                auth_subject=auth_subject,
+                stripe_customer_id=customer_id,
+                stripe_subscription_id=subscription_id,
+                stripe_checkout_session_id=data.get("id"),
+                status="active",
+            )
+        elif event_type in {"customer.subscription.updated", "customer.subscription.deleted", "customer.subscription.created"}:
+            stripe_subscription_id = str(data.get("id") or "")
+            status_value = str(data.get("status") or "inactive")
+            updated = self.subscription_repository.mark_from_subscription(
+                db,
+                stripe_subscription_id=stripe_subscription_id,
+                status=status_value,
                 cancel_at_period_end=bool(data.get("cancel_at_period_end", False)),
                 current_period_end=self._period_end(data.get("current_period_end")),
                 stripe_customer_id=data.get("customer"),
             )
+            if updated is None:
+                metadata = data.get("metadata") or {}
+                app_user_id = int(metadata.get("user_id") or metadata.get("app_user_id") or 0)
+                auth_subject = str(metadata.get("auth_subject") or "").strip()
+                if not app_user_id or not auth_subject:
+                    logger.error(
+                        "Stripe subscription event missing mapping metadata; cannot map safely.",
+                        extra={
+                            "event_type": event_type,
+                            "stripe_subscription_id": stripe_subscription_id,
+                        },
+                    )
+                    return {"status": "ignored_missing_metadata"}
+                self.subscription_repository.upsert_for_user(
+                    db,
+                    app_user_id=app_user_id,
+                    auth_subject=auth_subject,
+                    stripe_customer_id=data.get("customer"),
+                    stripe_subscription_id=stripe_subscription_id,
+                    status=status_value,
+                    cancel_at_period_end=bool(data.get("cancel_at_period_end", False)),
+                    current_period_end=self._period_end(data.get("current_period_end")),
+                )
 
         return {"status": "ok"}
