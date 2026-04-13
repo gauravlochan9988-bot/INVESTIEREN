@@ -1,6 +1,19 @@
 "use strict";
 
-const DEPLOYED_API_ORIGIN = "https://investieren-production.up.railway.app";
+function readMetaApiOrigin() {
+  try {
+    const el = document.querySelector('meta[name="investieren-api-origin"]');
+    const raw = String(el?.getAttribute("content") || "").trim().replace(/\/$/, "");
+    if (raw.startsWith("https://") || raw.startsWith("http://")) {
+      return raw;
+    }
+  } catch (_) {
+    // ignore
+  }
+  return "";
+}
+
+const DEPLOYED_API_ORIGIN = readMetaApiOrigin() || "https://investieren-production.up.railway.app";
 const LOCAL_API_HOSTS = new Set(["127.0.0.1", "localhost"]);
 const LOCAL_API_PORT = "8003";
 const SUPABASE_JS_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js";

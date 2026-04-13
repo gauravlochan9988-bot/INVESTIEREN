@@ -8,7 +8,20 @@ if ("scrollRestoration" in window.history) {
 
 window.scrollTo({ top: 0, left: 0, behavior: "auto" });
 
-const DEPLOYED_API_ORIGIN = "https://investieren-production.up.railway.app";
+function readMetaApiOrigin() {
+  try {
+    const el = document.querySelector('meta[name="investieren-api-origin"]');
+    const raw = String(el?.getAttribute("content") || "").trim().replace(/\/$/, "");
+    if (raw.startsWith("https://") || raw.startsWith("http://")) {
+      return raw;
+    }
+  } catch (_) {
+    // ignore
+  }
+  return "";
+}
+
+const DEPLOYED_API_ORIGIN = readMetaApiOrigin() || "https://investieren-production.up.railway.app";
 const LOCAL_API_HOSTS = new Set(["127.0.0.1", "localhost"]);
 /** Local FastAPI (uvicorn); static pages on other ports still call API here */
 const LOCAL_API_PORT = "8003";
@@ -93,6 +106,8 @@ const I18N = {
     "dashboard.kickerUpdated": "AKTUALISIERT",
 
     "errors.invalidCode": "Ungultiger Zugangscode.",
+    "errors.networkBlocked":
+      "Die Verbindung zum Backend wurde blockiert (Browser/CSP) oder das Netzwerk hat abgebrochen. Hart neu laden (Cache leeren). Wenn es bleibt: In index.html meta investieren-api-origin die Railway-URL prufen und unter connect-src https://*.up.railway.app erlauben.",
     "auth.loadingLogin": "Login wird geladen...",
     "paywall.defaultMessage": "Aktiviere Pro, um Live-Signale, Alerts und Watchlists zu nutzen.",
     "dashboard.tradingViewLoading": "TradingView-Chart wird geladen...",
@@ -368,6 +383,8 @@ const I18N = {
     "dashboard.kickerUpdated": "UPDATED",
 
     "errors.invalidCode": "Invalid access code.",
+    "errors.networkBlocked":
+      "The request to the API was blocked (browser/CSP) or the network failed. Hard refresh (clear cache). If it persists: check meta investieren-api-origin in index.html and allow https://*.up.railway.app in connect-src.",
     "auth.loadingLogin": "Loading login...",
     "paywall.defaultMessage": "Subscribe to access live signals, alerts and watchlists.",
     "dashboard.tradingViewLoading": "Loading TradingView chart...",
@@ -4630,6 +4647,25 @@ function showLoginOverlay() {
   }
 }
 
+function isBrowserNetworkFetchFailure(error) {
+  const name = String(error?.name || "");
+  const msg = String(error?.message || "").toLowerCase();
+  return (
+    name === "TypeError" ||
+    msg.includes("failed to fetch") ||
+    msg.includes("load failed") ||
+    msg.includes("networkerror") ||
+    msg.includes("network request failed")
+  );
+}
+
+function throwNetworkFetchFailure(error) {
+  if (isBrowserNetworkFetchFailure(error)) {
+    throw new Error(t("errors.networkBlocked"));
+  }
+  throw error;
+}
+
 async function api(path, options = {}) {
   const baseUrl = options.baseUrlOverride || resolveApiBaseUrl();
   const url = `${baseUrl}${path}`;
@@ -4729,7 +4765,7 @@ async function api(path, options = {}) {
         retryCount: retryCount - 1,
       });
     }
-    throw error;
+    throwNetworkFetchFailure(error);
   } finally {
     window.clearTimeout(timeoutId);
   }
