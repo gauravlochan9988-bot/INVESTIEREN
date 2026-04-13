@@ -240,7 +240,7 @@ body.booting *::after {
 
 #searchForm {
   position: relative;
-  z-index: 120;
+  z-index: 1;
 }
 
 #searchSuggestions {
@@ -3547,7 +3547,7 @@ body.booting *::after {
 }
 
 @media (min-width: 1280px) {
-  .dashboard-topbar {
+  .dashboard-topbar:not(.dashboard-topbar-premium) {
     padding: 0.68rem 0.9rem !important;
     gap: 0.7rem;
     border-radius: 22px !important;
@@ -3971,7 +3971,7 @@ body.booting *::after {
     text-align: center;
   }
 
-  #strategyToggle {
+  .dashboard-topbar:not(.dashboard-topbar-premium) #strategyToggle {
     width: 100%;
     gap: 0.45rem;
     padding: 0.35rem !important;
@@ -3985,7 +3985,7 @@ body.booting *::after {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .strategy-button {
+  .dashboard-topbar:not(.dashboard-topbar-premium) .strategy-button {
     flex: 1 1 calc(33.333% - 0.5rem);
     min-width: 0;
     min-height: 46px;
@@ -4719,7 +4719,7 @@ body.booting *::after {
     display: none !important;
   }
 
-  #strategyToggle {
+  .dashboard-topbar:not(.dashboard-topbar-premium) #strategyToggle {
     width: 100%;
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     gap: 0.28rem !important;
@@ -4729,11 +4729,11 @@ body.booting *::after {
     cursor: default;
   }
 
-  #strategyToggleThumb {
+  .dashboard-topbar:not(.dashboard-topbar-premium) #strategyToggleThumb {
     border-radius: 0.8rem;
   }
 
-  .strategy-button {
+  .dashboard-topbar:not(.dashboard-topbar-premium) .strategy-button {
     min-width: 0;
     min-height: 46px !important;
     padding: 0.72rem 0.45rem !important;
@@ -5015,7 +5015,7 @@ body.booting *::after {
   margin-inline: auto;
 }
 
-.dashboard-topbar {
+.dashboard-topbar:not(.dashboard-topbar-premium) {
   display: grid !important;
   grid-template-columns: minmax(0, 1fr);
   gap: clamp(0.65rem, 2vw, 1rem);
@@ -5100,11 +5100,11 @@ body.booting *::after {
 }
 
 @media (min-width: 768px) {
-  .dashboard-topbar {
+  .dashboard-topbar:not(.dashboard-topbar-premium) {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .dashboard-topbar > div:last-child {
+  .dashboard-topbar:not(.dashboard-topbar-premium) > div:last-child {
     grid-column: 1 / -1;
   }
 
@@ -5163,11 +5163,11 @@ body.booting *::after {
 }
 
 @media (min-width: 1024px) {
-  .dashboard-topbar {
+  .dashboard-topbar:not(.dashboard-topbar-premium) {
     grid-template-columns: auto minmax(18rem, 34rem) auto;
   }
 
-  .dashboard-topbar > div:last-child {
+  .dashboard-topbar:not(.dashboard-topbar-premium) > div:last-child {
     grid-column: auto;
   }
 
@@ -5330,7 +5330,6 @@ body.booting *::after {
   box-sizing: border-box;
 }
 
-.dashboard-topbar,
 .dashboard-panel,
 .dashboard-card,
 .signal-hero,
@@ -5350,19 +5349,23 @@ body.booting *::after {
     var(--shadow-premium) !important;
 }
 
-.dashboard-topbar {
+/* Topbar ohne Premium: Glas wie zuvor (Inset kann wie ein heller Streifen wirken) */
+.dashboard-topbar:not(.dashboard-topbar-premium) {
   position: relative;
-  /* Sichtbar: Such-Dropdown darf über die Topbar hinaus und über Spalten liegen */
   overflow: visible !important;
   z-index: 100;
   padding: 1.15rem 1.25rem !important;
   border-radius: 1.85rem !important;
+  border-color: var(--glass-border) !important;
   background: var(--glass-bg-strong) !important;
   backdrop-filter: blur(calc(var(--glass-blur) + 4px)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 4px)) saturate(var(--glass-saturate));
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    var(--shadow-premium) !important;
 }
 
-.dashboard-topbar::after {
+.dashboard-topbar:not(.dashboard-topbar-premium)::after {
   content: "";
   position: absolute;
   left: 1.5rem;
@@ -5370,6 +5373,32 @@ body.booting *::after {
   top: 0;
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.06), transparent);
+}
+
+/* Premium-Header: opak, kein Blur/Inset — klare Fläche, kein „Ghost-Layer“ */
+header.dashboard-topbar.dashboard-topbar-premium {
+  background: #ffffff !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.05),
+    0 4px 16px rgba(15, 23, 42, 0.04) !important;
+  border-color: rgba(229, 231, 235, 0.98) !important;
+}
+
+header.dashboard-topbar.dashboard-topbar-premium::after {
+  display: none !important;
+}
+
+/* Kein Glasmorphism auf Topbar-Kindern (sonst milchige Flächen / falsche Layer) */
+header.dashboard-topbar.dashboard-topbar-premium .dashboard-search,
+header.dashboard-topbar.dashboard-topbar-premium #backendStatus,
+header.dashboard-topbar.dashboard-topbar-premium .action-primary,
+header.dashboard-topbar.dashboard-topbar-premium .action-secondary,
+header.dashboard-topbar.dashboard-topbar-premium .action-tertiary,
+header.dashboard-topbar.dashboard-topbar-premium .dashboard-lang-switch {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .dashboard-brand {
@@ -5467,8 +5496,9 @@ body.booting *::after {
 }
 
 #appShell .dashboard-topbar-cta-grid .action-secondary {
-  background: linear-gradient(180deg, #ffffff, rgba(242, 216, 201, 0.42)) !important;
-  border-color: var(--color-peach-border) !important;
+  background: rgba(236, 253, 245, 0.75) !important;
+  border-color: rgba(16, 185, 129, 0.28) !important;
+  color: #064e3b !important;
 }
 
 .dashboard-search,
@@ -5533,16 +5563,16 @@ body.booting *::after {
   color: var(--color-text-muted);
 }
 
-/* Dashboard topbar: tablet / small laptop stacking */
-@media (min-width: 768px) and (max-width: 1279px) {
-  .dashboard-topbar-trailing {
+/* Dashboard topbar: tablet stacking (nur ohne premium slab — premium nutzt durchgehend Flex) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .dashboard-topbar:not(.dashboard-topbar-premium) .dashboard-topbar-tail {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.65rem 0.9rem;
     align-items: center;
   }
 
-  .dashboard-topbar-trailing .auth-lang-switch {
+  .dashboard-topbar:not(.dashboard-topbar-premium) .dashboard-topbar-tail .auth-lang-switch {
     grid-column: 2;
     grid-row: 1;
     width: auto;
@@ -5550,14 +5580,14 @@ body.booting *::after {
     margin: 0;
   }
 
-  .dashboard-topbar-trailing #strategyToggle {
+  .dashboard-topbar:not(.dashboard-topbar-premium) .dashboard-topbar-tail #strategyToggle {
     grid-column: 1;
     grid-row: 1;
     min-width: 0;
     justify-self: stretch;
   }
 
-  .dashboard-topbar-trailing #backendStatus {
+  .dashboard-topbar:not(.dashboard-topbar-premium) .dashboard-topbar-tail #backendStatus {
     grid-column: 1 / -1;
     grid-row: 2;
     justify-self: center;
@@ -5565,14 +5595,14 @@ body.booting *::after {
     max-width: 100%;
   }
 
-  .dashboard-topbar-trailing .dashboard-topbar-cta-grid {
+  .dashboard-topbar:not(.dashboard-topbar-premium) .dashboard-topbar-tail .dashboard-topbar-cta-grid {
     grid-column: 1 / -1;
     grid-row: 3;
   }
 }
 
 @media (max-width: 767px) {
-  .dashboard-topbar-trailing #strategyToggle {
+  .dashboard-topbar:not(.dashboard-topbar-premium) .dashboard-topbar-tail #strategyToggle {
     justify-content: center;
   }
 }
@@ -5922,18 +5952,17 @@ body.booting *::after {
     display: none;
   }
 
-  .dashboard-topbar-row-1 {
+  .dashboard-topbar-lead {
     align-items: center;
   }
 
   #brandHomeButton.dashboard-brand {
     justify-content: center;
-    align-self: center;
     width: 100%;
   }
 
-  .dashboard-topbar {
-    padding: 1rem !important;
+  .dashboard-topbar-premium {
+    padding: 0.75rem 0.9rem !important;
   }
 }
 
@@ -6586,17 +6615,14 @@ body.booting *::after {
   }
 }
 
-/* Zwei-Zeilen-Topbar: Abstand & Tablet-Trailing */
-.dashboard-topbar-row-1 {
+.dashboard-topbar-slab,
+.dashboard-topbar-lead,
+.dashboard-topbar-tail {
   width: 100%;
 }
 
-.dashboard-topbar-row-2 {
-  width: 100%;
-}
-
-@media (min-width: 768px) and (max-width: 1279px) {
-  .dashboard-topbar-trailing {
+@media (min-width: 768px) and (max-width: 1023px) {
+  .dashboard-topbar-tail {
     justify-content: flex-start !important;
   }
 }
@@ -6643,77 +6669,88 @@ body.booting *::after {
   -webkit-backdrop-filter: none;
 }
 
-/* Premium Header: klare Hierarchie und ruhigeres Fintech-Layout */
+/* Premium Header: kompaktes Fintech-Layout (eine Zeile ab lg) */
 .dashboard-topbar-premium {
-  gap: 1rem !important;
-  padding: 1.1rem 1.2rem !important;
+  padding: 0.75rem 1rem !important;
 }
 
-.dashboard-topbar-main {
+@media (min-width: 640px) {
+  .dashboard-topbar-premium {
+    padding: 0.85rem 1.15rem !important;
+  }
+}
+
+.dashboard-topbar-lead {
   align-items: center;
 }
 
 .dashboard-topbar-premium .dashboard-brand {
-  min-width: 220px;
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-topbar-premium .dashboard-brand {
+    min-width: 11rem;
+  }
 }
 
 .dashboard-topbar-premium .dashboard-brand-name {
-  font-size: 1rem;
+  font-size: 0.9375rem;
   font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .dashboard-topbar-premium .dashboard-brand-subtitle {
-  letter-spacing: 0.12em;
-  color: #525252;
+  letter-spacing: 0.14em;
+  font-size: 0.5625rem;
+  color: #737373;
 }
 
 .dashboard-topbar-premium .dashboard-search {
-  min-height: 2.95rem;
-  border-radius: 0.9rem;
-  background: #ffffff !important;
-  border-color: #d4d4d4 !important;
-  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.05);
+  min-height: 2.5rem;
+  border-radius: 0.75rem;
+  background: #f4f4f5 !important;
+  border-color: #e4e4e7 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.85) !important;
 }
 
 .dashboard-topbar-premium .dashboard-lang-switch {
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e8e8e8;
   border-radius: 999px;
-  padding: 0.2rem;
-  background: #fafafa;
+  padding: 0.15rem;
+  background: #f7f7f7;
 }
 
 .dashboard-topbar-premium .dashboard-lang-button {
-  min-width: 2.5rem;
+  min-width: 2.35rem;
   border-radius: 999px;
-  font-size: 0.7rem;
+  font-size: 0.65625rem;
   font-weight: 700;
 }
 
-.dashboard-topbar-premium #strategyToggle {
-  border-radius: 0.95rem !important;
-  background: #fafafa !important;
-  border-color: #d4d4d4 !important;
+.dashboard-topbar-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  text-wrap: balance;
 }
 
-.dashboard-topbar-premium .strategy-button {
-  border-radius: 0.75rem;
-  font-size: 0.74rem;
-  letter-spacing: 0.01em;
-}
-
-.dashboard-topbar-premium #backendStatus {
+.dashboard-topbar-premium #backendStatus:not([class*="status-"]) {
   border-radius: 999px;
-  border-color: #d4d4d4 !important;
+  border-color: #e5e5e5 !important;
   background: #fafafa !important;
-  color: #374151 !important;
+  color: #525252 !important;
   font-weight: 600;
 }
 
 .dashboard-topbar-actions .action-primary,
 .dashboard-topbar-actions .action-secondary,
 .dashboard-topbar-actions .action-tertiary {
-  min-height: 2.7rem;
-  border-radius: 0.85rem;
+  min-height: 2.35rem;
+  border-radius: 0.75rem;
 }
 
 .dashboard-topbar-actions .action-primary {
@@ -6780,4 +6817,181 @@ body.booting *::after {
     justify-content: flex-start;
     width: 100%;
   }
+}
+
+/* Premium topbar: festes Flex-Layout — kein Legacy-Grid, Strategie als Flex (Thumb nur Overlay) */
+header.dashboard-topbar.dashboard-topbar-premium {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  width: 100%;
+  max-width: 100%;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+  gap: 0 !important;
+  position: relative;
+  z-index: 100;
+  overflow: visible !important;
+}
+
+header.dashboard-topbar.dashboard-topbar-premium > .dashboard-topbar-slab {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 1rem;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  grid-column: unset !important;
+}
+
+@media (min-width: 1024px) {
+  header.dashboard-topbar.dashboard-topbar-premium > .dashboard-topbar-slab {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 1.25rem !important;
+  }
+}
+
+header.dashboard-topbar.dashboard-topbar-premium .dashboard-topbar-lead {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 0.85rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+@media (min-width: 640px) {
+  header.dashboard-topbar.dashboard-topbar-premium .dashboard-topbar-lead {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 1rem !important;
+  }
+}
+
+header.dashboard-topbar.dashboard-topbar-premium .dashboard-brand {
+  flex-shrink: 0;
+  align-items: center;
+}
+
+header.dashboard-topbar.dashboard-topbar-premium .dashboard-topbar-tail {
+  display: flex !important;
+  flex-direction: column !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch !important;
+  gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  header.dashboard-topbar.dashboard-topbar-premium .dashboard-topbar-tail {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    width: auto !important;
+    max-width: min(100%, 44rem);
+    flex: 0 1 auto;
+    row-gap: 0.6rem;
+    column-gap: 0.65rem;
+  }
+}
+
+header.dashboard-topbar.dashboard-topbar-premium #searchForm {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  justify-self: unset !important;
+  position: relative;
+  z-index: 2;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+@media (min-width: 1280px) {
+  header.dashboard-topbar.dashboard-topbar-premium #searchForm {
+    width: 100% !important;
+    max-width: none !important;
+    justify-self: unset !important;
+  }
+}
+
+/* Premium: kein Schiebe-Thumb (wirkt oft wie falscher weißer Layer) — nur Segment-Buttons */
+header.dashboard-topbar-premium #strategyToggleThumb {
+  display: none !important;
+}
+
+header.dashboard-topbar-premium #strategyToggle {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch !important;
+  position: relative !important;
+  width: 100%;
+  max-width: 22.5rem;
+  min-height: 2.4rem;
+  padding: 0.3rem !important;
+  gap: 0.2rem !important;
+  box-sizing: border-box;
+  grid-template-columns: none !important;
+  isolation: auto;
+  overflow: visible;
+  background: #ececee !important;
+  border: 1px solid #e4e4e7 !important;
+  border-radius: 0.65rem !important;
+}
+
+@media (min-width: 1024px) {
+  header.dashboard-topbar-premium #strategyToggle {
+    width: auto;
+    min-width: min(100%, 19.5rem);
+    max-width: 22.5rem;
+    flex: 0 0 auto;
+  }
+}
+
+header.dashboard-topbar-premium #strategyToggle .strategy-button {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0 !important;
+  border-radius: 0.45rem !important;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+header.dashboard-topbar-premium #strategyToggle .strategy-button-active {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 92, 57, 0.32) !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+}
+
+header.dashboard-topbar-premium #strategyToggle .strategy-button-idle {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  color: #525252 !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 768px) {
+  header.dashboard-topbar-premium #strategyToggle .strategy-button {
+    min-height: 44px;
+  }
+}
+
+#strategyToggle .strategy-button {
+  position: relative;
+  z-index: 1;
 }

@@ -2588,7 +2588,7 @@ function setBackendStatus(message, tone = "loading") {
     error: "status-error",
   };
   elements.backendStatus.textContent = message;
-  elements.backendStatus.className = `dashboard-chip rounded-full border px-4 py-2 text-xs font-semibold ${palette[tone] || palette.loading}`;
+  elements.backendStatus.className = `dashboard-chip dashboard-topbar-status rounded-full border px-3 py-1.5 text-xs font-semibold leading-snug ${palette[tone] || palette.loading}`;
 }
 
 function showError(message) {
@@ -5642,7 +5642,11 @@ async function loadSymbol(symbol, forceRefresh = false) {
 
     renderWatchlist(state.watchlist);
 
-    await delay(650);
+    if (isLocalDevHost()) {
+      await deferToNextFrame();
+    } else {
+      await delay(400);
+    }
 
     if (requestId !== state.activeRequest) {
       return;
@@ -6314,13 +6318,17 @@ function ensureAppBindings() {
   state.appBindingsReady = true;
 }
 
+function bootAnimationFreezeMs() {
+  return LOCAL_API_HOSTS.has(window.location.hostname) ? 280 : BOOT_ANIMATION_FREEZE_MS;
+}
+
 function releaseBootAnimationFreeze() {
   if (!document.body.classList.contains("booting")) {
     return;
   }
   window.setTimeout(() => {
     document.body.classList.remove("booting");
-  }, BOOT_ANIMATION_FREEZE_MS);
+  }, bootAnimationFreezeMs());
 }
 
 function deferToNextFrame() {
@@ -6372,6 +6380,11 @@ function scheduleAppBootstrap() {
   const run = () => {
     void initializeApp();
   };
+
+  if (isLocalDevHost()) {
+    window.requestAnimationFrame(run);
+    return;
+  }
 
   if (typeof window.requestIdleCallback === "function") {
     window.requestIdleCallback(
