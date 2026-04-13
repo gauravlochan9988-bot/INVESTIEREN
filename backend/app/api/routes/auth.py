@@ -1,4 +1,3 @@
-from base64 import urlsafe_b64decode
 import secrets
 from typing import Optional
 
@@ -83,39 +82,24 @@ def verify_access_code(code: str, expected_code: str) -> bool:
     return bool(configured) and secrets.compare_digest(submitted, configured)
 
 
-def _derive_clerk_frontend_api_url(publishable_key: str) -> Optional[str]:
-    value = (publishable_key or "").strip()
-    if not value or "$" not in value:
-        return None
-
-    encoded = value.split("$", 1)[0].split("_", 2)[-1]
-    padding = "=" * (-len(encoded) % 4)
-    try:
-        decoded = urlsafe_b64decode(f"{encoded}{padding}".encode("utf-8")).decode("utf-8").strip()
-    except Exception:
-        return None
-
-    if not decoded:
-        return None
-    return decoded if decoded.startswith("https://") else f"https://{decoded}"
-
-
 @router.get("/config", response_model=AuthConfigResponse)
 def get_auth_config() -> AuthConfigResponse:
     settings = get_settings()
-    frontend_api_url = settings.clerk_frontend_api_url.strip() or _derive_clerk_frontend_api_url(
-        settings.clerk_publishable_key
-    )
-    enabled = bool(
-        settings.clerk_publishable_key.strip()
-        and frontend_api_url
-        and (settings.clerk_jwt_key.strip() or settings.clerk_secret_key.strip())
-    )
+    if settings.supabase_enabled():
+        return AuthConfigResponse(
+            enabled=True,
+            provider="supabase",
+            supabase_url=settings.supabase_url.strip() or None,
+            supabase_anon_key=settings.supabase_anon_key.strip() or None,
+            plan_slug=settings.clerk_plan_slug.strip() or None,
+            plan_name=settings.clerk_plan_name.strip() or None,
+            plan_amount_cents=499,
+            plan_currency="eur",
+            plan_interval="month",
+        )
     return AuthConfigResponse(
-        enabled=enabled,
-        provider="clerk" if enabled else None,
-        publishable_key=settings.clerk_publishable_key.strip() or None,
-        frontend_api_url=frontend_api_url,
+        enabled=False,
+        provider=None,
         plan_slug=settings.clerk_plan_slug.strip() or None,
         plan_name=settings.clerk_plan_name.strip() or None,
         plan_amount_cents=499,
@@ -165,7 +149,7 @@ def create_admin_access_session(
         token = extract_bearer_token(authorization)
         claims = verifier.verify(token)
         auth_subject = str(claims.get("sub") or "").strip() or auth_subject
-        provider = "clerk"
+        provider = str(claims.get("provider") or "supabase")
         email = claims.get("email") or None
         name = claims.get("full_name") or claims.get("name") or claims.get("username") or name
         picture_url = claims.get("image_url") or claims.get("picture") or None
@@ -243,7 +227,7 @@ def get_current_user(
     user = app_user_repository.upsert_from_claims(
         db,
         auth_subject=auth_subject,
-        provider="clerk",
+        provider=str(claims.get("provider") or verifier.provider or "supabase"),
         email=(claims.get("email") or None),
         name=(claims.get("full_name") or claims.get("name") or claims.get("username") or None),
         picture_url=(claims.get("image_url") or claims.get("picture") or None),
@@ -289,7 +273,7 @@ def update_current_user(
         user = app_user_repository.upsert_from_claims(
             db,
             auth_subject=auth_subject,
-            provider="clerk",
+            provider=str(claims.get("provider") or verifier.provider or "supabase"),
             email=(claims.get("email") or None),
             name=candidate_name,
             picture_url=(claims.get("image_url") or claims.get("picture") or None),

@@ -9,10 +9,9 @@
     />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="color-scheme" content="light" />
-    <meta name="clerk-publishable-key" content="pk_test_cnVsaW5nLWJ1Zy01Ny5jbGVyay5hY2NvdW50cy5kZXYk" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://s3.tradingview.com https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com https://challenges.cloudflare.com https://*.hcaptcha.com https://hcaptcha.com; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; media-src 'self' https://v1.pinimg.com data: blob:; connect-src 'self' http://127.0.0.1:8000 http://localhost:8000 http://127.0.0.1:8003 http://localhost:8003 https://investieren-production.up.railway.app https://*.tradingview.com https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com https://challenges.cloudflare.com https://*.hcaptcha.com https://hcaptcha.com; frame-src 'self' https://*.tradingview.com https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com https://challenges.cloudflare.com https://*.hcaptcha.com https://hcaptcha.com; child-src 'self' https://*.tradingview.com https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com https://challenges.cloudflare.com https://*.hcaptcha.com https://hcaptcha.com; font-src 'self' https: data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+      content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://s3.tradingview.com; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; media-src 'self' https://v1.pinimg.com data: blob:; connect-src 'self' http://127.0.0.1:8000 http://localhost:8000 http://127.0.0.1:8003 http://localhost:8003 https://investieren-production.up.railway.app https://*.tradingview.com https://*.supabase.co; frame-src 'self' https://*.tradingview.com https://*.supabase.co; child-src 'self' https://*.tradingview.com https://*.supabase.co; font-src 'self' https: data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
     />
     <title>GQ Trading</title>
     <link rel="icon" href="/favicon.ico" sizes="any" />
@@ -248,10 +247,9 @@
                 <p id="authError" class="auth-error-text" role="alert" aria-live="polite" hidden>
                   Login failed.
                 </p>
-                <div id="clerk-captcha" class="mt-3"></div>
                 <p id="authInfo" class="auth-password-hint" role="status" aria-live="polite" hidden></p>
                 <p id="authPasswordHint" class="auth-password-hint">
-                  <span>Use your own branded login. Clerk runs only in the background.</span>
+                  <span>Use your own branded login. Auth runs only in the background.</span>
                 </p>
               </div>
             </form>

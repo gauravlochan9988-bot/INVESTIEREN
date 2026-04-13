@@ -307,6 +307,8 @@ def get_clerk_verifier_instance() -> ClerkTokenVerifier:
         jwt_key=settings.clerk_jwt_key,
         secret_key=settings.clerk_secret_key,
         publishable_key=settings.clerk_publishable_key,
+        supabase_url=settings.supabase_url,
+        supabase_anon_key=settings.supabase_anon_key,
         authorized_parties=settings.get_clerk_authorized_parties(),
     )
 
@@ -386,7 +388,7 @@ def get_request_user_context(
     user = app_user_repository.upsert_from_claims(
         db,
         auth_subject=auth_subject,
-        provider="clerk",
+        provider=str(claims.get("provider") or verifier.provider or "supabase"),
         email=(claims.get("email") or None),
         name=(claims.get("full_name") or claims.get("name") or claims.get("username") or None),
         picture_url=(claims.get("image_url") or claims.get("picture") or None),

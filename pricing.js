@@ -1,5 +1,6 @@
 const DEPLOYED_API_ORIGIN = "https://investieren-production.up.railway.app";
 const LOCAL_API_HOSTS = new Set(["127.0.0.1", "localhost"]);
+const SUPABASE_JS_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js";
 
 function resolveApiBaseUrl() {
   if (LOCAL_API_HOSTS.has(window.location.hostname)) {
@@ -31,36 +32,34 @@ async function pricingApi(path, options = {}) {
   return response.json();
 }
 
-async function ensureClerkFrontendLoaded(config) {
-  if (window.Clerk) {
-    return window.Clerk;
+async function ensureSupabaseFrontendLoaded() {
+  if (window.supabase?.createClient) {
+    return window.supabase;
   }
-
-  const scriptId = "clerk-js-sdk";
+  const scriptId = "supabase-js-sdk-pricing";
   const existing = document.getElementById(scriptId);
   if (existing) {
     await new Promise((resolve, reject) => {
       existing.addEventListener("load", resolve, { once: true });
-      existing.addEventListener("error", () => reject(new Error("Clerk failed to load.")), { once: true });
+      existing.addEventListener(
+        "error",
+        () => reject(new Error("Supabase failed to load.")),
+        { once: true },
+      );
     });
-    return window.Clerk;
+    return window.supabase;
   }
-
-  const frontendApi = String(config.frontend_api_url || "").replace(/\/+$/, "");
   const script = document.createElement("script");
   script.id = scriptId;
   script.async = true;
   script.crossOrigin = "anonymous";
-  script.dataset.clerkPublishableKey = config.publishable_key;
-  script.src = `${frontendApi}/npm/@clerk/clerk-js@5/dist/clerk.browser.js`;
-
+  script.src = SUPABASE_JS_CDN;
   await new Promise((resolve, reject) => {
     script.addEventListener("load", resolve, { once: true });
-    script.addEventListener("error", () => reject(new Error("Clerk failed to load.")), { once: true });
+    script.addEventListener("error", () => reject(new Error("Supabase failed to load.")), { once: true });
     document.head.appendChild(script);
   });
-
-  return window.Clerk;
+  return window.supabase;
 }
 
 async function initializePricing() {
@@ -73,11 +72,17 @@ async function initializePricing() {
   try {
     try {
       const config = await pricingApi("/api/auth/config");
-      if (config?.enabled && config.provider === "clerk") {
-        const clerk = await ensureClerkFrontendLoaded(config);
-        await clerk.load();
-        if (clerk.user && clerk.session) {
-          authToken = await clerk.session.getToken();
+      if (config?.enabled && config.provider === "supabase") {
+        const supabase = await ensureSupabaseFrontendLoaded();
+        const client = supabase.createClient(config.supabase_url, config.supabase_anon_key, {
+          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce" },
+        });
+        const {
+          data: { session },
+          error,
+        } = await client.auth.getSession();
+        if (!error && session?.access_token) {
+          authToken = session.access_token;
         }
       }
     } catch (authError) {

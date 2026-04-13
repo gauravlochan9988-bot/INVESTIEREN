@@ -3,6 +3,7 @@
 const DEPLOYED_API_ORIGIN = "https://investieren-production.up.railway.app";
 const LOCAL_API_HOSTS = new Set(["127.0.0.1", "localhost"]);
 const LOCAL_API_PORT = "8003";
+const SUPABASE_JS_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js";
 const STORAGE_KEYS = {
   selectedStrategy: "investieren:selectedStrategy",
   favoriteSymbols: "investieren:favoriteSymbols",
@@ -28,7 +29,8 @@ const SETTINGS_KEYS = {
 
 const state = {
   auth: {
-    clerk: null,
+    provider: "",
+    client: null,
     token: "",
     tokenFetchedAt: 0,
     user: null,
@@ -69,32 +71,6 @@ function showStatus(message, tone = "neutral") {
   }
 }
 
-function deriveClerkFrontendApiUrlFromPublishableKey(publishableKey) {
-  const value = String(publishableKey || "").trim();
-  if (!value || !value.includes("$")) {
-    return "";
-  }
-  try {
-    const encoded = value.split("$", 1)[0].split("_").pop() || "";
-    const padded = `${encoded}${"=".repeat((4 - (encoded.length % 4)) % 4)}`;
-    const decoded = window
-      .atob(padded.replace(/-/g, "+").replace(/_/g, "/"))
-      .trim()
-      .replace(/\$+$/, "");
-    if (!decoded) {
-      return "";
-    }
-    return decoded.startsWith("https://") ? decoded : `https://${decoded}`;
-  } catch {
-    return "";
-  }
-}
-
-function readPublishableKeyFromDom() {
-  const node = document.querySelector('meta[name="clerk-publishable-key"]');
-  return String(node?.getAttribute("content") || "").trim();
-}
-
 async function fetchAuthConfig() {
   const endpoint = `${resolveApiBaseUrl()}/api/auth/config`;
   const response = await fetch(endpoint, {
@@ -102,73 +78,95 @@ async function fetchAuthConfig() {
     headers: { Accept: "application/json" },
   });
   if (response.ok) {
-    return response.json();
-  }
-  const fallbackKey = readPublishableKeyFromDom();
-  const fallbackApi = deriveClerkFrontendApiUrlFromPublishableKey(fallbackKey);
-  if (fallbackKey && fallbackApi) {
-    return {
-      enabled: true,
-      provider: "clerk",
-      publishable_key: fallbackKey,
-      frontend_api_url: fallbackApi,
-    };
+    const payload = await response.json();
+    if (payload?.enabled && String(payload.provider || "").toLowerCase() === "supabase") {
+      return payload;
+    }
   }
   throw new Error("Auth config unavailable.");
 }
 
-async function ensureClerkLoaded(config) {
-  if (window.Clerk) {
-    return window.Clerk;
+async function ensureSupabaseLoaded() {
+  if (window.supabase?.createClient) {
+    return window.supabase;
   }
-  const scriptId = "clerk-js-sdk-settings";
+  const scriptId = "supabase-js-sdk-settings";
   const existing = document.getElementById(scriptId);
   if (existing) {
     await new Promise((resolve, reject) => {
       existing.addEventListener("load", resolve, { once: true });
-      existing.addEventListener("error", () => reject(new Error("Failed to load Clerk SDK.")), {
+      existing.addEventListener("error", () => reject(new Error("Failed to load Supabase SDK.")), {
         once: true,
       });
     });
-    return window.Clerk;
+    return window.supabase;
   }
   const script = document.createElement("script");
   script.id = scriptId;
   script.async = true;
   script.crossOrigin = "anonymous";
-  script.dataset.clerkPublishableKey = config.publishable_key;
-  script.src = `${String(config.frontend_api_url || "").replace(/\/+$/, "")}/npm/@clerk/clerk-js@5/dist/clerk.browser.js`;
+  script.src = SUPABASE_JS_CDN;
   document.head.appendChild(script);
   await new Promise((resolve, reject) => {
     script.addEventListener("load", resolve, { once: true });
-    script.addEventListener("error", () => reject(new Error("Failed to load Clerk SDK.")), { once: true });
+    script.addEventListener("error", () => reject(new Error("Failed to load Supabase SDK.")), {
+      once: true,
+    });
   });
-  return window.Clerk;
+  return window.supabase;
 }
 
 async function ensureAuthClient() {
-  if (state.auth.clerk?.session) {
-    return state.auth.clerk;
+  if (state.auth.client) {
+    return state.auth.client;
   }
   const config = await fetchAuthConfig();
-  if (!config?.enabled || config.provider !== "clerk") {
-    throw new Error("Clerk auth is disabled.");
+  if (!config?.enabled) {
+    throw new Error("Auth is disabled.");
   }
-  const clerk = await ensureClerkLoaded(config);
-  await clerk.load();
-  if (!clerk.session) {
+  state.auth.provider = String(config.provider || "").toLowerCase();
+  if (state.auth.provider !== "supabase") {
+    throw new Error("Supabase auth is not enabled.");
+  }
+  const supabase = await ensureSupabaseLoaded();
+  const client = supabase.createClient(config.supabase_url, config.supabase_anon_key, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce" },
+  });
+  const {
+    data: { session },
+    error,
+  } = await client.auth.getSession();
+  if (error || !session) {
     throw new Error("Please login first from your dashboard.");
   }
-  state.auth.clerk = clerk;
-  return clerk;
+  state.auth.client = {
+    provider: "supabase",
+    sdk: client,
+    session: {
+      getToken: async () => session.access_token || "",
+    },
+  };
+  return state.auth.client;
 }
 
 async function getAccessToken(forceRefresh = false) {
   if (!forceRefresh && state.auth.token && Date.now() - state.auth.tokenFetchedAt < 55_000) {
     return state.auth.token;
   }
-  const clerk = await ensureAuthClient();
-  const token = await clerk.session?.getToken();
+  const client = await ensureAuthClient();
+  let token = "";
+  if (client.provider === "supabase") {
+    const {
+      data: { session },
+      error,
+    } = await client.sdk.auth.getSession();
+    if (error || !session?.access_token) {
+      throw new Error("Could not load auth token.");
+    }
+    token = session.access_token;
+  } else {
+    token = await client.session?.getToken();
+  }
   if (!token) {
     throw new Error("Could not load auth token.");
   }

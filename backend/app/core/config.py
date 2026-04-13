@@ -82,6 +82,20 @@ class Settings(BaseSettings):
         default_factory=lambda: env_first("CLERK_JWT_KEY", "CLERK_PEM_PUBLIC_KEY")
     )
     clerk_authorized_parties: str = Field(default_factory=lambda: env_first("CLERK_AUTHORIZED_PARTIES"))
+    supabase_url: str = Field(
+        default_factory=lambda: env_first(
+            "SUPABASE_URL",
+            "NEXT_PUBLIC_SUPABASE_URL",
+            "VITE_SUPABASE_URL",
+        )
+    )
+    supabase_anon_key: str = Field(
+        default_factory=lambda: env_first(
+            "SUPABASE_ANON_KEY",
+            "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+            "VITE_SUPABASE_ANON_KEY",
+        )
+    )
     clerk_plan_slug: str = "pro"
     clerk_plan_name: str = "Investieren Pro Monthly"
     frontend_origin: str = "https://gauravtrades.de"
@@ -134,6 +148,9 @@ class Settings(BaseSettings):
                 normalized.append(item)
         # Preserve insertion order while deduplicating.
         return list(dict.fromkeys(normalized))
+
+    def supabase_enabled(self) -> bool:
+        return bool(self.supabase_url.strip() and self.supabase_anon_key.strip())
 
     @field_validator("database_url", mode="before")
     @classmethod

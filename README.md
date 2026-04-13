@@ -85,14 +85,11 @@ DATABASE_URL=postgresql+psycopg2://USER:PASSWORD@ep-xxxxxx.eu-central-1.aws.neon
 - `FINNHUB_API_KEY`
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
-- `CLERK_PUBLISHABLE_KEY`
-- `CLERK_FAPI` (or `CLERK_FRONTEND_API_URL`)
-- `CLERK_SECRET_KEY` (required if `CLERK_JWT_KEY` is not set)
-- `CLERK_JWT_KEY` (optional; only required for networkless verification)
-- `CLERK_AUTHORIZED_PARTIES` (comma-separated origins, optional override)
+- `SUPABASE_URL` (preferred auth provider when set)
+- `SUPABASE_ANON_KEY` (used by frontend and backend token verification)
 - `FRONTEND_ORIGIN`
 - `CORS_ALLOW_ORIGINS` (comma-separated, optional)
-- `OWNER_AUTH_SUBJECTS` (comma-separated Clerk `sub` values with owner access)
+- `OWNER_AUTH_SUBJECTS` (comma-separated auth `sub` values with owner access)
 - `CRON_SECRET`
 
 ## API overview

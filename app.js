@@ -574,6 +574,7 @@ const DEFAULT_CLERK_PLAN = {
   currency: "eur",
   interval: "month",
 };
+const SUPABASE_JS_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js";
 const STORAGE_KEYS = {
   authenticated: "investieren:authenticated",
   adminSession: "investieren:adminSession",
@@ -651,7 +652,9 @@ const state = {
     enabled: false,
     ready: false,
     config: null,
+    provider: "",
     client: null,
+    sessionSubscription: null,
     view: "login",
     showManagedAuth: false,
     showAdminAccess: false,
@@ -1102,7 +1105,7 @@ function setAuthError(message = "") {
   elements.authResetNewPassword?.setAttribute("aria-invalid", "true");
 }
 
-function extractClerkErrorMessage(error, fallback = "Authentication failed.") {
+function extractAuthErrorMessage(error, fallback = "Authentication failed.") {
   const explicit = String(
     error?.errors?.[0]?.longMessage || error?.errors?.[0]?.message || error?.message || ""
   ).trim();
@@ -1119,31 +1122,11 @@ function getOAuthProviderLabel(strategy) {
   return "OAuth";
 }
 
-function isPopupFallbackCandidate(error) {
-  const message = extractClerkErrorMessage(error, "").toLowerCase();
-  if (!message) {
-    return false;
-  }
-  if (message.includes("missing 'popup' option") || message.includes("missing \"popup\" option")) {
-    return true;
-  }
-  if (!message.includes("popup")) {
-    return false;
-  }
-  return (
-    message.includes("blocked") ||
-    message.includes("unsupported") ||
-    message.includes("not supported") ||
-    message.includes("cross-origin-opener-policy") ||
-    message.includes("opener")
-  );
-}
-
 function formatOAuthFailure(error) {
-  const message = extractClerkErrorMessage(error, "Please try again.").trim();
+  const message = extractAuthErrorMessage(error, "Please try again.").trim();
   const lower = message.toLowerCase();
   if (lower.includes("failed to construct 'url'") || lower.includes("invalid url")) {
-    return "OAuth provider URL setup is invalid. Please retry, and if it persists, check Clerk redirect configuration.";
+    return "OAuth provider URL setup is invalid. Please retry, and if it persists, check redirect configuration.";
   }
   if (lower.includes("captcha")) {
     return "CAPTCHA failed to load. Disable blockers or strict privacy extensions and retry.";
@@ -1178,168 +1161,12 @@ async function completePostAuthEntry() {
   maybePromptUsernameSetup();
 }
 
-function readClerkPublishableKeyFromDom() {
-  const node = document.querySelector('meta[name="clerk-publishable-key"]');
-  return String(node?.getAttribute("content") || "").trim();
-}
-
-function deriveClerkFrontendApiUrlFromPublishableKey(publishableKey) {
-  const value = String(publishableKey || "").trim();
-  if (!value || !value.includes("$")) {
-    return "";
-  }
-  try {
-    const encoded = value.split("$", 1)[0].split("_").pop() || "";
-    if (!encoded) {
-      return "";
-    }
-    const padded = `${encoded}${"=".repeat((4 - (encoded.length % 4)) % 4)}`;
-    const decoded = window
-      .atob(padded.replace(/-/g, "+").replace(/_/g, "/"))
-      .trim()
-      .replace(/\$+$/, "");
-    if (!decoded) {
-      return "";
-    }
-    return decoded.startsWith("https://") ? decoded : `https://${decoded}`;
-  } catch {
-    return "";
-  }
-}
-
-function getClientAuthConfigFallback() {
-  const publishableKey = readClerkPublishableKeyFromDom();
-  if (!publishableKey) {
-    return null;
-  }
-  const frontendApiUrl = deriveClerkFrontendApiUrlFromPublishableKey(publishableKey);
-  if (!frontendApiUrl) {
-    return null;
-  }
-  return {
-    enabled: true,
-    provider: "clerk",
-    publishable_key: publishableKey,
-    frontend_api_url: frontendApiUrl,
-  };
-}
-
 function resolveOAuthRedirectBaseUrl() {
   const path = String(window.location.pathname || "/");
   if (/\/login\/?$/i.test(path)) {
     return `${window.location.origin}/`;
   }
   return `${window.location.origin}${path}`;
-}
-
-function resolveOAuthCallbackUrl() {
-  const returnTo = resolveOAuthRedirectBaseUrl();
-  const callback = new URL("/auth-callback.html", window.location.origin);
-  callback.searchParams.set("return_to", returnTo);
-  return callback.toString();
-}
-
-function isLegacyClerkCallbackPath() {
-  const path = String(window.location.pathname || "").trim().toLowerCase();
-  return path === "/clerk" || path === "/clerk/" || path === "/sso-callback" || path === "/sso-callback/";
-}
-
-function hasClerkCallbackParams() {
-  if (isLegacyClerkCallbackPath()) {
-    return true;
-  }
-  const params = new URLSearchParams(window.location.search);
-  for (const key of params.keys()) {
-    const lower = String(key || "").toLowerCase();
-    if (lower === "oauth_callback" || lower.startsWith("__clerk_") || lower.includes("clerk")) {
-      return true;
-    }
-  }
-  const hash = String(window.location.hash || "").toLowerCase();
-  if (hash.includes("clerk") || hash.includes("oauth_callback")) {
-    return true;
-  }
-  return false;
-}
-
-function removeClerkCallbackParamsFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  let changed = false;
-  const keys = Array.from(params.keys());
-  keys.forEach((key) => {
-    const lower = String(key || "").toLowerCase();
-    if (lower === "oauth_callback" || lower.startsWith("__clerk_") || lower.includes("clerk")) {
-      params.delete(key);
-      changed = true;
-    }
-  });
-  if (!changed) {
-    return;
-  }
-  const query = params.toString();
-  const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash || ""}`;
-  window.history.replaceState({}, document.title, nextUrl);
-}
-
-async function handleOAuthRedirectCallbackIfPresent(clerk) {
-  if (!hasClerkCallbackParams()) {
-    return { handled: false, failed: false };
-  }
-  if (isLegacyClerkCallbackPath()) {
-    try {
-      const callback = new URL(resolveOAuthCallbackUrl());
-      const params = new URLSearchParams(window.location.search);
-      if (!callback.searchParams.get("return_to")) {
-        callback.searchParams.set("return_to", `${window.location.origin}/`);
-      }
-      const oauthCallback = params.get("oauth_callback");
-      if (oauthCallback) {
-        callback.searchParams.set("oauth_callback", oauthCallback);
-      }
-      const nextHref = `${callback.toString()}${window.location.hash || ""}`;
-      window.location.replace(nextHref);
-      return { handled: true, failed: false };
-    } catch (redirectError) {
-      console.error("[frontend] failed to normalize legacy Clerk callback path", redirectError);
-      return { handled: true, failed: true };
-    }
-  }
-  if (typeof clerk?.handleRedirectCallback !== "function") {
-    console.warn("[frontend] Clerk callback params found but handleRedirectCallback is unavailable");
-    removeClerkCallbackParamsFromUrl();
-    return { handled: true, failed: true };
-  }
-
-  try {
-    const callbackResult = await clerk.handleRedirectCallback({
-      signInForceRedirectUrl: resolveOAuthRedirectBaseUrl(),
-      signUpForceRedirectUrl: resolveOAuthRedirectBaseUrl(),
-    });
-    const createdSessionId =
-      callbackResult?.createdSessionId ||
-      callbackResult?.sessionId ||
-      callbackResult?.session?.id ||
-      null;
-    if (createdSessionId && typeof clerk.setActive === "function") {
-      await clerk.setActive({ session: createdSessionId });
-    }
-    return { handled: true, failed: false };
-  } catch (error) {
-    console.error("[frontend] oauth callback handling failed", error);
-    return { handled: true, failed: true };
-  } finally {
-    removeClerkCallbackParamsFromUrl();
-  }
-}
-
-async function waitForClerkSession(clerk, { attempts = 15, intervalMs = 120 } = {}) {
-  for (let attempt = 0; attempt < Math.max(1, attempts); attempt += 1) {
-    if (clerk?.user && clerk?.session) {
-      return true;
-    }
-    await delay(intervalMs);
-  }
-  return Boolean(clerk?.user && clerk?.session);
 }
 
 async function syncAuthenticatedUserWithRetry({
@@ -1390,69 +1217,104 @@ function syncResendCooldownButton() {
 }
 
 async function fetchAuthConfig() {
-  let config = {};
-  try {
-    config = await api("/api/auth/config", {
-      timeoutMs: 12000,
-      retryCount: 1,
-      skipAuth: true,
-    });
-  } catch (error) {
-    console.warn("[frontend] auth config endpoint unavailable, trying client fallback", error);
-  }
-
-  const fallback = getClientAuthConfigFallback();
+  const config = await api("/api/auth/config", {
+    timeoutMs: 12000,
+    retryCount: 1,
+    skipAuth: true,
+  });
   const merged = { ...(config || {}) };
-  if (fallback) {
-    merged.provider = "clerk";
-    merged.publishable_key = merged.publishable_key || fallback.publishable_key;
-    merged.frontend_api_url = merged.frontend_api_url || fallback.frontend_api_url;
-    if (!merged.enabled) {
-      merged.enabled = true;
-    }
-  }
-
   state.auth.config = merged;
+  state.auth.provider = String(merged?.provider || "").toLowerCase();
   state.auth.enabled = Boolean(
-    merged?.provider === "clerk" && merged.publishable_key && merged.frontend_api_url,
+    merged?.enabled &&
+      state.auth.provider === "supabase" &&
+      merged.supabase_url &&
+      merged.supabase_anon_key,
   );
   renderAuthMode();
   return merged;
 }
 
-async function ensureClerkFrontendLoaded(config) {
-  if (window.Clerk) {
-    return window.Clerk;
+async function ensureSupabaseFrontendLoaded() {
+  if (window.supabase?.createClient) {
+    return window.supabase;
   }
 
-  const scriptId = "clerk-js-sdk";
+  const scriptId = "supabase-js-sdk";
   const existing = document.getElementById(scriptId);
   if (existing) {
-    if (window.Clerk) {
-      return window.Clerk;
-    }
     await new Promise((resolve, reject) => {
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", () => reject(new Error("Clerk failed to load.")), { once: true });
+      existing.addEventListener("load", resolve, { once: true });
+      existing.addEventListener("error", () => reject(new Error("Supabase SDK failed to load.")), {
+        once: true,
+      });
     });
-    return window.Clerk;
+    return window.supabase;
   }
 
-  const frontendApi = String(config.frontend_api_url || "").replace(/\/+$/, "");
   const script = document.createElement("script");
   script.id = scriptId;
   script.async = true;
   script.crossOrigin = "anonymous";
-  script.dataset.clerkPublishableKey = config.publishable_key;
-  script.src = `${frontendApi}/npm/@clerk/clerk-js@5/dist/clerk.browser.js`;
+  script.src = SUPABASE_JS_CDN;
 
   await new Promise((resolve, reject) => {
-    script.addEventListener("load", () => resolve(), { once: true });
-    script.addEventListener("error", () => reject(new Error("Clerk failed to load.")), { once: true });
+    script.addEventListener("load", resolve, { once: true });
+    script.addEventListener("error", () => reject(new Error("Supabase SDK failed to load.")), {
+      once: true,
+    });
     document.head.appendChild(script);
   });
+  return window.supabase;
+}
 
-  return window.Clerk;
+function setSupabaseClientSession(client, session) {
+  const activeSession = session || null;
+  state.auth.accessToken = activeSession?.access_token || "";
+  state.auth.tokenFetchedAt = activeSession?.access_token ? Date.now() : 0;
+  state.auth.client = {
+    provider: "supabase",
+    sdk: client,
+    user: activeSession?.user || null,
+    session: activeSession
+      ? {
+          getToken: async () => activeSession.access_token || "",
+        }
+      : null,
+    signOut: async () => {
+      await client.auth.signOut();
+    },
+  };
+}
+
+async function ensureSupabaseAuthClient(config) {
+  const supabase = await ensureSupabaseFrontendLoaded();
+  const client = supabase.createClient(config.supabase_url, config.supabase_anon_key, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: "pkce",
+    },
+  });
+  const {
+    data: { session },
+    error,
+  } = await client.auth.getSession();
+  if (error) {
+    throw new Error(error.message || "Supabase session initialization failed.");
+  }
+
+  if (state.auth.sessionSubscription?.unsubscribe) {
+    state.auth.sessionSubscription.unsubscribe();
+    state.auth.sessionSubscription = null;
+  }
+  const { data: authListener } = client.auth.onAuthStateChange((_event, nextSession) => {
+    setSupabaseClientSession(client, nextSession || null);
+  });
+  state.auth.sessionSubscription = authListener?.subscription || null;
+  setSupabaseClientSession(client, session || null);
+  return state.auth.client;
 }
 
 function renderManagedAuthView(mode = "login") {
@@ -1849,6 +1711,7 @@ async function initializeManagedAuth() {
   state.auth.lastInitError = "";
   state.auth.ready = false;
   state.auth.enabled = false;
+  state.auth.provider = "";
   state.auth.client = null;
   state.auth.showManagedAuth = false;
   state.auth.showAdminAccess = true;
@@ -1856,22 +1719,19 @@ async function initializeManagedAuth() {
   try {
     const config = await fetchAuthConfig();
     if (!config?.enabled) {
-      state.auth.lastInitError = "Clerk auth config is disabled.";
+      state.auth.lastInitError = "Auth config is disabled.";
       state.auth.ready = true;
       renderSubscriptionButton();
       return false;
     }
-    const clerk = await ensureClerkFrontendLoaded(config);
-    await clerk.load();
-    const callbackState = await handleOAuthRedirectCallbackIfPresent(clerk);
-    if (callbackState.handled) {
-      await waitForClerkSession(clerk, { attempts: 40, intervalMs: 140 });
+    if (state.auth.provider !== "supabase") {
+      throw new Error("Only Supabase auth is enabled.");
     }
-    state.auth.client = clerk;
+    await ensureSupabaseAuthClient(config);
     state.auth.enabled = true;
     state.auth.ready = true;
 
-    if (clerk.user && clerk.session) {
+    if (state.auth.client?.user && state.auth.client?.session) {
       try {
         setAuthenticated(true);
         await syncAuthenticatedUserWithRetry({ forceRefresh: true, attempts: 4 });
@@ -1881,18 +1741,18 @@ async function initializeManagedAuth() {
         setAuthError("");
         maybePromptUsernameSetup();
       } catch (sessionSyncError) {
-        const sessionDetail = extractClerkErrorMessage(
+        const sessionDetail = extractAuthErrorMessage(
           sessionSyncError,
           "Session sync failed after provider sign-in.",
         );
         console.warn(
-          "[frontend] stale/invalid Clerk session during init, resetting session before new login",
+          "[frontend] stale/invalid auth session during init, resetting session before new login",
           { error: sessionDetail, raw: sessionSyncError },
         );
         try {
-          await clerk.signOut?.();
+          await state.auth.client?.signOut?.();
         } catch (signOutError) {
-          console.warn("[frontend] failed to clear stale Clerk session", signOutError);
+          console.warn("[frontend] failed to clear stale session", signOutError);
         }
         state.auth.accessToken = "";
         state.auth.tokenFetchedAt = 0;
@@ -1907,18 +1767,12 @@ async function initializeManagedAuth() {
       setAuthenticated(false);
       state.auth.subscription = null;
       renderSubscriptionButton();
-      if (callbackState.handled && callbackState.failed) {
-        setAuthError("OAuth callback failed. Please try login again.");
-      } else if (callbackState.handled) {
-        setAuthError("Login could not be finalized. Please try again.");
-      } else {
-        setAuthError("");
-      }
+      setAuthError("");
     }
     return true;
   } catch (error) {
     console.error("[frontend] managed auth init failed", error);
-    state.auth.lastInitError = extractClerkErrorMessage(error, "Failed to initialize Clerk auth.");
+    state.auth.lastInitError = extractAuthErrorMessage(error, "Failed to initialize auth.");
     state.auth.enabled = false;
     state.auth.client = null;
     state.auth.ready = true;
@@ -1955,7 +1809,7 @@ async function continueWithOAuth(strategy) {
 
   if (!(await ensureManagedAuthClient())) {
     const providerLabel = getOAuthProviderLabel(strategy);
-    const detail = state.auth.lastInitError || "Clerk auth client could not be initialized.";
+    const detail = state.auth.lastInitError || "Auth client could not be initialized.";
     setAuthError(`${providerLabel} login is unavailable: ${detail}`);
     return;
   }
@@ -1963,33 +1817,29 @@ async function continueWithOAuth(strategy) {
   const providerLabel = getOAuthProviderLabel(strategy);
   setAuthError("");
   setAuthLoading(true);
-  let isRedirecting = false;
 
   try {
     const redirectBaseUrl = resolveOAuthRedirectBaseUrl();
-    const callbackUrl = resolveOAuthCallbackUrl();
-    const signIn = state.auth.client.client?.signIn;
-
-    if (signIn?.authenticateWithRedirect) {
-      isRedirecting = true;
-      await signIn.authenticateWithRedirect({
-        strategy,
-        redirectUrl: callbackUrl,
-        redirectUrlComplete: redirectBaseUrl,
-        signInForceRedirectUrl: callbackUrl,
-        signUpForceRedirectUrl: callbackUrl,
-      });
-      return;
+    const provider = strategy === "oauth_google" ? "google" : strategy === "oauth_apple" ? "apple" : "";
+    if (!provider) {
+      throw new Error("OAuth provider is not supported.");
     }
-
-    throw new Error("Clerk OAuth methods are unavailable in this browser.");
+    const { error } = await state.auth.client.sdk.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: redirectBaseUrl,
+        queryParams: provider === "google" ? { prompt: "select_account" } : undefined,
+      },
+    });
+    if (error) {
+      throw error;
+    }
+    return;
   } catch (error) {
     console.error("[frontend] oauth login failed", error);
     setAuthError(`${providerLabel} login failed: ${formatOAuthFailure(error)}`);
   } finally {
-    if (!isRedirecting) {
-      setAuthLoading(false);
-    }
+    setAuthLoading(false);
   }
 }
 
@@ -1997,7 +1847,6 @@ async function authenticateWithEmailPassword({ mode, username, email, password }
   if (!(await ensureManagedAuthClient())) {
     throw new Error("Login is unavailable.");
   }
-  const clerk = state.auth.client;
   const normalizedEmail = String(email || "").trim().toLowerCase();
   const normalizedPassword = String(password || "");
   const normalizedUsername = String(username || "").trim();
@@ -2008,56 +1857,42 @@ async function authenticateWithEmailPassword({ mode, username, email, password }
     throw new Error("Username must have at least 3 characters.");
   }
 
-  if (mode === "signup") {
-    const signUpAttempt = await clerk.client.signUp.create({
-      emailAddress: normalizedEmail,
-      password: normalizedPassword,
-      username: normalizedUsername || undefined,
-    });
-    if (signUpAttempt.status === "complete" && signUpAttempt.createdSessionId) {
-      await clerk.setActive({ session: signUpAttempt.createdSessionId });
-      return;
-    }
-    await clerk.client.signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-    state.auth.verifyStep = true;
-    state.auth.verifyEmail = normalizedEmail;
-    state.auth.verifyMode = "signup";
-    startResendCooldown();
-    renderAuthMode();
-    throw new Error("Enter the verification code sent to your email.");
+  const supabase = state.auth.client?.sdk;
+  if (!supabase) {
+    throw new Error("Login is unavailable.");
   }
-
-  const signInAttempt = await clerk.client.signIn.create({
-    identifier: normalizedEmail,
-    password: normalizedPassword,
-  });
-  if (signInAttempt.status === "complete" && signInAttempt.createdSessionId) {
-    await clerk.setActive({ session: signInAttempt.createdSessionId });
+  if (mode === "signup") {
+    const { data, error } = await supabase.auth.signUp({
+      email: normalizedEmail,
+      password: normalizedPassword,
+      options: {
+        data: {
+          name: normalizedUsername || "",
+        },
+      },
+    });
+    if (error) {
+      throw new Error(error.message || "Sign up failed.");
+    }
+    if (!data?.session) {
+      throw new Error("Check your email to verify your account, then login.");
+    }
+    setSupabaseClientSession(supabase, data.session);
     return;
   }
-  throw new Error("Login failed. Check your credentials.");
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: normalizedEmail,
+    password: normalizedPassword,
+  });
+  if (error || !data?.session) {
+    throw new Error(error?.message || "Login failed. Check your credentials.");
+  }
+  setSupabaseClientSession(supabase, data.session);
 }
 
 async function completeSignupVerification(code) {
-  if (!(await ensureManagedAuthClient())) {
-    throw new Error("Login is unavailable.");
-  }
-  const normalizedCode = String(code || "").trim();
-  if (!normalizedCode) {
-    throw new Error("Verification code is required.");
-  }
-  const result = await state.auth.client.client.signUp.attemptEmailAddressVerification({
-    code: normalizedCode,
-  });
-  if (result.status === "complete" && result.createdSessionId) {
-    await state.auth.client.setActive({ session: result.createdSessionId });
-    state.auth.verifyStep = false;
-    state.auth.verifyEmail = "";
-    state.auth.verifyMode = "signup";
-    renderAuthMode();
-    return;
-  }
-  throw new Error("Verification failed. Try again.");
+  void code;
+  throw new Error("Email verification is handled via your inbox. Please check your email.");
 }
 
 async function startPasswordResetFlow(email) {
@@ -2068,46 +1903,38 @@ async function startPasswordResetFlow(email) {
   if (!normalizedEmail) {
     throw new Error("Please enter your email first.");
   }
-  const signIn = await state.auth.client.client.signIn.create({
-    strategy: "reset_password_email_code",
-    identifier: normalizedEmail,
-  });
-  state.auth.resetSignIn = signIn;
-  state.auth.verifyStep = true;
-  state.auth.verifyMode = "reset";
+  if (state.auth.provider === "supabase") {
+    const supabase = state.auth.client?.sdk;
+    const redirectTo = resolveOAuthRedirectBaseUrl();
+    const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
+    if (error) {
+      throw new Error(error.message || "Could not send reset email.");
+    }
+    state.auth.verifyStep = false;
+    state.auth.verifyMode = "signup";
+    state.auth.verifyEmail = normalizedEmail;
+    renderAuthMode();
+    return;
+  }
+  const supabase = state.auth.client?.sdk;
+  if (!supabase) {
+    throw new Error("Login is unavailable.");
+  }
+  const redirectTo = resolveOAuthRedirectBaseUrl();
+  const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
+  if (error) {
+    throw new Error(error.message || "Could not send reset email.");
+  }
+  state.auth.verifyStep = false;
+  state.auth.verifyMode = "signup";
   state.auth.verifyEmail = normalizedEmail;
-  startResendCooldown();
   renderAuthMode();
 }
 
 async function completePasswordReset(code, newPassword) {
-  const normalizedCode = String(code || "").trim();
-  const normalizedPassword = String(newPassword || "");
-  if (!normalizedCode) {
-    throw new Error("Verification code is required.");
-  }
-  if (normalizedPassword.length < 8) {
-    throw new Error("New password must be at least 8 characters.");
-  }
-  const baseSignIn = state.auth.resetSignIn || state.auth.client?.client?.signIn;
-  if (!baseSignIn?.attemptFirstFactor) {
-    throw new Error("Password reset session is unavailable.");
-  }
-  const result = await baseSignIn.attemptFirstFactor({
-    strategy: "reset_password_email_code",
-    code: normalizedCode,
-    password: normalizedPassword,
-  });
-  if (result.status === "complete" && result.createdSessionId) {
-    await state.auth.client.setActive({ session: result.createdSessionId });
-    state.auth.verifyStep = false;
-    state.auth.verifyEmail = "";
-    state.auth.verifyMode = "signup";
-    state.auth.resetSignIn = null;
-    renderAuthMode();
-    return;
-  }
-  throw new Error("Password reset failed. Please try again.");
+  void code;
+  void newPassword;
+  throw new Error("Use the password reset link from your email to set a new password.");
 }
 
 function scheduleLowPriorityTask(task, delayMs = 0) {
@@ -3811,6 +3638,10 @@ function setAuthenticated(value) {
   state.auth.tokenFetchedAt = 0;
   state.auth.usernamePromptShown = false;
   state.auth.lastInitError = "";
+  if (state.auth.sessionSubscription?.unsubscribe) {
+    state.auth.sessionSubscription.unsubscribe();
+  }
+  state.auth.sessionSubscription = null;
   setAdminSessionToken("");
 }
 
@@ -5634,7 +5465,11 @@ function bindAuth() {
       setAuthError("");
       setAuthLoading(true, "Sending reset code...");
       await startPasswordResetFlow(elements.authEmail?.value || "");
-      setAuthInfo("Reset code sent. Enter code and new password.");
+      setAuthInfo(
+        state.auth.provider === "supabase"
+          ? "Reset email sent. Open the link in your inbox."
+          : "Reset code sent. Enter code and new password.",
+      );
     } catch (error) {
       setAuthError(error.message || "Could not start password reset.");
     } finally {
