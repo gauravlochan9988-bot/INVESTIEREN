@@ -6097,6 +6097,12 @@ header.dashboard-topbar.dashboard-topbar-premium .dashboard-lang-switch {
 /* Stronger visual hierarchy inside auth card (email/password-only layout) */
 #authForm .auth-login-card > .auth-mode-toggle-row.grid.grid-cols-2.gap-2 {
   margin-top: 0.55rem;
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  padding: 0.35rem 0 0.45rem;
+  background: var(--color-surface-2);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
 }
 
 .risk-disclaimer-modal {
@@ -6117,18 +6123,6 @@ html.auth-session-hint #authOverlay {
 
 html.auth-session-hint #appShell.hidden {
   display: block !important;
-}
-
-@media (max-width: 768px) {
-  .auth-login-card .auth-mode-toggle-row {
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    margin-top: 0.55rem;
-    padding: 0.35rem 0 0.45rem;
-    background: var(--color-surface-2);
-    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
-  }
 }
 
 #authForm .auth-login-card > .mt-4.flex.items-center.justify-between.gap-3 {
