@@ -1293,9 +1293,13 @@ function renderAuthMode() {
   }
   if (elements.authModeLoginButton) {
     elements.authModeLoginButton.hidden = false;
+    elements.authModeLoginButton.classList.remove("hidden");
+    elements.authModeLoginButton.style.display = "";
   }
   if (elements.authModeSignupButton) {
     elements.authModeSignupButton.hidden = false;
+    elements.authModeSignupButton.classList.remove("hidden");
+    elements.authModeSignupButton.style.display = "";
   }
   elements.authModeLoginButton?.classList.toggle("bg-neutral-900", !signup);
   elements.authModeLoginButton?.classList.toggle("text-white", !signup);
@@ -6119,7 +6123,9 @@ function bindAuth() {
     }
   });
 
-  elements.authModeLoginButton?.addEventListener("click", () => {
+  elements.authModeLoginButton?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
     state.auth.formMode = "login";
     state.auth.verifyStep = false;
     state.auth.verifyEmail = "";
@@ -6132,7 +6138,9 @@ function bindAuth() {
     renderAuthMode();
   });
 
-  elements.authModeSignupButton?.addEventListener("click", () => {
+  elements.authModeSignupButton?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
     state.auth.formMode = "signup";
     state.auth.verifyStep = false;
     state.auth.verifyEmail = "";
