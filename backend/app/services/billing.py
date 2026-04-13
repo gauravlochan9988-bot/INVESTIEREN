@@ -222,6 +222,57 @@ class BillingService:
             "current_period_end": row.current_period_end,
         }
 
+    def cancel_subscription_at_period_end(self, db: Session, *, app_user: AppUser) -> Dict[str, Any]:
+        self._ensure_enabled()
+        row = self.subscription_repository.get_by_user_id(db, app_user_id=app_user.id)
+        if row is None or not row.stripe_subscription_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No active Stripe subscription linked to this account.",
+            )
+        if row.status in {"canceled", "incomplete_expired", "unpaid"}:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Subscription is already inactive.",
+            )
+
+        updated = stripe.Subscription.modify(
+            row.stripe_subscription_id,
+            cancel_at_period_end=True,
+        )
+        updated_id = _stripe_resource_id(updated.get("id") if hasattr(updated, "get") else getattr(updated, "id", None))
+        status_value = (
+            str(updated.get("status") or row.status)
+            if hasattr(updated, "get")
+            else str(getattr(updated, "status", row.status) or row.status)
+        )
+        cancel_at_period_end = (
+            bool(updated.get("cancel_at_period_end", True))
+            if hasattr(updated, "get")
+            else bool(getattr(updated, "cancel_at_period_end", True))
+        )
+        period_end_raw = (
+            updated.get("current_period_end") if hasattr(updated, "get") else getattr(updated, "current_period_end", None)
+        )
+        current_period_end = self._period_end(period_end_raw)
+
+        synced = self.subscription_repository.upsert_for_user(
+            db,
+            app_user_id=app_user.id,
+            auth_subject=app_user.auth_subject,
+            stripe_customer_id=row.stripe_customer_id,
+            stripe_subscription_id=updated_id or row.stripe_subscription_id,
+            stripe_checkout_session_id=row.stripe_checkout_session_id,
+            status=status_value,
+            plan_name=row.plan_name,
+            amount_cents=row.amount_cents,
+            currency=row.currency,
+            interval=row.interval,
+            cancel_at_period_end=cancel_at_period_end,
+            current_period_end=current_period_end,
+        )
+        return {"status": "ok", "subscription_status": synced.status}
+
     def sync_clerk_subscription_state(
         self,
         db: Session,

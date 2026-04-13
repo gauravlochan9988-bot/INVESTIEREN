@@ -14,6 +14,7 @@ function readMetaApiOrigin() {
 }
 
 const DEPLOYED_API_ORIGIN = readMetaApiOrigin() || "https://investieren-production.up.railway.app";
+const STRIPE_PAYMENT_LINK_URL = "https://buy.stripe.com/00w9AS43G9V73c1aa08Zq00";
 const LOCAL_API_HOSTS = new Set(["127.0.0.1", "localhost"]);
 const LOCAL_API_PORT = "8003";
 const SUPABASE_JS_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js";
@@ -243,6 +244,21 @@ function formatPriceFromSubscription(subscription) {
   return `${currency} ${(amount / 100).toFixed(2)} / ${interval}`;
 }
 
+function formatPeriodEndDate(value) {
+  if (!value) {
+    return "";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  return date.toLocaleDateString(undefined, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function normalizeFavoriteSymbols(value) {
   return Array.from(
     new Set(
@@ -343,11 +359,24 @@ function applyUserState() {
   if (billingPlanStatus) {
     billingPlanStatus.textContent = subscription.status || (user.plan === "pro" ? "active" : "inactive");
   }
+  const renewalDate = formatPeriodEndDate(subscription.current_period_end);
   if (billingPlanRenewal) {
-    billingPlanRenewal.textContent = subscription.active ? "Auto renewal active" : "Not scheduled";
+    if (subscription.cancel_at_period_end && renewalDate) {
+      billingPlanRenewal.textContent = `Ends on ${renewalDate}`;
+    } else if (renewalDate) {
+      billingPlanRenewal.textContent = renewalDate;
+    } else if (subscription.active) {
+      billingPlanRenewal.textContent = "Auto renewal active";
+    } else {
+      billingPlanRenewal.textContent = "Not scheduled";
+    }
   }
   if (billingContract) {
-    billingContract.textContent = user.plan === "pro" ? "Monthly, cancellable anytime" : "Free tier contract";
+    if (subscription.cancel_at_period_end && renewalDate) {
+      billingContract.textContent = `Cancellation scheduled. Pro remains active until ${renewalDate}.`;
+    } else {
+      billingContract.textContent = user.plan === "pro" ? "Monthly, cancellable anytime" : "Free tier contract";
+    }
   }
 }
 
@@ -615,26 +644,45 @@ function bindActions() {
   const managePlanButton = document.getElementById("managePlanButton");
   managePlanButton?.addEventListener("click", async () => {
     try {
-      showStatus("Opening checkout session...");
-      const checkout = await api("/api/billing/checkout", {
-        method: "POST",
-        body: JSON.stringify({}),
-      });
-      if (!checkout?.url) {
+      const url = String(STRIPE_PAYMENT_LINK_URL || "").trim();
+      if (!url) {
         throw new Error("Billing portal is unavailable right now.");
       }
-      window.location.href = checkout.url;
+      showStatus("Opening Stripe Checkout…");
+      window.location.assign(url);
     } catch (error) {
       showStatus(error?.message || "Could not open billing checkout.", "error");
     }
   });
 
   const cancelSubscriptionButton = document.getElementById("cancelSubscriptionButton");
-  cancelSubscriptionButton?.addEventListener("click", () => {
-    showStatus(
-      "Automatic cancel endpoint is not enabled yet. Use Manage plan or support to cancel immediately.",
-      "neutral",
+  cancelSubscriptionButton?.addEventListener("click", async () => {
+    const confirmed = window.confirm(
+      "Cancel at period end? You keep Pro access until the paid month finishes.",
     );
+    if (!confirmed) {
+      return;
+    }
+    try {
+      showStatus("Scheduling cancellation at period end...");
+      cancelSubscriptionButton.disabled = true;
+      await api("/api/billing/cancel", {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      await loadRemoteState();
+      const renewalDate = formatPeriodEndDate(state.auth.subscription?.current_period_end);
+      showStatus(
+        renewalDate
+          ? `Cancellation scheduled. Pro remains active until ${renewalDate}.`
+          : "Cancellation scheduled. Pro remains active until period end.",
+        "success",
+      );
+    } catch (error) {
+      showStatus(error?.message || "Could not schedule cancellation.", "error");
+    } finally {
+      cancelSubscriptionButton.disabled = false;
+    }
   });
 
   const deleteAccountButton = document.getElementById("deleteAccountButton");

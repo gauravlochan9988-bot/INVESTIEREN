@@ -111,6 +111,18 @@ def sync_checkout_session(
     return BillingSyncResponse(**payload)
 
 
+@router.post("/cancel", response_model=BillingSyncResponse)
+def cancel_subscription(
+    db: Session = Depends(get_db),
+    user_context: RequestUserContext = Depends(get_request_user_context),
+    app_user_repository: AppUserRepository = Depends(get_app_user_repository),
+    billing_service: BillingService = Depends(get_billing_service),
+) -> BillingSyncResponse:
+    user = _require_authenticated_user(db, user_context, app_user_repository)
+    payload = billing_service.cancel_subscription_at_period_end(db, app_user=user)
+    return BillingSyncResponse(**payload)
+
+
 @router.post("/webhook")
 async def stripe_webhook(
     request: Request,

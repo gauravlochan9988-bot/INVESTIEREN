@@ -6099,6 +6099,16 @@ header.dashboard-topbar.dashboard-topbar-premium .dashboard-lang-switch {
   margin-top: 0.55rem;
 }
 
+.risk-disclaimer-modal {
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.risk-disclaimer-scroll-box {
+  max-height: min(42vh, 19rem);
+  overflow-y: auto;
+}
+
 /* Early paint: hide login marketing shell while restoring session (auth-boot.js + app.js) */
 html.auth-session-hint #authOverlay {
   visibility: hidden !important;

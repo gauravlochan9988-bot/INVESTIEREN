@@ -22,6 +22,7 @@ function readMetaApiOrigin() {
 }
 
 const DEPLOYED_API_ORIGIN = readMetaApiOrigin() || "https://investieren-production.up.railway.app";
+const STRIPE_PAYMENT_LINK_URL = "https://buy.stripe.com/00w9AS43G9V73c1aa08Zq00";
 const LOCAL_API_HOSTS = new Set(["127.0.0.1", "localhost"]);
 /** Local FastAPI (uvicorn); static pages on other ports still call API here */
 const LOCAL_API_PORT = "8003";
@@ -690,6 +691,7 @@ const DEFAULT_CLERK_PLAN = {
   interval: "month",
 };
 const SUPABASE_JS_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js";
+const RISK_DISCLAIMER_STORAGE_KEY = "investieren:riskDisclaimerAccepted:v1";
 const STORAGE_KEYS = {
   authenticated: "investieren:authenticated",
   adminSession: "investieren:adminSession",
@@ -802,6 +804,10 @@ const state = {
 
 const elements = {
   authOverlay: document.getElementById("authOverlay"),
+  riskDisclaimerOverlay: document.getElementById("riskDisclaimerOverlay"),
+  riskDisclaimerScrollBox: document.getElementById("riskDisclaimerScrollBox"),
+  riskDisclaimerCheckbox: document.getElementById("riskDisclaimerCheckbox"),
+  riskDisclaimerAcceptButton: document.getElementById("riskDisclaimerAcceptButton"),
   paywallOverlay: document.getElementById("paywallOverlay"),
   paywallUpgradeButton: document.getElementById("paywallUpgradeButton"),
   paywallCloseButton: document.getElementById("paywallCloseButton"),
@@ -1003,6 +1009,88 @@ let authVisualMotionRaf = null;
 let pendingAuthVisualPoint = null;
 let authVisualMotionBound = false;
 let authResendTicker = null;
+let riskDisclaimerResolver = null;
+let riskDisclaimerScrolledToEnd = false;
+
+function hasAcceptedRiskDisclaimer() {
+  try {
+    return window.localStorage.getItem(RISK_DISCLAIMER_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function setRiskDisclaimerAccepted(value) {
+  try {
+    if (value) {
+      window.localStorage.setItem(RISK_DISCLAIMER_STORAGE_KEY, "1");
+      return;
+    }
+    window.localStorage.removeItem(RISK_DISCLAIMER_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+function syncRiskDisclaimerAcceptState() {
+  if (!elements.riskDisclaimerAcceptButton) {
+    return;
+  }
+  const checked = Boolean(elements.riskDisclaimerCheckbox?.checked);
+  elements.riskDisclaimerAcceptButton.disabled = !(checked && riskDisclaimerScrolledToEnd);
+}
+
+function hasScrolledToBottom(node) {
+  if (!node) {
+    return false;
+  }
+  return node.scrollTop + node.clientHeight >= node.scrollHeight - 2;
+}
+
+function syncRiskDisclaimerScrollState() {
+  riskDisclaimerScrolledToEnd = hasScrolledToBottom(elements.riskDisclaimerScrollBox);
+  syncRiskDisclaimerAcceptState();
+}
+
+function showRiskDisclaimerModal() {
+  if (!elements.riskDisclaimerOverlay) {
+    return;
+  }
+  if (elements.riskDisclaimerCheckbox) {
+    elements.riskDisclaimerCheckbox.checked = false;
+  }
+  if (elements.riskDisclaimerScrollBox) {
+    elements.riskDisclaimerScrollBox.scrollTop = 0;
+  }
+  riskDisclaimerScrolledToEnd = false;
+  window.requestAnimationFrame(() => {
+    syncRiskDisclaimerScrollState();
+  });
+  syncRiskDisclaimerAcceptState();
+  elements.riskDisclaimerOverlay.classList.remove("hidden");
+  elements.riskDisclaimerOverlay.hidden = false;
+}
+
+function hideRiskDisclaimerModal() {
+  if (!elements.riskDisclaimerOverlay) {
+    return;
+  }
+  elements.riskDisclaimerOverlay.classList.add("hidden");
+  elements.riskDisclaimerOverlay.hidden = true;
+}
+
+async function ensureRiskDisclaimerAccepted() {
+  if (hasAcceptedRiskDisclaimer()) {
+    return true;
+  }
+  if (!elements.riskDisclaimerOverlay) {
+    return true;
+  }
+  showRiskDisclaimerModal();
+  return new Promise((resolve) => {
+    riskDisclaimerResolver = resolve;
+  });
+}
 
 function flushAuthVisualMotion() {
   authVisualMotionRaf = null;
@@ -1301,6 +1389,10 @@ async function completePostAuthEntry() {
     window.history.replaceState({}, document.title, "/");
   }
   showAppShell();
+  const acceptedRisk = await ensureRiskDisclaimerAccepted();
+  if (!acceptedRisk) {
+    return;
+  }
   await bootDashboard();
   maybePromptUsernameSetup();
 }
@@ -1856,66 +1948,29 @@ async function loadSubscriptionStatus() {
 }
 
 async function startCheckout() {
-  if (!isAuthenticated()) {
-    setAuthError(t("checkout.loginRequired"));
+  const acceptedRisk = await ensureRiskDisclaimerAccepted();
+  if (!acceptedRisk) {
     return;
   }
-  try {
-    await fetchAuthConfig();
-  } catch (configError) {
-    console.warn("[checkout] auth config refresh failed", configError);
-  }
-  if (state.auth.config && state.auth.config.stripe_checkout_configured === false) {
-    const msg = t("checkout.stripeNotConfigured");
-    showError(msg);
-    if (elements.backendStatus) {
-      setBackendStatus(t("checkout.stripeNotConfiguredShort"), "error");
-    }
+  const url = String(STRIPE_PAYMENT_LINK_URL || "").trim();
+  if (!url) {
+    showError(t("checkout.unavailable"));
     return;
   }
+
   const accountEmail = String(state.auth.currentUser?.email || "").trim();
-  if (!accountEmail) {
-    setAuthError("Your account email is missing. Update profile email before upgrading.");
-    return;
+  if (accountEmail) {
+    const confirmText = t("checkout.confirm").replace("{email}", accountEmail);
+    if (!window.confirm(confirmText)) {
+      return;
+    }
   }
-  const confirmText = t("checkout.confirm").replace("{email}", accountEmail);
-  if (!window.confirm(confirmText)) {
-    return;
+
+  clearError();
+  if (elements.backendStatus) {
+    setBackendStatus(t("checkout.preparing"), "loading");
   }
-  const btn = elements.subscribeButton;
-  try {
-    clearError();
-    if (btn) {
-      btn.disabled = true;
-    }
-    if (elements.backendStatus) {
-      setBackendStatus(t("checkout.preparing"), "loading");
-    }
-    await getAccessToken(true);
-    const hasBearer = Boolean(state.auth.accessToken);
-    const hasAdmin = Boolean(state.auth.adminSession);
-    if (!hasBearer && !hasAdmin) {
-      throw new Error(t("checkout.sessionExpired"));
-    }
-    const session = await api("/api/billing/checkout", {
-      method: "POST",
-      body: JSON.stringify({}),
-      timeoutMs: 20000,
-      retryCount: 0,
-    });
-    if (!session?.url) {
-      throw new Error(t("checkout.unavailable"));
-    }
-    window.location.assign(session.url);
-  } catch (error) {
-    const msg = String(error?.message || t("checkout.failed")).trim() || t("checkout.failed");
-    showError(msg);
-    if (elements.backendStatus) {
-      setBackendStatus(msg.length > 120 ? `${msg.slice(0, 117)}…` : msg, "error");
-    }
-  } finally {
-    renderSubscriptionButton();
-  }
+  window.location.assign(url);
 }
 
 async function handleBillingRedirectState() {
@@ -6017,6 +6072,26 @@ async function bootDashboard(forceRefresh = false) {
 }
 
 function bindAuth() {
+  elements.riskDisclaimerScrollBox?.addEventListener("scroll", () => {
+    syncRiskDisclaimerScrollState();
+  });
+
+  elements.riskDisclaimerCheckbox?.addEventListener("change", () => {
+    syncRiskDisclaimerAcceptState();
+  });
+
+  elements.riskDisclaimerAcceptButton?.addEventListener("click", () => {
+    if (!elements.riskDisclaimerCheckbox?.checked) {
+      syncRiskDisclaimerAcceptState();
+      return;
+    }
+    setRiskDisclaimerAccepted(true);
+    hideRiskDisclaimerModal();
+    const resolver = riskDisclaimerResolver;
+    riskDisclaimerResolver = null;
+    resolver?.(true);
+  });
+
   elements.localDevAccessButton?.addEventListener("click", async () => {
     try {
       setAuthLoading(true, "Zugang wird geprüft...");
@@ -6543,6 +6618,10 @@ async function initializeApp() {
       persistSelectedStrategy("simple");
     }
     showAppShell();
+    const acceptedRisk = await ensureRiskDisclaimerAccepted();
+    if (!acceptedRisk) {
+      return;
+    }
     void bootDashboard();
     maybePromptUsernameSetup();
     return;
