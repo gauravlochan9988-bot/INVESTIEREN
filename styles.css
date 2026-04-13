@@ -5851,17 +5851,9 @@ body.booting *::after {
   text-decoration: underline;
 }
 
-/* Stronger visual hierarchy inside auth card */
-#authForm .auth-login-card > .auth-landing-actions.auth-social-row {
-  margin-top: 0.2rem;
-}
-
-#authForm .auth-login-card > .mt-4.flex.items-center.gap-3.text-xs.text-neutral-500 {
-  margin-top: 0.75rem;
-}
-
-#authForm .auth-login-card > .mt-4.grid.grid-cols-2.gap-2 {
-  margin-top: 0.75rem;
+/* Stronger visual hierarchy inside auth card (email/password-only layout) */
+#authForm .auth-login-card > .mt-3.grid.grid-cols-2.gap-2 {
+  margin-top: 0.55rem;
 }
 
 #authForm .auth-login-card > .mt-4.flex.items-center.justify-between.gap-3 {
