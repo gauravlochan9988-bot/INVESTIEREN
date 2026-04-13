@@ -55,6 +55,15 @@ const I18N = {
     "paywall.upgradeCta": "Upgrade €4.99 / Monat",
     "paywall.logout": "Abmelden",
     "paywall.note": "Apple Pay und Google Pay sind im Stripe-Checkout verfugbar.",
+    "checkout.confirm": "Upgrade mit diesem Konto starten?\n\n{email}",
+    "checkout.preparing": "Stripe Checkout wird gestartet…",
+    "checkout.failed": "Checkout fehlgeschlagen.",
+    "checkout.unavailable": "Checkout ist nicht verfugbar.",
+    "checkout.loginRequired": "Bitte zuerst anmelden.",
+    "checkout.sessionExpired": "Sitzung abgelaufen. Bitte erneut anmelden und erneut auf Upgrade tippen.",
+    "checkout.stripeNotConfigured":
+      "Zahlungen sind auf dem Server noch nicht eingerichtet. STRIPE_SECRET_KEY muss in Railway gesetzt und neu deployed werden.",
+    "checkout.stripeNotConfiguredShort": "Zahlungen: Server nicht konfiguriert",
     "premium.inline.cta": "Upgrade auf Pro",
     "premium.inline.genericTitle": "Basismodus aktiv",
     "premium.inline.genericBody": "Simple-Strategie bleibt nutzbar. Fur Live-Alerts und Opportunity-Rankings brauchst du Pro.",
@@ -321,6 +330,15 @@ const I18N = {
     "paywall.upgradeCta": "Upgrade €4.99 / month",
     "paywall.logout": "Logout",
     "paywall.note": "Apple Pay and Google Pay available in Stripe Checkout.",
+    "checkout.confirm": "Start upgrade for this account?\n\n{email}",
+    "checkout.preparing": "Opening Stripe Checkout…",
+    "checkout.failed": "Checkout failed.",
+    "checkout.unavailable": "Checkout is unavailable.",
+    "checkout.loginRequired": "Please sign in first.",
+    "checkout.sessionExpired": "Session expired. Sign in again and tap Upgrade once more.",
+    "checkout.stripeNotConfigured":
+      "Payments are not configured on the server. Set STRIPE_SECRET_KEY on Railway and redeploy the API.",
+    "checkout.stripeNotConfiguredShort": "Payments: server not configured",
     "premium.inline.cta": "Upgrade to Pro",
     "premium.inline.genericTitle": "Free mode is active",
     "premium.inline.genericBody": "Simple strategy stays fully usable. Live alerts and opportunity rankings require Pro.",
@@ -819,7 +837,6 @@ const elements = {
   opportunityMeta: document.getElementById("opportunityMeta"),
   opportunityList: document.getElementById("opportunityList"),
   strategyToggle: document.getElementById("strategyToggle"),
-  strategyToggleThumb: document.getElementById("strategyToggleThumb"),
   strategyButtons: Array.from(document.querySelectorAll(".strategy-button")),
   subscribeButton: document.getElementById("subscribeButton"),
   logoutButton: document.getElementById("logoutButton"),
@@ -1169,6 +1186,12 @@ function renderAuthMode() {
   if (elements.authVerifyResendButton) {
     elements.authVerifyResendButton.hidden = resetMode;
   }
+  if (elements.authModeLoginButton) {
+    elements.authModeLoginButton.hidden = false;
+  }
+  if (elements.authModeSignupButton) {
+    elements.authModeSignupButton.hidden = false;
+  }
   elements.authModeLoginButton?.classList.toggle("bg-neutral-900", !signup);
   elements.authModeLoginButton?.classList.toggle("text-white", !signup);
   elements.authModeSignupButton?.classList.toggle("bg-neutral-900", signup);
@@ -1480,11 +1503,34 @@ async function getAccessToken(forceRefresh = false) {
     return state.auth.accessToken;
   }
 
+  if (state.auth.client.provider === "supabase" && state.auth.client.sdk) {
+    try {
+      const { data, error } = await state.auth.client.sdk.auth.getSession();
+      if (error) {
+        console.error("[frontend] supabase getSession failed", error);
+        state.auth.accessToken = "";
+        state.auth.tokenFetchedAt = 0;
+        return "";
+      }
+      const session = data?.session || null;
+      const tok = session?.access_token || "";
+      state.auth.accessToken = tok;
+      state.auth.tokenFetchedAt = tok ? Date.now() : 0;
+      setSupabaseClientSession(state.auth.client.sdk, session);
+      return tok;
+    } catch (error) {
+      console.error("[frontend] supabase token read failed", error);
+      state.auth.accessToken = "";
+      state.auth.tokenFetchedAt = 0;
+      return "";
+    }
+  }
+
   try {
     const token = await state.auth.client.session?.getToken();
-    state.auth.accessToken = token;
+    state.auth.accessToken = token || "";
     state.auth.tokenFetchedAt = Date.now();
-    return token;
+    return token || "";
   } catch (error) {
     console.error("[frontend] silent token refresh failed", error);
     state.auth.accessToken = "";
@@ -1794,7 +1840,20 @@ async function loadSubscriptionStatus() {
 
 async function startCheckout() {
   if (!isAuthenticated()) {
-    setAuthError("Please login first.");
+    setAuthError(t("checkout.loginRequired"));
+    return;
+  }
+  try {
+    await fetchAuthConfig();
+  } catch (configError) {
+    console.warn("[checkout] auth config refresh failed", configError);
+  }
+  if (state.auth.config && state.auth.config.stripe_checkout_configured === false) {
+    const msg = t("checkout.stripeNotConfigured");
+    showError(msg);
+    if (elements.backendStatus) {
+      setBackendStatus(t("checkout.stripeNotConfiguredShort"), "error");
+    }
     return;
   }
   const accountEmail = String(state.auth.currentUser?.email || "").trim();
@@ -1802,11 +1861,25 @@ async function startCheckout() {
     setAuthError("Your account email is missing. Update profile email before upgrading.");
     return;
   }
-  const confirmed = window.confirm(`You are upgrading this account: ${accountEmail}`);
-  if (!confirmed) {
+  const confirmText = t("checkout.confirm").replace("{email}", accountEmail);
+  if (!window.confirm(confirmText)) {
     return;
   }
+  const btn = elements.subscribeButton;
   try {
+    clearError();
+    if (btn) {
+      btn.disabled = true;
+    }
+    if (elements.backendStatus) {
+      setBackendStatus(t("checkout.preparing"), "loading");
+    }
+    await getAccessToken(true);
+    const hasBearer = Boolean(state.auth.accessToken);
+    const hasAdmin = Boolean(state.auth.adminSession);
+    if (!hasBearer && !hasAdmin) {
+      throw new Error(t("checkout.sessionExpired"));
+    }
     const session = await api("/api/billing/checkout", {
       method: "POST",
       body: JSON.stringify({}),
@@ -1814,11 +1887,17 @@ async function startCheckout() {
       retryCount: 0,
     });
     if (!session?.url) {
-      throw new Error("Checkout is unavailable.");
+      throw new Error(t("checkout.unavailable"));
     }
-    window.location.href = session.url;
+    window.location.assign(session.url);
   } catch (error) {
-    showError(error.message || "Checkout failed.");
+    const msg = String(error?.message || t("checkout.failed")).trim() || t("checkout.failed");
+    showError(msg);
+    if (elements.backendStatus) {
+      setBackendStatus(msg.length > 120 ? `${msg.slice(0, 117)}…` : msg, "error");
+    }
+  } finally {
+    renderSubscriptionButton();
   }
 }
 
@@ -1849,28 +1928,39 @@ async function handleBillingRedirectState() {
   }
 
   try {
-    if (checkoutState === "success" && sessionId && isAuthenticated()) {
-      await api(`/api/billing/checkout-session/${encodeURIComponent(sessionId)}`, {
-        timeoutMs: 15000,
-        retryCount: 0,
-      });
-      const activated = await activateProWithPolling();
-      const accountEmail = String(state.auth.currentUser?.email || "").trim();
-      if (activated) {
-        setBackendStatus("Subscription active", "ok");
+    if (checkoutState === "success") {
+      if (!sessionId) {
+        setBackendStatus("Checkout: missing session", "warning");
+        setAuthInfo("Return URL had no session id. If you were charged, sign in and refresh, or contact support.");
+      } else if (!isAuthenticated()) {
+        setBackendStatus("Payment received · sign in to finish", "warning");
         setAuthInfo(
-          accountEmail
-            ? `Pro is now active on this account: ${accountEmail}`
-            : "Pro is now active on your signed-in account.",
+          "Sign in with the same account you used to start checkout. Pro unlocks automatically once your session matches.",
         );
       } else {
-        setBackendStatus("Subscription pending sync", "warning");
-        throw new Error(
-          "Payment succeeded, but Pro activation is still syncing. Please refresh in a moment. If it persists, contact support with your checkout session ID.",
-        );
+        await api(`/api/billing/checkout-session/${encodeURIComponent(sessionId)}`, {
+          timeoutMs: 15000,
+          retryCount: 0,
+        });
+        const activated = await activateProWithPolling();
+        const accountEmail = String(state.auth.currentUser?.email || "").trim();
+        if (activated) {
+          setBackendStatus("Subscription active", "ok");
+          setAuthInfo(
+            accountEmail
+              ? `Pro is now active on this account: ${accountEmail}`
+              : "Pro is now active on your signed-in account.",
+          );
+        } else {
+          setBackendStatus("Subscription pending sync", "warning");
+          throw new Error(
+            "Payment succeeded, but Pro activation is still syncing. Please refresh in a moment. If it persists, contact support with your checkout session ID.",
+          );
+        }
       }
     } else if (checkoutState === "cancel") {
       setBackendStatus("Checkout canceled", "warning");
+      setAuthInfo("");
     }
   } catch (error) {
     console.error("[frontend] subscription sync after checkout failed", error);
@@ -2592,13 +2682,30 @@ function setBackendStatus(message, tone = "loading") {
 }
 
 function showError(message) {
-  elements.errorBanner.textContent = message;
+  const text = String(message || "").trim();
+  if (!elements.errorBanner) {
+    if (text) {
+      window.alert(text);
+    }
+    return;
+  }
+  elements.errorBanner.textContent = text;
+  elements.errorBanner.classList.remove("hidden");
   elements.errorBanner.hidden = false;
+  try {
+    elements.errorBanner.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch (_) {
+    // ignore scroll errors in older browsers
+  }
 }
 
 function clearError() {
-  elements.errorBanner.hidden = true;
+  if (!elements.errorBanner) {
+    return;
+  }
   elements.errorBanner.textContent = "";
+  elements.errorBanner.classList.add("hidden");
+  elements.errorBanner.hidden = true;
 }
 
 function hideSearchSuggestions() {
@@ -4081,6 +4188,35 @@ function writeCachedJson(key, value) {
   }
 }
 
+function resetAccountClientState() {
+  const skip = new Set([STORAGE_KEYS.authenticated, STORAGE_KEYS.adminSession]);
+  for (const key of Object.values(STORAGE_KEYS)) {
+    if (skip.has(key)) {
+      continue;
+    }
+    try {
+      window.sessionStorage.removeItem(key);
+    } catch {
+      // ignore
+    }
+  }
+  state.selectedSymbol = "AAPL";
+  state.selectedStrategy = "hedgefund";
+  state.compareSymbol = "";
+  state.favoriteSymbols = new Set();
+  state.watchlist = [];
+  state.latestAnalysis = null;
+  state.latestNews = [];
+  state.latestOverview = null;
+  state.learningStats = null;
+  state.opportunities = [];
+  state.opportunityPanelHydrated = false;
+  state.strategySnapshots = {};
+  state.searchResults = [];
+  state.searchResultsQuery = "";
+  state.auth.subscription = null;
+}
+
 function readFavoriteSymbols() {
   const raw = readCachedJson(STORAGE_KEYS.favoriteSymbols);
   if (!Array.isArray(raw)) {
@@ -4414,13 +4550,6 @@ async function loadLearningStats(forceRefresh = false) {
 }
 
 function renderStrategyButtons() {
-  const activeIndex = Math.max(
-    0,
-    elements.strategyButtons.findIndex((button) => button.dataset.strategy === state.selectedStrategy),
-  );
-  if (elements.strategyToggle) {
-    elements.strategyToggle.style.setProperty("--strategy-index", String(activeIndex));
-  }
   elements.strategyButtons.forEach((button) => {
     const active = button.dataset.strategy === state.selectedStrategy;
     const strat = button.dataset.strategy;
@@ -4464,6 +4593,7 @@ function showAppShell() {
 }
 
 function showLoginOverlay() {
+  document.documentElement.classList.remove("auth-session-hint");
   const loginInitError = String(state.auth.lastInitError || "").trim();
   closeSettingsOverlay();
   hidePaywall();
@@ -4483,7 +4613,14 @@ function showLoginOverlay() {
   resetAuthOverlayPosition();
   state.auth.showManagedAuth = false;
   state.auth.showAdminAccess = false;
+  state.auth.formMode = "login";
+  state.auth.verifyStep = false;
+  state.auth.verifyEmail = "";
+  state.auth.verifyMode = "signup";
+  state.auth.resetSignIn = null;
+  state.auth.resendCooldownUntil = 0;
   renderAuthMode();
+  syncResendCooldownButton();
   if (state.auth.enabled) {
     setAuthLoading(false);
   }
@@ -6099,6 +6236,7 @@ function bindApp() {
       console.error("[frontend] signout failed", error);
     }
     setAuthenticated(false);
+    resetAccountClientState();
     showLoginOverlay();
   });
 
@@ -6153,6 +6291,7 @@ function bindApp() {
       console.error("[frontend] signout failed", error);
     }
     setAuthenticated(false);
+    resetAccountClientState();
     showLoginOverlay();
   });
 
@@ -6381,7 +6520,7 @@ function scheduleAppBootstrap() {
     void initializeApp();
   };
 
-  if (isLocalDevHost()) {
+  if (isLocalDevHost() || isAuthenticated()) {
     window.requestAnimationFrame(run);
     return;
   }

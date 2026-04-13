@@ -2,8 +2,9 @@ import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List
+from urllib.parse import urlparse
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -35,6 +36,29 @@ def env_first(*names: str) -> str:
         if value:
             return value
     return ""
+
+
+def public_site_origin_variants(origin: str) -> List[str]:
+    """Same scheme/host with both apex and www (e.g. gauravtrades.de ⟷ www.gauravtrades.de), deduplicated."""
+    raw = (origin or "").strip().rstrip("/")
+    if not raw.startswith(("http://", "https://")):
+        return [raw] if raw else []
+    try:
+        parsed = urlparse(raw)
+        scheme = (parsed.scheme or "").lower()
+        host = (parsed.hostname or "").lower()
+        if not host or scheme not in ("http", "https"):
+            return [raw]
+        variants = [raw]
+        if host.startswith("www."):
+            apex = host[4:]
+            if apex:
+                variants.append(f"{scheme}://{apex}")
+        else:
+            variants.append(f"{scheme}://www.{host}")
+        return list(dict.fromkeys(variants))
+    except Exception:
+        return [raw]
 
 
 class Settings(BaseSettings):
@@ -113,6 +137,18 @@ class Settings(BaseSettings):
     favorite_signal_min_confidence_partial: float = 58.0
     owner_auth_subjects: str = ""
 
+    @model_validator(mode="after")
+    def _fallback_frontend_origin_in_production(self) -> "Settings":
+        """Avoid empty FRONTEND_ORIGIN when deployed (breaks CORS + Stripe return URLs)."""
+        if str(self.frontend_origin or "").strip():
+            return self
+        prod_like = str(self.app_env or "").lower() == "production" or str(
+            os.getenv("RAILWAY_ENVIRONMENT", "")
+        ).lower() in {"production", "prod"}
+        if prod_like:
+            return self.model_copy(update={"frontend_origin": "https://gauravtrades.de"})
+        return self
+
     def get_cors_allowed_origins(self) -> List[str]:
         origins: list[str] = [
             "http://127.0.0.1:8000",
@@ -120,8 +156,9 @@ class Settings(BaseSettings):
             "http://127.0.0.1:8003",
             "http://localhost:8003",
         ]
-        if self.frontend_origin:
-            origins.append(self.frontend_origin.strip())
+        fe = str(self.frontend_origin or "").strip()
+        if fe:
+            origins.extend(public_site_origin_variants(fe))
         if self.cors_allow_origins:
             origins.extend(
                 [part.strip() for part in self.cors_allow_origins.split(",") if part.strip()]
@@ -134,8 +171,9 @@ class Settings(BaseSettings):
 
     def get_clerk_authorized_parties(self) -> List[str]:
         parties: list[str] = []
-        if self.frontend_origin:
-            parties.append(self.frontend_origin.strip())
+        fe = str(self.frontend_origin or "").strip()
+        if fe:
+            parties.extend(public_site_origin_variants(fe))
         if self.cors_allow_origins:
             parties.extend(part.strip() for part in self.cors_allow_origins.split(",") if part.strip())
         if self.clerk_authorized_parties:

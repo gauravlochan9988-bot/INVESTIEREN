@@ -15,6 +15,19 @@ from app.repositories.app_subscription import AppSubscriptionRepository
 logger = logging.getLogger(__name__)
 
 
+def _stripe_resource_id(value: Any) -> Optional[str]:
+    """Normalize Stripe API return values (id string, expanded object, or dict) to an id string."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        sid = value.get("id")
+        return str(sid).strip() if sid else None
+    sid = getattr(value, "id", None)
+    return str(sid).strip() if sid else None
+
+
 class BillingService:
     def __init__(
         self,
@@ -112,7 +125,7 @@ class BillingService:
             db,
             app_user_id=app_user.id,
             auth_subject=app_user.auth_subject,
-            stripe_customer_id=session.get("customer"),
+            stripe_customer_id=_stripe_resource_id(session.get("customer")),
             stripe_checkout_session_id=session["id"],
             status="checkout_pending",
         )
@@ -146,15 +159,25 @@ class BillingService:
         session = stripe.checkout.Session.retrieve(session_id, expand=["subscription"])
         self._require_checkout_ownership(session, app_user=app_user)
         subscription = session.get("subscription")
-        stripe_customer_id = session.get("customer")
+        if isinstance(subscription, str) and subscription:
+            subscription = stripe.Subscription.retrieve(subscription)
 
-        if hasattr(subscription, "get"):
-            status_value = subscription.get("status", "active")
-            stripe_subscription_id = subscription.get("id")
-            current_period_end = self._period_end(subscription.get("current_period_end"))
-            cancel_at_period_end = bool(subscription.get("cancel_at_period_end", False))
+        stripe_customer_id = _stripe_resource_id(session.get("customer"))
+
+        if subscription is not None:
+            if hasattr(subscription, "get"):
+                status_value = subscription.get("status", "active")
+                stripe_subscription_id = subscription.get("id")
+                current_period_end = self._period_end(subscription.get("current_period_end"))
+                cancel_at_period_end = bool(subscription.get("cancel_at_period_end", False))
+            else:
+                status_value = getattr(subscription, "status", None) or "active"
+                stripe_subscription_id = getattr(subscription, "id", None)
+                current_period_end = self._period_end(getattr(subscription, "current_period_end", None))
+                cancel_at_period_end = bool(getattr(subscription, "cancel_at_period_end", False))
+            stripe_subscription_id = _stripe_resource_id(stripe_subscription_id)
         else:
-            status_value = "active"
+            status_value = "checkout_pending"
             stripe_subscription_id = None
             current_period_end = None
             cancel_at_period_end = False
@@ -248,8 +271,8 @@ class BillingService:
             metadata = data.get("metadata") or {}
             app_user_id = int(metadata.get("user_id") or metadata.get("app_user_id") or 0)
             auth_subject = str(metadata.get("auth_subject") or "").strip()
-            subscription_id = data.get("subscription")
-            customer_id = data.get("customer")
+            subscription_id = _stripe_resource_id(data.get("subscription"))
+            customer_id = _stripe_resource_id(data.get("customer"))
             if not app_user_id or not auth_subject:
                 logger.error(
                     "Stripe checkout.session.completed missing required identity metadata.",
@@ -274,7 +297,7 @@ class BillingService:
                 status=status_value,
                 cancel_at_period_end=bool(data.get("cancel_at_period_end", False)),
                 current_period_end=self._period_end(data.get("current_period_end")),
-                stripe_customer_id=data.get("customer"),
+                stripe_customer_id=_stripe_resource_id(data.get("customer")),
             )
             if updated is None:
                 metadata = data.get("metadata") or {}
@@ -293,7 +316,7 @@ class BillingService:
                     db,
                     app_user_id=app_user_id,
                     auth_subject=auth_subject,
-                    stripe_customer_id=data.get("customer"),
+                    stripe_customer_id=_stripe_resource_id(data.get("customer")),
                     stripe_subscription_id=stripe_subscription_id,
                     status=status_value,
                     cancel_at_period_end=bool(data.get("cancel_at_period_end", False)),

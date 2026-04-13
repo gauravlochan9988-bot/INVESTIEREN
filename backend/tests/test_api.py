@@ -780,15 +780,12 @@ def test_billing_checkout_creates_checkout_session_for_authenticated_user(client
         client.app.dependency_overrides.pop(get_billing_service, None)
 
 
-def test_public_billing_checkout_creates_session_without_auth(client):
+def test_public_billing_checkout_requires_sign_in(client):
     client.app.dependency_overrides[get_billing_service] = lambda: StubBillingService()
     try:
         response = client.post("/api/billing/checkout-public", json={"email": "guest@example.com"})
-        assert response.status_code == 200
-        assert response.json() == {
-            "url": "https://checkout.stripe.test/session-public",
-            "session_id": "cs_public_123",
-        }
+        assert response.status_code == 401
+        assert "Sign in first" in response.json().get("detail", "")
     finally:
         client.app.dependency_overrides.pop(get_billing_service, None)
 

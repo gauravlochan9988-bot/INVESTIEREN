@@ -227,6 +227,8 @@ def create_app() -> FastAPI:
             "status": "ok",
             "environment": settings.app_env,
             "database": get_database_status(),
+            "stripe_billing_configured": bool(settings.stripe_secret_key.strip()),
+            "stripe_webhook_configured": bool(settings.stripe_webhook_secret.strip()),
         }
 
     @app.get("/health")

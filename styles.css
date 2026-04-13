@@ -963,35 +963,26 @@ body.booting *::after {
 
 #strategyToggle {
   --toggle-gap: 0.25rem;
-  --strategy-index: 0;
   position: relative;
-  display: grid !important;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex !important;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
   gap: var(--toggle-gap);
   padding: var(--toggle-gap) !important;
+  box-sizing: border-box;
   isolation: isolate;
   overflow: hidden;
 }
 
+/* Entfernt aus dem DOM; falls noch vorhanden (Cache), nie anzeigen */
 #strategyToggleThumb {
-  position: absolute;
-  top: var(--toggle-gap);
-  bottom: var(--toggle-gap);
-  left: var(--toggle-gap);
-  width: calc((100% - (var(--toggle-gap) * 4)) / 3);
-  border-radius: 0.9rem;
-  border: 1px solid rgba(0, 92, 57, 0.22);
-  background: linear-gradient(180deg, rgba(0, 92, 57, 0.14), rgba(0, 92, 57, 0.06));
-  box-shadow:
-    0 8px 20px rgba(0, 92, 57, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  transform: translateX(calc(var(--strategy-index) * (100% + var(--toggle-gap))));
-  transition:
-    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 200ms ease,
-    background-color 200ms ease;
-  pointer-events: none;
-  z-index: 0;
+  display: none !important;
+}
+
+#strategyToggle .strategy-button {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .signal-buy-card {
@@ -4721,16 +4712,14 @@ body.booting *::after {
 
   .dashboard-topbar:not(.dashboard-topbar-premium) #strategyToggle {
     width: 100%;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    display: flex !important;
+    flex-direction: row;
+    flex-wrap: nowrap;
     gap: 0.28rem !important;
     padding: 0.28rem !important;
     border-radius: 16px !important;
     touch-action: pan-y;
     cursor: default;
-  }
-
-  .dashboard-topbar:not(.dashboard-topbar-premium) #strategyToggleThumb {
-    border-radius: 0.8rem;
   }
 
   .dashboard-topbar:not(.dashboard-topbar-premium) .strategy-button {
@@ -5547,14 +5536,6 @@ header.dashboard-topbar.dashboard-topbar-premium .dashboard-lang-switch {
   background: rgba(255, 255, 255, 0.75) !important;
 }
 
-#strategyToggleThumb {
-  border-color: rgba(0, 92, 57, 0.22);
-  background: linear-gradient(180deg, rgba(0, 92, 57, 0.14), rgba(0, 92, 57, 0.06));
-  box-shadow:
-    0 10px 22px rgba(0, 92, 57, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
-}
-
 .strategy-button {
   color: var(--color-text);
 }
@@ -6114,8 +6095,30 @@ header.dashboard-topbar.dashboard-topbar-premium .dashboard-lang-switch {
 }
 
 /* Stronger visual hierarchy inside auth card (email/password-only layout) */
-#authForm .auth-login-card > .mt-3.grid.grid-cols-2.gap-2 {
+#authForm .auth-login-card > .auth-mode-toggle-row.grid.grid-cols-2.gap-2 {
   margin-top: 0.55rem;
+}
+
+/* Early paint: hide login marketing shell while restoring session (auth-boot.js + app.js) */
+html.auth-session-hint #authOverlay {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+html.auth-session-hint #appShell.hidden {
+  display: block !important;
+}
+
+@media (max-width: 768px) {
+  .auth-login-card .auth-mode-toggle-row {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    margin-top: 0.55rem;
+    padding: 0.35rem 0 0.45rem;
+    background: var(--color-surface-2);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+  }
 }
 
 #authForm .auth-login-card > .mt-4.flex.items-center.justify-between.gap-3 {
@@ -6921,11 +6924,6 @@ header.dashboard-topbar.dashboard-topbar-premium #searchForm {
   }
 }
 
-/* Premium: kein Schiebe-Thumb (wirkt oft wie falscher weißer Layer) — nur Segment-Buttons */
-header.dashboard-topbar-premium #strategyToggleThumb {
-  display: none !important;
-}
-
 header.dashboard-topbar-premium #strategyToggle {
   display: flex !important;
   flex-direction: row !important;
@@ -6989,9 +6987,4 @@ header.dashboard-topbar-premium #strategyToggle .strategy-button-idle {
   header.dashboard-topbar-premium #strategyToggle .strategy-button {
     min-height: 44px;
   }
-}
-
-#strategyToggle .strategy-button {
-  position: relative;
-  z-index: 1;
 }

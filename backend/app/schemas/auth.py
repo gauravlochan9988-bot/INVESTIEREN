@@ -15,6 +15,8 @@ class AuthConfigResponse(BaseModel):
     plan_amount_cents: Optional[int] = None
     plan_currency: Optional[str] = None
     plan_interval: Optional[str] = None
+    # True when STRIPE_SECRET_KEY is set (hosted Checkout can be created). No secrets exposed.
+    stripe_checkout_configured: bool = False
 
 
 class AppUserResponse(BaseModel):

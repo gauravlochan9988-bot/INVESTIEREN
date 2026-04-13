@@ -85,6 +85,7 @@ def verify_access_code(code: str, expected_code: str) -> bool:
 @router.get("/config", response_model=AuthConfigResponse)
 def get_auth_config() -> AuthConfigResponse:
     settings = get_settings()
+    stripe_ok = bool(settings.stripe_secret_key.strip())
     if settings.supabase_enabled():
         return AuthConfigResponse(
             enabled=True,
@@ -96,6 +97,7 @@ def get_auth_config() -> AuthConfigResponse:
             plan_amount_cents=499,
             plan_currency="eur",
             plan_interval="month",
+            stripe_checkout_configured=stripe_ok,
         )
     return AuthConfigResponse(
         enabled=False,
@@ -105,6 +107,7 @@ def get_auth_config() -> AuthConfigResponse:
         plan_amount_cents=499,
         plan_currency="eur",
         plan_interval="month",
+        stripe_checkout_configured=stripe_ok,
     )
 
 
