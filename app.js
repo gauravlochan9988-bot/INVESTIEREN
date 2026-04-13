@@ -1295,16 +1295,26 @@ function renderAuthMode() {
     elements.authModeLoginButton.hidden = false;
     elements.authModeLoginButton.classList.remove("hidden");
     elements.authModeLoginButton.style.display = "";
+    elements.authModeLoginButton.textContent = "Login";
   }
   if (elements.authModeSignupButton) {
     elements.authModeSignupButton.hidden = false;
     elements.authModeSignupButton.classList.remove("hidden");
     elements.authModeSignupButton.style.display = "";
+    elements.authModeSignupButton.textContent = "Sign Up";
   }
-  elements.authModeLoginButton?.classList.toggle("bg-neutral-900", !signup);
-  elements.authModeLoginButton?.classList.toggle("text-white", !signup);
-  elements.authModeSignupButton?.classList.toggle("bg-neutral-900", signup);
-  elements.authModeSignupButton?.classList.toggle("text-white", signup);
+  if (elements.authModeLoginButton) {
+    elements.authModeLoginButton.className = [
+      "rounded-xl border border-neutral-200/90 px-3 py-2 text-sm font-semibold transition",
+      signup ? "bg-white text-neutral-900" : "bg-neutral-900 text-white",
+    ].join(" ");
+  }
+  if (elements.authModeSignupButton) {
+    elements.authModeSignupButton.className = [
+      "rounded-xl border border-neutral-200/90 px-3 py-2 text-sm font-semibold transition",
+      signup ? "bg-neutral-900 text-white" : "bg-white text-neutral-900",
+    ].join(" ");
+  }
   syncLocalDevAccessVisibility();
 }
 
