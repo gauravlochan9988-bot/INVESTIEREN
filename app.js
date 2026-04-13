@@ -670,6 +670,7 @@ const state = {
     resendCooldownUntil: 0,
     resetSignIn: null,
     recoveryFlow: false,
+    lastOtpType: "",
     paywallMode: "default",
     usernamePromptShown: false,
     lastInitError: "",
@@ -1149,6 +1150,31 @@ function isSupabaseRecoveryFlow() {
   return hash.includes("type=recovery") || search.includes("type=recovery");
 }
 
+function readSupabaseOtpParams() {
+  const params = new URLSearchParams(window.location.search);
+  const tokenHash = String(params.get("token_hash") || "").trim();
+  const type = String(params.get("type") || "").trim().toLowerCase();
+  if (!tokenHash || !type) {
+    return null;
+  }
+  return { tokenHash, type };
+}
+
+function clearSupabaseOtpParamsFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const hadTokenHash = params.has("token_hash");
+  const hadType = params.has("type");
+  if (!hadTokenHash && !hadType) {
+    return;
+  }
+  params.delete("token_hash");
+  params.delete("type");
+  params.delete("next");
+  const nextQuery = params.toString();
+  const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}${window.location.hash || ""}`;
+  window.history.replaceState({}, document.title, nextUrl);
+}
+
 async function syncAuthenticatedUserWithRetry({
   forceRefresh = true,
   attempts = 3,
@@ -1277,6 +1303,19 @@ async function ensureSupabaseAuthClient(config) {
       flowType: "pkce",
     },
   });
+  state.auth.lastOtpType = "";
+  const otpParams = readSupabaseOtpParams();
+  if (otpParams) {
+    const { error: otpError } = await client.auth.verifyOtp({
+      token_hash: otpParams.tokenHash,
+      type: otpParams.type,
+    });
+    if (otpError) {
+      throw new Error(otpError.message || "Could not finalize email confirmation.");
+    }
+    state.auth.lastOtpType = otpParams.type;
+    clearSupabaseOtpParamsFromUrl();
+  }
   const recoveryFlow = isSupabaseRecoveryFlow();
   const {
     data: { session },
@@ -1295,7 +1334,7 @@ async function ensureSupabaseAuthClient(config) {
   });
   state.auth.sessionSubscription = authListener?.subscription || null;
   setSupabaseClientSession(client, session || null);
-  state.auth.recoveryFlow = recoveryFlow;
+  state.auth.recoveryFlow = recoveryFlow || state.auth.lastOtpType === "recovery";
   return state.auth.client;
 }
 
@@ -1756,6 +1795,11 @@ async function initializeManagedAuth() {
       state.auth.subscription = null;
       renderSubscriptionButton();
       setAuthError("");
+      if (state.auth.lastOtpType === "signup") {
+        setAuthInfo("Email confirmed. Please login with your email and password.");
+      } else {
+        setAuthInfo("");
+      }
     }
     return true;
   } catch (error) {
