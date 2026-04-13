@@ -669,6 +669,7 @@ const state = {
     verifyMode: "signup",
     resendCooldownUntil: 0,
     resetSignIn: null,
+    recoveryFlow: false,
     paywallMode: "default",
     usernamePromptShown: false,
     lastInitError: "",
@@ -691,9 +692,6 @@ const elements = {
   settingsDescription: document.getElementById("settingsDescription"),
   settingsError: document.getElementById("settingsError"),
   authForm: document.getElementById("authForm"),
-  authGoogleButton: document.getElementById("authGoogleButton"),
-  authAppleButton: document.getElementById("authAppleButton"),
-  authEmailButton: document.getElementById("authEmailButton"),
   authModeLoginButton: document.getElementById("authModeLoginButton"),
   authModeSignupButton: document.getElementById("authModeSignupButton"),
   authSubmitButton: document.getElementById("authSubmitButton"),
@@ -1050,13 +1048,22 @@ function renderAuthMode() {
     elements.authVerifyPanel.hidden = !verifyStep;
   }
   if (elements.authVerifyEmail) {
-    elements.authVerifyEmail.textContent = state.auth.verifyEmail || "your email";
+    elements.authVerifyEmail.textContent = resetMode
+      ? "your recovery session"
+      : state.auth.verifyEmail || "your email";
   }
   if (elements.authResetPasswordShell) {
     elements.authResetPasswordShell.hidden = !verifyStep || !resetMode;
   }
+  if (elements.authVerificationCode) {
+    elements.authVerificationCode.hidden = resetMode;
+    elements.authVerificationCode.disabled = resetMode;
+  }
   if (elements.authVerifySubmitButton) {
     elements.authVerifySubmitButton.textContent = resetMode ? "Reset password and continue" : "Verify and continue";
+  }
+  if (elements.authVerifyResendButton) {
+    elements.authVerifyResendButton.hidden = resetMode;
   }
   elements.authModeLoginButton?.classList.toggle("bg-neutral-900", !signup);
   elements.authModeLoginButton?.classList.toggle("text-white", !signup);
@@ -1112,39 +1119,6 @@ function extractAuthErrorMessage(error, fallback = "Authentication failed.") {
   return explicit || fallback;
 }
 
-function getOAuthProviderLabel(strategy) {
-  if (strategy === "oauth_google") {
-    return "Google";
-  }
-  if (strategy === "oauth_apple") {
-    return "Apple";
-  }
-  return "OAuth";
-}
-
-function formatOAuthFailure(error) {
-  const message = extractAuthErrorMessage(error, "Please try again.").trim();
-  const lower = message.toLowerCase();
-  if (lower.includes("failed to construct 'url'") || lower.includes("invalid url")) {
-    return "OAuth provider URL setup is invalid. Please retry, and if it persists, check redirect configuration.";
-  }
-  if (lower.includes("captcha")) {
-    return "CAPTCHA failed to load. Disable blockers or strict privacy extensions and retry.";
-  }
-  if (lower.includes("popup") && lower.includes("blocked")) {
-    return "Popup was blocked by your browser. Allow popups for this site and retry.";
-  }
-  if (
-    lower.includes("oauth") ||
-    lower.includes("provider") ||
-    lower.includes("redirect") ||
-    lower.includes("callback")
-  ) {
-    return `Provider callback failed: ${message}`;
-  }
-  return message;
-}
-
 async function completePostAuthEntry() {
   await syncAuthenticatedUserWithRetry({ forceRefresh: true, attempts: 4 });
   setAuthenticated(true);
@@ -1167,6 +1141,12 @@ function resolveOAuthRedirectBaseUrl() {
     return `${window.location.origin}/`;
   }
   return `${window.location.origin}${path}`;
+}
+
+function isSupabaseRecoveryFlow() {
+  const hash = String(window.location.hash || "").toLowerCase();
+  const search = String(window.location.search || "").toLowerCase();
+  return hash.includes("type=recovery") || search.includes("type=recovery");
 }
 
 async function syncAuthenticatedUserWithRetry({
@@ -1297,6 +1277,7 @@ async function ensureSupabaseAuthClient(config) {
       flowType: "pkce",
     },
   });
+  const recoveryFlow = isSupabaseRecoveryFlow();
   const {
     data: { session },
     error,
@@ -1314,12 +1295,8 @@ async function ensureSupabaseAuthClient(config) {
   });
   state.auth.sessionSubscription = authListener?.subscription || null;
   setSupabaseClientSession(client, session || null);
+  state.auth.recoveryFlow = recoveryFlow;
   return state.auth.client;
-}
-
-function renderManagedAuthView(mode = "login") {
-  state.auth.formMode = mode === "signup" ? "signup" : "login";
-  renderAuthMode();
 }
 
 async function getAccessToken(forceRefresh = false) {
@@ -1731,6 +1708,17 @@ async function initializeManagedAuth() {
     state.auth.enabled = true;
     state.auth.ready = true;
 
+    if (state.auth.recoveryFlow) {
+      state.auth.verifyStep = true;
+      state.auth.verifyMode = "reset";
+      state.auth.verifyEmail = "";
+      setAuthenticated(false);
+      setAuthInfo("Set a new password to finish account recovery.");
+      setAuthError("");
+      renderAuthMode();
+      return true;
+    }
+
     if (state.auth.client?.user && state.auth.client?.session) {
       try {
         setAuthenticated(true);
@@ -1781,13 +1769,6 @@ async function initializeManagedAuth() {
   }
 }
 
-async function loginWithManagedProvider(mode = "login") {
-  if (!state.auth.ready) {
-    await initializeManagedAuth();
-  }
-  renderManagedAuthView(mode);
-}
-
 async function ensureManagedAuthClient() {
   if (state.auth.enabled && state.auth.client) {
     return true;
@@ -1798,49 +1779,6 @@ async function ensureManagedAuthClient() {
     await initializeManagedAuth();
   }
   return Boolean(state.auth.enabled && state.auth.client);
-}
-
-async function continueWithOAuth(strategy) {
-  state.auth.lastInitError = "";
-  if (!state.auth.ready) {
-    setAuthLoading(true, t("auth.loadingLogin"));
-    await initializeManagedAuth();
-  }
-
-  if (!(await ensureManagedAuthClient())) {
-    const providerLabel = getOAuthProviderLabel(strategy);
-    const detail = state.auth.lastInitError || "Auth client could not be initialized.";
-    setAuthError(`${providerLabel} login is unavailable: ${detail}`);
-    return;
-  }
-
-  const providerLabel = getOAuthProviderLabel(strategy);
-  setAuthError("");
-  setAuthLoading(true);
-
-  try {
-    const redirectBaseUrl = resolveOAuthRedirectBaseUrl();
-    const provider = strategy === "oauth_google" ? "google" : strategy === "oauth_apple" ? "apple" : "";
-    if (!provider) {
-      throw new Error("OAuth provider is not supported.");
-    }
-    const { error } = await state.auth.client.sdk.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: redirectBaseUrl,
-        queryParams: provider === "google" ? { prompt: "select_account" } : undefined,
-      },
-    });
-    if (error) {
-      throw error;
-    }
-    return;
-  } catch (error) {
-    console.error("[frontend] oauth login failed", error);
-    setAuthError(`${providerLabel} login failed: ${formatOAuthFailure(error)}`);
-  } finally {
-    setAuthLoading(false);
-  }
 }
 
 async function authenticateWithEmailPassword({ mode, username, email, password }) {
@@ -1903,24 +1841,11 @@ async function startPasswordResetFlow(email) {
   if (!normalizedEmail) {
     throw new Error("Please enter your email first.");
   }
-  if (state.auth.provider === "supabase") {
-    const supabase = state.auth.client?.sdk;
-    const redirectTo = resolveOAuthRedirectBaseUrl();
-    const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
-    if (error) {
-      throw new Error(error.message || "Could not send reset email.");
-    }
-    state.auth.verifyStep = false;
-    state.auth.verifyMode = "signup";
-    state.auth.verifyEmail = normalizedEmail;
-    renderAuthMode();
-    return;
-  }
   const supabase = state.auth.client?.sdk;
   if (!supabase) {
     throw new Error("Login is unavailable.");
   }
-  const redirectTo = resolveOAuthRedirectBaseUrl();
+  const redirectTo = `${window.location.origin}${window.location.pathname}?type=recovery`;
   const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
   if (error) {
     throw new Error(error.message || "Could not send reset email.");
@@ -1933,8 +1858,27 @@ async function startPasswordResetFlow(email) {
 
 async function completePasswordReset(code, newPassword) {
   void code;
-  void newPassword;
-  throw new Error("Use the password reset link from your email to set a new password.");
+  const normalizedPassword = String(newPassword || "");
+  if (normalizedPassword.length < 8) {
+    throw new Error("New password must be at least 8 characters.");
+  }
+  const supabase = state.auth.client?.sdk;
+  if (!supabase) {
+    throw new Error("Password reset session is unavailable.");
+  }
+  const { error } = await supabase.auth.updateUser({ password: normalizedPassword });
+  if (error) {
+    throw new Error(error.message || "Password reset failed.");
+  }
+  state.auth.recoveryFlow = false;
+  state.auth.verifyStep = false;
+  state.auth.verifyMode = "signup";
+  state.auth.verifyEmail = "";
+  state.auth.resendCooldownUntil = 0;
+  if (window.location.hash) {
+    window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+  }
+  renderAuthMode();
 }
 
 function scheduleLowPriorityTask(task, delayMs = 0) {
@@ -5388,18 +5332,6 @@ async function bootDashboard(forceRefresh = false) {
 }
 
 function bindAuth() {
-  elements.authGoogleButton?.addEventListener("click", () => {
-    void continueWithOAuth("oauth_google");
-  });
-
-  elements.authAppleButton?.addEventListener("click", () => {
-    void continueWithOAuth("oauth_apple");
-  });
-
-  elements.authEmailButton?.addEventListener("click", () => {
-    void loginWithManagedProvider("login");
-  });
-
   elements.authModeLoginButton?.addEventListener("click", () => {
     state.auth.formMode = "login";
     state.auth.verifyStep = false;
@@ -5465,11 +5397,7 @@ function bindAuth() {
       setAuthError("");
       setAuthLoading(true, "Sending reset code...");
       await startPasswordResetFlow(elements.authEmail?.value || "");
-      setAuthInfo(
-        state.auth.provider === "supabase"
-          ? "Reset email sent. Open the link in your inbox."
-          : "Reset code sent. Enter code and new password.",
-      );
+      setAuthInfo("Reset email sent. Open the link in your inbox.");
     } catch (error) {
       setAuthError(error.message || "Could not start password reset.");
     } finally {
@@ -5524,21 +5452,7 @@ function bindAuth() {
     try {
       setAuthLoading(true, "Resending code...");
       setAuthError("");
-      if (state.auth.verifyMode === "reset") {
-        const baseSignIn = state.auth.resetSignIn || state.auth.client?.client?.signIn;
-        if (!baseSignIn?.prepareFirstFactor) {
-          throw new Error("Password reset session is unavailable.");
-        }
-        await baseSignIn.prepareFirstFactor({
-          strategy: "reset_password_email_code",
-        });
-      } else {
-        await state.auth.client?.client?.signUp?.prepareEmailAddressVerification?.({
-          strategy: "email_code",
-        });
-      }
-      startResendCooldown();
-      setAuthInfo("A new verification code was sent.");
+      throw new Error("Verification by code is disabled. Please use your email links.");
     } catch (error) {
       setAuthError(error.message || "Could not resend code.");
     } finally {
