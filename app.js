@@ -4238,8 +4238,12 @@ async function api(path, options = {}) {
   }
 
   if (!response.ok) {
-    const detail = payload?.error || payload?.detail || payload || "Request failed.";
-    console.error("[frontend] API failure", { path, status: response.status, detail });
+    const rawDetail = payload?.error || payload?.detail || payload || "Request failed.";
+    const detail =
+      typeof rawDetail === "object" && rawDetail !== null
+        ? String(rawDetail.message || rawDetail.detail || "Request failed.")
+        : String(rawDetail);
+    console.error("[frontend] API failure", { path, status: response.status, detail, rawDetail });
     if (response.status === 402 && state.auth.enabled && isAuthenticated()) {
       // Keep free users in the app. Strategy/paywall prompts are handled explicitly elsewhere.
       setAuthInfo(t("premium.inline.genericBody"));
@@ -4262,7 +4266,7 @@ async function api(path, options = {}) {
         timeoutMs: Math.round(timeoutMs * 1.2),
       });
     }
-    throw new Error(String(detail));
+    throw new Error(detail);
   }
 
   console.log("[frontend] API ok", { path, status: response.status });

@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, Query
 
-from app.api.deps import get_market_data_service, require_full_access_user_context
+from app.api.deps import get_market_data_service, require_authenticated_user_context
 from app.schemas.stocks import HistoryPoint, StockQuote
 from app.services.market_data import MarketDataService
 
 router = APIRouter(
     prefix="/stocks",
     tags=["stocks"],
-    dependencies=[Depends(require_full_access_user_context)],
+    dependencies=[Depends(require_authenticated_user_context)],
 )
 
 

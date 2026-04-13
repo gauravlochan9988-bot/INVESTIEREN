@@ -9,6 +9,7 @@ from app.api.deps import (
     require_authenticated_user_context,
 )
 from app.core.database import get_db
+from app.core.access_policy import FREE_MAX_FAVORITES, has_pro_access, raise_quota_reached
 from app.repositories.app_user_preference import AppUserPreferenceRepository
 from app.schemas.settings import UserSettingsResponse, UserSettingsUpdateRequest
 
@@ -77,6 +78,13 @@ def update_my_settings(
         selected_strategy = "simple"
 
     favorite_symbols = _normalize_symbol_list(payload.favorite_symbols)
+    if not has_pro_access(user_context) and len(favorite_symbols) > FREE_MAX_FAVORITES:
+        raise_quota_reached(
+            "favorites",
+            limit=FREE_MAX_FAVORITES,
+            window="total",
+            message=f"Free limit reached: up to {FREE_MAX_FAVORITES} favorites.",
+        )
     updates = {
         "profile_language": str(payload.profile_language or "English").strip() or "English",
         "default_strategy": selected_strategy,

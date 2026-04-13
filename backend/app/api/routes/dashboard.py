@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 
-from app.api.deps import get_finnhub_dashboard_service, require_full_access_user_context
+from app.api.deps import get_finnhub_dashboard_service, require_authenticated_user_context
 from app.schemas.dashboard import (
     DashboardNewsItem,
     DashboardSymbolOverview,
@@ -12,7 +12,7 @@ from app.services.finnhub_dashboard import FinnhubDashboardService
 router = APIRouter(
     prefix="/dashboard",
     tags=["dashboard"],
-    dependencies=[Depends(require_full_access_user_context)],
+    dependencies=[Depends(require_authenticated_user_context)],
 )
 
 

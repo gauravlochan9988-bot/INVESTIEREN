@@ -190,8 +190,12 @@ async function api(path, options = {}) {
   const contentType = response.headers.get("content-type") || "";
   const payload = contentType.includes("application/json") ? await response.json() : await response.text();
   if (!response.ok) {
-    const detail = payload?.detail || payload?.error || payload || "Request failed.";
-    throw new Error(String(detail));
+    const rawDetail = payload?.detail || payload?.error || payload || "Request failed.";
+    const detail =
+      typeof rawDetail === "object" && rawDetail !== null
+        ? String(rawDetail.message || rawDetail.detail || "Request failed.")
+        : String(rawDetail);
+    throw new Error(detail);
   }
   return payload;
 }

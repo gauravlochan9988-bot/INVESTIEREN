@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, Query
 
-from app.api.deps import get_stock_search_service, require_full_access_user_context
+from app.api.deps import get_stock_search_service, require_authenticated_user_context
 from app.schemas.search import SearchResult
 from app.services.search import StockSearchService
 
 
 router = APIRouter(
     tags=["search"],
-    dependencies=[Depends(require_full_access_user_context)],
+    dependencies=[Depends(require_authenticated_user_context)],
 )
 
 

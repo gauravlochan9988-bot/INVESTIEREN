@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
@@ -15,6 +17,12 @@ from app.api.deps import (
     RequestUserContext,
 )
 from app.core.database import get_db
+from app.core.access_policy import (
+    FREE_DAILY_ANALYSES,
+    FREE_MAX_FAVORITES,
+    has_pro_access,
+    raise_quota_reached,
+)
 from app.schemas.analysis import (
     AnalysisAlert,
     AnalysisResponse,
@@ -30,8 +38,30 @@ from app.services.analysis_calibration import AnalysisCalibrationService
 from app.services.analysis import AnalysisService
 from app.services.strategy_learning import StrategyLearningService
 from app.services.trade_history import TradeHistoryService
+from app.services.cache import TTLCache
 
 router = APIRouter(tags=["analysis"])
+_analysis_quota_cache = TTLCache[int](ttl_seconds=60 * 60 * 48)
+
+
+def _analysis_quota_key(user_key: str) -> str:
+    day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return f"{day}:{user_key}"
+
+
+def _enforce_free_daily_analysis_quota(user_context: RequestUserContext) -> None:
+    if has_pro_access(user_context):
+        return
+    key = _analysis_quota_key(user_context.user_key)
+    used = _analysis_quota_cache.get(key) or 0
+    if used >= FREE_DAILY_ANALYSES:
+        raise_quota_reached(
+            "analysis_daily",
+            limit=FREE_DAILY_ANALYSES,
+            window="day",
+            message=f"Free limit reached: {FREE_DAILY_ANALYSES} analyses per day.",
+        )
+    _analysis_quota_cache.set(key, used + 1)
 
 
 @router.get("/analysis/stats", response_model=AnalysisDistributionStats)
@@ -65,6 +95,7 @@ def get_analysis(
     user_context: RequestUserContext = Depends(require_authenticated_user_context),
 ) -> AnalysisResponse:
     ensure_strategy_access(user_context, strategy)
+    _enforce_free_daily_analysis_quota(user_context)
     result = analysis_service.analyze_symbol(
         symbol,
         force_refresh=refresh,
@@ -110,7 +141,7 @@ def get_alerts(
 def get_favorites(
     db: Session = Depends(get_db),
     alert_service: AlertService = Depends(get_alert_service),
-    user_context: RequestUserContext = Depends(require_pro_user_context),
+    user_context: RequestUserContext = Depends(require_authenticated_user_context),
 ) -> list[FavoriteSymbolResponse]:
     return [
         FavoriteSymbolResponse(symbol=symbol, user_key=user_context.user_key)
@@ -127,8 +158,25 @@ def add_favorite(
     payload: FavoriteSymbolCreate,
     db: Session = Depends(get_db),
     alert_service: AlertService = Depends(get_alert_service),
-    user_context: RequestUserContext = Depends(require_pro_user_context),
+    user_context: RequestUserContext = Depends(require_authenticated_user_context),
 ) -> FavoriteSymbolResponse:
+    existing = alert_service.list_favorites(
+        db,
+        user_key=user_context.user_key,
+        app_user_id=user_context.app_user_id,
+    )
+    normalized = str(payload.symbol or "").strip().upper()
+    if (
+        not has_pro_access(user_context)
+        and normalized not in set(existing)
+        and len(existing) >= FREE_MAX_FAVORITES
+    ):
+        raise_quota_reached(
+            "favorites",
+            limit=FREE_MAX_FAVORITES,
+            window="total",
+            message=f"Free limit reached: up to {FREE_MAX_FAVORITES} favorites.",
+        )
     symbol = alert_service.add_favorite(
         db,
         user_key=user_context.user_key,
@@ -144,7 +192,7 @@ def delete_favorite(
     symbol: str,
     db: Session = Depends(get_db),
     alert_service: AlertService = Depends(get_alert_service),
-    user_context: RequestUserContext = Depends(require_pro_user_context),
+    user_context: RequestUserContext = Depends(require_authenticated_user_context),
 ) -> FavoriteSymbolResponse:
     alert_service.remove_favorite(
         db,
@@ -167,6 +215,7 @@ def analyze_symbol(
     user_context: RequestUserContext = Depends(require_authenticated_user_context),
 ) -> AnalysisResponse:
     ensure_strategy_access(user_context, payload.strategy)
+    _enforce_free_daily_analysis_quota(user_context)
     result = analysis_service.analyze_symbol(
         payload.symbol,
         force_refresh=refresh,

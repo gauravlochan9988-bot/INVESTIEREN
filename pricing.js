@@ -22,7 +22,11 @@ async function pricingApi(path, options = {}) {
     let message = `Request failed (${response.status})`;
     try {
       const payload = await response.json();
-      message = payload?.detail || payload?.error || message;
+      const rawDetail = payload?.detail || payload?.error || message;
+      message =
+        typeof rawDetail === "object" && rawDetail !== null
+          ? String(rawDetail.message || rawDetail.detail || message)
+          : String(rawDetail);
     } catch {
       // ignore json parse errors
     }
