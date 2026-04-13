@@ -55,6 +55,15 @@ const I18N = {
     "paywall.upgradeCta": "Upgrade €4.99 / Monat",
     "paywall.logout": "Abmelden",
     "paywall.note": "Apple Pay und Google Pay sind im Stripe-Checkout verfugbar.",
+    "premium.inline.cta": "Upgrade auf Pro",
+    "premium.inline.genericTitle": "Free-Modus aktiv",
+    "premium.inline.genericBody": "Simple-Strategie bleibt nutzbar. Fur Live-Alerts und Opportunity-Rankings brauchst du Pro.",
+    "premium.inline.alertsTitle": "Alerts sind ein Pro-Feature",
+    "premium.inline.alertsBody": "Im Free-Modus siehst du Marktanalyse und Simple-Signale. Fur Echtzeit-Alerts bitte auf Pro upgraden.",
+    "premium.inline.oppsTitle": "Opportunity-Ranking ist Pro",
+    "premium.inline.oppsBody": "Top-Buy/Top-Sell Scans sind fur Pro freigeschaltet. Free bleibt mit Simple-Analyse aktiv.",
+    "premium.inline.strategyBody":
+      "AI und Hedgefund sind Pro-Strategien. Du bleibst im Dashboard mit der kostenlosen Simple-Strategie.",
 
     "dashboard.homeAria": "Zur Dashboard-Startseite",
     "dashboard.privateSystem": "Privates System",
@@ -281,6 +290,15 @@ const I18N = {
     "paywall.upgradeCta": "Upgrade €4.99 / month",
     "paywall.logout": "Logout",
     "paywall.note": "Apple Pay and Google Pay available in Stripe Checkout.",
+    "premium.inline.cta": "Upgrade to Pro",
+    "premium.inline.genericTitle": "Free mode is active",
+    "premium.inline.genericBody": "Simple strategy stays fully usable. Live alerts and opportunity rankings require Pro.",
+    "premium.inline.alertsTitle": "Alerts are a Pro feature",
+    "premium.inline.alertsBody": "In free mode you keep market analysis and Simple signals. Upgrade to Pro for real-time alerts.",
+    "premium.inline.oppsTitle": "Opportunity ranking is Pro",
+    "premium.inline.oppsBody": "Top-buy / top-sell scans are unlocked on Pro. Free mode stays active with Simple analysis.",
+    "premium.inline.strategyBody":
+      "AI and Hedgefund are Pro strategies. You stay inside the dashboard with the free Simple strategy.",
 
     "dashboard.homeAria": "Go to dashboard home",
     "dashboard.privateSystem": "Private system",
@@ -1505,11 +1523,23 @@ function hidePaywall() {
 }
 
 function showPremiumStrategyPrompt(nextStrategy) {
-  const strategyLabel = getStrategyLabel(nextStrategy);
-  showPaywall(
-    `${strategyLabel} ist nur fur Pro verfugbar. Upgrade oder weiter mit der Free-Version (Simple).`,
-    "strategy_gate",
-  );
+  persistSelectedStrategy("simple");
+  renderStrategyButtons();
+  renderMobileStrategyCards();
+  setAuthInfo(t("premium.inline.strategyBody"));
+  setBackendStatus("Free mode active · Simple strategy unlocked", "warning");
+  renderAlertsWarning(t("premium.inline.alertsTitle"), {
+    title: t("premium.inline.alertsTitle"),
+    body: t("premium.inline.alertsBody"),
+    ctaLabel: t("premium.inline.cta"),
+    ctaHref: pricingPageUrl(),
+  });
+  renderOpportunityWarning(t("premium.inline.oppsTitle"), {
+    title: t("premium.inline.oppsTitle"),
+    body: t("premium.inline.oppsBody"),
+    ctaLabel: t("premium.inline.cta"),
+    ctaHref: pricingPageUrl(),
+  });
 }
 
 function setSettingsError(message = "") {
@@ -2670,13 +2700,22 @@ function renderAlerts(alerts) {
   requestAnimationFrame(syncCompanySectionAlignment);
 }
 
-function renderAlertsWarning(message) {
+function renderAlertsWarning(message, options = {}) {
   state.alertsUiLoading = false;
   elements.alertsMeta.textContent = message;
+  const title = String(options.title || t("alerts.warmingTitle"));
+  const body = String(options.body || `⚠️ ${t("alerts.warmingBody")}`);
+  const ctaLabel = String(options.ctaLabel || "").trim();
+  const ctaHref = String(options.ctaHref || "").trim();
   elements.alertsList.innerHTML = `
     <article class="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-      <p class="text-sm font-semibold text-neutral-900">${escapeHtml(t("alerts.warmingTitle"))}</p>
-      <p class="mt-2 text-sm leading-6 text-neutral-700">⚠️ ${escapeHtml(t("alerts.warmingBody"))}</p>
+      <p class="text-sm font-semibold text-neutral-900">${escapeHtml(title)}</p>
+      <p class="mt-2 text-sm leading-6 text-neutral-700">${escapeHtml(body)}</p>
+      ${
+        ctaLabel && ctaHref
+          ? `<a href="${escapeHtml(ctaHref)}" class="mt-3 inline-flex rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-900 transition hover:bg-neutral-100">${escapeHtml(ctaLabel)}</a>`
+          : ""
+      }
     </article>
   `;
   requestAnimationFrame(syncCompanySectionAlignment);
@@ -2929,7 +2968,7 @@ function renderOpportunityPanel(entries) {
   });
 }
 
-function renderOpportunityWarning(message) {
+function renderOpportunityWarning(message, options = {}) {
   if (!elements.opportunityList || !elements.opportunityMeta) {
     return;
   }
@@ -2938,10 +2977,19 @@ function renderOpportunityWarning(message) {
   state.opportunityPanelHydrated = true;
   state.opportunityWarningMessage = message;
   elements.opportunityMeta.textContent = message;
+  const title = String(options.title || t("signals.panelWarmingTitle"));
+  const body = String(options.body || `⚠️ ${t("signals.panelWarmingBody")}`);
+  const ctaLabel = String(options.ctaLabel || "").trim();
+  const ctaHref = String(options.ctaHref || "").trim();
   elements.opportunityList.innerHTML = `
     <article class="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-      <p class="text-sm font-semibold text-neutral-900">${escapeHtml(t("signals.panelWarmingTitle"))}</p>
-      <p class="mt-2 text-sm leading-6 text-neutral-700">⚠️ ${escapeHtml(t("signals.panelWarmingBody"))}</p>
+      <p class="text-sm font-semibold text-neutral-900">${escapeHtml(title)}</p>
+      <p class="mt-2 text-sm leading-6 text-neutral-700">${escapeHtml(body)}</p>
+      ${
+        ctaLabel && ctaHref
+          ? `<a href="${escapeHtml(ctaHref)}" class="mt-3 inline-flex rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-900 transition hover:bg-neutral-100">${escapeHtml(ctaLabel)}</a>`
+          : ""
+      }
     </article>
   `;
 }
@@ -4193,7 +4241,10 @@ async function api(path, options = {}) {
     const detail = payload?.error || payload?.detail || payload || "Request failed.";
     console.error("[frontend] API failure", { path, status: response.status, detail });
     if (response.status === 402 && state.auth.enabled && isAuthenticated()) {
-      showPaywall("Upgrade to unlock the dashboard.");
+      // Keep free users in the app. Strategy/paywall prompts are handled explicitly elsewhere.
+      setAuthInfo(t("premium.inline.genericBody"));
+      setBackendStatus("Free mode active · Pro feature locked", "warning");
+      syncLimitedAccessBanner();
     }
     if (
       shouldFallbackToDeployedApi(path, options, baseUrl) ||
@@ -5347,8 +5398,18 @@ async function bootDashboard(forceRefresh = false) {
         });
       }, 220);
     } else {
-      renderAlertsWarning(t("paywall.defaultMessage"));
-      renderOpportunityWarning(t("paywall.defaultMessage"));
+      renderAlertsWarning(t("premium.inline.alertsTitle"), {
+        title: t("premium.inline.alertsTitle"),
+        body: t("premium.inline.alertsBody"),
+        ctaLabel: t("premium.inline.cta"),
+        ctaHref: pricingPageUrl(),
+      });
+      renderOpportunityWarning(t("premium.inline.oppsTitle"), {
+        title: t("premium.inline.oppsTitle"),
+        body: t("premium.inline.oppsBody"),
+        ctaLabel: t("premium.inline.cta"),
+        ctaHref: pricingPageUrl(),
+      });
     }
 
     if (favoritesResult.status === "rejected") {
