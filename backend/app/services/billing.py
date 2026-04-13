@@ -69,7 +69,20 @@ class BillingService:
     def create_checkout_session(self, db: Session, *, app_user: AppUser) -> Dict[str, str]:
         self._ensure_enabled()
 
+        existing = self.subscription_repository.get_by_user_id(db, app_user_id=app_user.id)
+        if existing and existing.status in {"active", "trialing"}:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Pro is already active on this account.",
+            )
+
         customer = self.get_or_create_customer_id(db, app_user=app_user)
+        normalized_email = (app_user.email or "").strip().lower()
+        if not normalized_email:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Your account requires a valid email before checkout.",
+            )
         session = stripe.checkout.Session.create(
             mode="subscription",
             success_url=self._frontend_url("/?checkout=success&session_id={CHECKOUT_SESSION_ID}"),
@@ -77,10 +90,14 @@ class BillingService:
             line_items=self._checkout_line_items(),
             allow_promotion_codes=True,
             customer=customer,
-            customer_email=None if customer else app_user.email,
+            customer_email=None if customer else normalized_email,
+            client_reference_id=str(app_user.id),
             metadata={
                 "app_user_id": str(app_user.id),
                 "auth_subject": app_user.auth_subject,
+                "account_email": normalized_email,
+                "plan_slug": "pro",
+                "plan_interval": "month",
             },
         )
 
@@ -96,31 +113,31 @@ class BillingService:
         return {"url": session["url"], "session_id": session["id"]}
 
     def create_public_checkout_session(self, *, email: str) -> Dict[str, str]:
-        self._ensure_enabled()
-        normalized_email = str(email or "").strip().lower()
-        if "@" not in normalized_email or "." not in normalized_email.rsplit("@", 1)[-1]:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="A valid email is required for checkout.",
-            )
-
-        session = stripe.checkout.Session.create(
-            mode="subscription",
-            success_url=self._frontend_url("/?checkout=success&session_id={CHECKOUT_SESSION_ID}"),
-            cancel_url=self._frontend_url("/?checkout=cancel"),
-            line_items=self._checkout_line_items(),
-            allow_promotion_codes=True,
-            customer_email=normalized_email,
-            metadata={
-                "public_checkout": "1",
-                "checkout_email": normalized_email,
-            },
+        # Deprecated for account-safe upgrades. Keep endpoint but block usage explicitly.
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sign in first. Checkout is linked to your active account.",
         )
-        return {"url": session["url"], "session_id": session["id"]}
+
+    def _require_checkout_ownership(self, session: Any, *, app_user: AppUser) -> None:
+        metadata = (session.get("metadata") or {}) if hasattr(session, "get") else {}
+        session_user_id = str(metadata.get("app_user_id") or "").strip()
+        session_subject = str(metadata.get("auth_subject") or "").strip()
+        if not session_user_id or not session_subject:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Checkout session is missing account identity metadata.",
+            )
+        if session_user_id != str(app_user.id) or session_subject != app_user.auth_subject:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Checkout session belongs to a different account.",
+            )
 
     def sync_checkout_session(self, db: Session, *, app_user: AppUser, session_id: str) -> Dict[str, Any]:
         self._ensure_enabled()
         session = stripe.checkout.Session.retrieve(session_id, expand=["subscription"])
+        self._require_checkout_ownership(session, app_user=app_user)
         subscription = session.get("subscription")
         stripe_customer_id = session.get("customer")
 

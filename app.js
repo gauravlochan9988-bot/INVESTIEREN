@@ -1686,6 +1686,15 @@ async function startCheckout() {
     setAuthError("Please login first.");
     return;
   }
+  const accountEmail = String(state.auth.currentUser?.email || "").trim();
+  if (!accountEmail) {
+    setAuthError("Your account email is missing. Update profile email before upgrading.");
+    return;
+  }
+  const confirmed = window.confirm(`You are upgrading this account: ${accountEmail}`);
+  if (!confirmed) {
+    return;
+  }
   try {
     const session = await api("/api/billing/checkout", {
       method: "POST",
@@ -1716,13 +1725,24 @@ async function handleBillingRedirectState() {
         timeoutMs: 15000,
         retryCount: 0,
       });
+      await syncAuthenticatedUser(true);
       await loadSubscriptionStatus();
+      const accountEmail = String(state.auth.currentUser?.email || "").trim();
       setBackendStatus("Subscription active", "ok");
+      setAuthInfo(
+        accountEmail
+          ? `Pro is now active on this account: ${accountEmail}`
+          : "Pro is now active on your signed-in account.",
+      );
     } else if (checkoutState === "cancel") {
       setBackendStatus("Checkout canceled", "warning");
     }
   } catch (error) {
-    showError(error.message || "Subscription sync failed.");
+    console.error("[frontend] subscription sync after checkout failed", error);
+    showError(
+      error.message ||
+        "Payment received but plan sync did not finish. Please refresh or contact support with your checkout session ID.",
+    );
   } finally {
     params.delete("checkout");
     params.delete("session_id");

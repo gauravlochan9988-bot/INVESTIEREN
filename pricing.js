@@ -95,7 +95,7 @@ async function initializePricing() {
 
     const isAuthenticated = Boolean(authToken);
     if (emailWrap) {
-      emailWrap.hidden = isAuthenticated;
+      emailWrap.hidden = true;
     }
 
     button?.addEventListener("click", async () => {
@@ -103,28 +103,17 @@ async function initializePricing() {
         button.disabled = true;
         status.textContent = "Redirecting to Stripe Checkout…";
         let session = null;
-        if (isAuthenticated) {
-          session = await pricingApi("/api/billing/checkout", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${authToken}`,
-            },
-            body: JSON.stringify({}),
-          });
-        } else {
-          const email = String(emailInput?.value || "").trim().toLowerCase();
-          if (!email || !email.includes("@")) {
-            throw new Error("Please enter a valid email to continue checkout.");
-          }
-          session = await pricingApi("/api/billing/checkout-public", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ email }),
-          });
+        if (!isAuthenticated) {
+          throw new Error("Sign in first. Pro upgrade is linked to your active account.");
         }
+        session = await pricingApi("/api/billing/checkout", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({}),
+        });
         if (!session?.url) {
           throw new Error("Checkout is unavailable.");
         }
@@ -136,8 +125,8 @@ async function initializePricing() {
     });
 
     status.textContent = isAuthenticated
-      ? "Secure payment via Stripe Checkout."
-      : "Checkout works without login. Use the same email when creating your account.";
+      ? "You are upgrading the currently signed-in account."
+      : "Please sign in first to start a safe account-linked upgrade.";
   } catch (error) {
     console.error("[pricing] init failed", error);
     status.textContent = error.message || "Pricing is unavailable.";
