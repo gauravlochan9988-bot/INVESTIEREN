@@ -103,6 +103,11 @@ const I18N = {
     "auth.miniGame.title": "GQ Pulse",
     "auth.miniGame.hint": "Tippe das leuchtende Feld",
     "auth.miniGame.aria": "Kurzes Reflexspiel: tippe das leuchtende Feld",
+    "auth.localDevKicker": "Lokale Entwicklung",
+    "auth.localDevBody":
+      "Starte das Backend unter http://localhost:8003. Wenn Supabase lokal nicht konfiguriert ist, kannst du mit dem Entwickler-Zugang (Standard im Backend oft 9988) ins Dashboard wechseln.",
+    "auth.localDevPlaceholder": "Zugangscode",
+    "auth.localDevCta": "Terminal öffnen",
     "lang.de": "Deutsch",
     "lang.en": "English",
     "lang.switch": "Sprache",
@@ -218,14 +223,33 @@ const I18N = {
     "signals.noRanked": "Noch keine Chancen gerankt",
     "signals.panelWarmingTitle": "Panel warmt auf",
     "signals.panelWarmingBody": "Setups werden gerankt.",
-    "signals.sectionTopBuy": "Top BUY",
-    "signals.sectionTopSell": "Top SELL",
-    "signals.sectionHighConf": "Hohe Konfidenz",
+    "signals.sectionTopBuy": "Top BUY · Kaufchancen",
+    "signals.sectionTopSell": "Top SELL · hohe Konfidenz",
+    "signals.sectionHighConf": "Hohe Konfidenz · Kauf",
     "signals.emptySetups": "Keine Setups.",
-    "signals.bestLong": "Bestes Long.",
-    "signals.bestShort": "Bestes Short.",
-    "signals.clearestSetup": "Klarstes Setup.",
+    "signals.emptyTopBuyTitle": "Keine qualifizierten Long-Setups",
+    "signals.emptyTopBuyBody":
+      "Derzeit erfüllt kein Instrument die Kriterien für eine hervorgehobene Kaufchance. Sobald Strategie und Marktdaten Long-Signale bestätigen, erscheinen sie hier – Watchliste prüfen oder Daten aktualisieren.",
+    "signals.emptyTopSellTitle": "Keine Short- oder Verkaufs-Setups über der Konfidenzschwelle",
+    "signals.emptyTopSellBody":
+      "Bärische Signale listen wir nur bei ausreichend hoher Modell-Konfidenz. Ohne passendes Setup bleibt dieser Bereich bewusst leer – nach einem Daten-Refresh kann sich das Bild ändern.",
+    "signals.emptyHighConfTitle": "Keine Käufe mit Premium-Konfidenz",
+    "signals.emptyHighConfBody":
+      "Hier erscheinen Long-Ideen oberhalb einer strengen Konfidenzgrenze. Nach einem Datenupdate oder mit mehr Symbolen in der Watchliste kann dieser Bereich Einträge zeigen.",
+    "signals.metricConfidence": "Konfidenz",
+    "signals.metricScoreHint": "Score · Richtung",
+    "signals.ariaOpportunityCard": "{symbol}, {pill}, Konfidenz {pct} Prozent",
+    "signals.metricsLegend": "Konfidenz = Stärke · Score = Richtung",
+    "signals.bestLong": "Stärkste Long-Setups für einen Einstieg.",
+    "signals.bestShort": "Nur Verkauf/Short, wenn die Konfidenz ausreichend hoch ist.",
+    "signals.clearestSetup": "Käufe mit besonders hoher Signal-Konfidenz.",
     "signals.topPick": "Top {rec}",
+    "signals.kaufchance": "Kaufchance",
+    "signals.topKaufchance": "Top Kaufchance",
+    "signals.abwaertsTendenz": "Abwärtstendenz",
+    "signals.topAbwaerts": "Top Abwärtstendenz",
+    "signals.verkaufsdruck": "Verkaufsdruck",
+    "signals.topVerkauf": "Top Verkauf",
     "signals.scoreLabel": "Score {label}",
     "learning.offline": "Learning offline",
     "learning.noStats": "Keine Stats",
@@ -345,6 +369,11 @@ const I18N = {
     "auth.miniGame.title": "GQ Pulse",
     "auth.miniGame.hint": "Tap the glowing cell",
     "auth.miniGame.aria": "Quick reflex game: tap the glowing cell",
+    "auth.localDevKicker": "Local development",
+    "auth.localDevBody":
+      "Run the backend at http://localhost:8003. If Supabase is not configured locally, use the developer access code (backend default is often 9988) to open the dashboard.",
+    "auth.localDevPlaceholder": "Access code",
+    "auth.localDevCta": "Open terminal",
     "lang.de": "German",
     "lang.en": "English",
     "lang.switch": "Language",
@@ -460,14 +489,33 @@ const I18N = {
     "signals.noRanked": "No ranked opportunities yet",
     "signals.panelWarmingTitle": "Panel warming",
     "signals.panelWarmingBody": "Ranking setups.",
-    "signals.sectionTopBuy": "Top BUY",
-    "signals.sectionTopSell": "Top SELL",
-    "signals.sectionHighConf": "High confidence",
+    "signals.sectionTopBuy": "Top BUY · long setups",
+    "signals.sectionTopSell": "Top SELL · high conviction",
+    "signals.sectionHighConf": "High confidence · buys",
     "signals.emptySetups": "No setups.",
-    "signals.bestLong": "Best long.",
-    "signals.bestShort": "Best short.",
-    "signals.clearestSetup": "Clearest setup.",
+    "signals.emptyTopBuyTitle": "No qualified long setups",
+    "signals.emptyTopBuyBody":
+      "Nothing in the universe currently meets the bar for a highlighted long setup. When the model confirms stronger buy-side signals, they will appear here — refresh data or review your watchlist.",
+    "signals.emptyTopSellTitle": "No short or sell setups above the conviction bar",
+    "signals.emptyTopSellBody":
+      "We only surface bearish ideas when model confidence clears a minimum threshold. This section stays empty on purpose until criteria are met — try again after a data refresh.",
+    "signals.emptyHighConfTitle": "No buys at premium conviction",
+    "signals.emptyHighConfBody":
+      "This block lists long ideas only above a strict confidence cutoff. The next data pass may change what qualifies.",
+    "signals.metricConfidence": "Confidence",
+    "signals.metricScoreHint": "Score · direction",
+    "signals.ariaOpportunityCard": "{symbol}, {pill}, {pct} percent confidence",
+    "signals.metricsLegend": "Confidence = strength · Score = direction",
+    "signals.bestLong": "Strongest long ideas to consider buying.",
+    "signals.bestShort": "Sells only when confidence is high enough.",
+    "signals.clearestSetup": "Buys with especially high signal confidence.",
     "signals.topPick": "Top {rec}",
+    "signals.kaufchance": "Buy setup",
+    "signals.topKaufchance": "Top buy setup",
+    "signals.abwaertsTendenz": "Bearish lean",
+    "signals.topAbwaerts": "Top bearish lean",
+    "signals.verkaufsdruck": "Sell pressure",
+    "signals.topVerkauf": "Top sell",
     "signals.scoreLabel": "Score {label}",
     "learning.offline": "Learning offline",
     "learning.noStats": "No stats",
@@ -630,6 +678,12 @@ function getStrategyLabel(key) {
 
 const MAX_SIDEBAR_SLOTS = 10;
 const OPPORTUNITY_LIMIT = 3;
+/** Mindest-Konfidenz für Top SELL (strenger als BUY — kein „schwaches“ Short) */
+const OPPORTUNITY_MIN_SELL_CONFIDENCE = 52;
+/** Ab dieser Konfidenz + BUY/Long-Bias in „Hohe Konfidenz · Kauf“ */
+const OPPORTUNITY_MIN_HIGH_CONF_BUY = 58;
+/** Untere Schwelle für sinnvolle Kauf-Kandidaten in Top BUY */
+const OPPORTUNITY_MIN_TOP_BUY_CONFIDENCE = 40;
 // Symbol set must stay ⊆ backend Settings.watchlist / DEFAULT_WATCHLIST (see get_dashboard_watchlist_symbols).
 const DEFAULT_SIDEBAR_ITEMS = [
   { symbol: "AAPL", name: "Apple Inc" },
@@ -748,6 +802,9 @@ const elements = {
   authPassword: document.getElementById("authPassword"),
   authError: document.getElementById("authError"),
   authInfo: document.getElementById("authInfo"),
+  localDevAccessShell: document.getElementById("localDevAccessShell"),
+  localDevAccessInput: document.getElementById("localDevAccessInput"),
+  localDevAccessButton: document.getElementById("localDevAccessButton"),
   authCancelButton: document.getElementById("authCancelButton"),
   appShell: document.getElementById("appShell"),
   backendStatus: document.getElementById("backendStatus"),
@@ -860,6 +917,18 @@ function resolveApiBaseUrl() {
 
 function buildApiUrl(path) {
   return `${resolveApiBaseUrl()}${path}`;
+}
+
+function isLocalDevHost() {
+  return LOCAL_API_HOSTS.has(window.location.hostname);
+}
+
+function syncLocalDevAccessVisibility() {
+  if (!elements.localDevAccessShell) {
+    return;
+  }
+  const show = isLocalDevHost() && !state.auth.enabled && !isAuthenticated();
+  elements.localDevAccessShell.hidden = !show;
 }
 
 function resetAuthVisualMotion() {
@@ -1104,6 +1173,7 @@ function renderAuthMode() {
   elements.authModeLoginButton?.classList.toggle("text-white", !signup);
   elements.authModeSignupButton?.classList.toggle("bg-neutral-900", signup);
   elements.authModeSignupButton?.classList.toggle("text-white", signup);
+  syncLocalDevAccessVisibility();
 }
 
 function setAuthLoading(loading, message = "Redirecting…") {
@@ -1838,6 +1908,31 @@ async function restoreAdminSessionUser() {
   }
 }
 
+async function loginWithLocalDevAccessCode() {
+  const raw = String(elements.localDevAccessInput?.value || "").trim();
+  const code = raw || SIMPLE_ACCESS_CODE;
+  const data = await api("/api/auth/access-code", {
+    method: "POST",
+    body: JSON.stringify({ code }),
+    skipAuth: true,
+    skipDeployedFallback: true,
+  });
+  const token = String(data?.session_token || "").trim();
+  if (!token) {
+    throw new Error("Kein Session-Token vom Server erhalten.");
+  }
+  setAdminSessionToken(token);
+  const user = await api("/api/auth/me", {
+    timeoutMs: 12000,
+    retryCount: 1,
+    skipDeployedFallback: true,
+  });
+  state.auth.currentUser = user;
+  setAuthenticated(true);
+  renderSubscriptionButton();
+  syncLocalDevAccessVisibility();
+}
+
 async function initializeManagedAuth() {
   state.auth.lastInitError = "";
   state.auth.ready = false;
@@ -1850,7 +1945,9 @@ async function initializeManagedAuth() {
   try {
     const config = await fetchAuthConfig();
     if (!config?.enabled) {
-      state.auth.lastInitError = "Auth config is disabled.";
+      state.auth.lastInitError = "";
+      setAuthError("");
+      console.warn("[frontend] auth config disabled (check SUPABASE_URL / SUPABASE_ANON_KEY on backend)");
       state.auth.ready = true;
       renderSubscriptionButton();
       return false;
@@ -2830,6 +2927,75 @@ function opportunityToneClass(recommendation) {
   return "opportunity-hold";
 }
 
+/** Visual bias for card chrome (never show neutral hold styling inside bullish sections). */
+function opportunityCardVisualRec(entry, sectionKind) {
+  const rec = String(entry?.recommendation || "").toUpperCase();
+  const score = Number(entry?.score) || 0;
+  if (sectionKind === "topBuy" || sectionKind === "highConfBuy") {
+    if (rec === "BUY") {
+      return "BUY";
+    }
+    if (rec !== "SELL" && score > 0) {
+      return "BUY";
+    }
+    return "BUY";
+  }
+  if (sectionKind === "topSell") {
+    if (rec === "SELL") {
+      return "SELL";
+    }
+    if (score < 0) {
+      return "SELL";
+    }
+    return "SELL";
+  }
+  return rec || "HOLD";
+}
+
+/** Single best non-explicit-BUY long idea across Top BUY + High conf (display order) gets "Top Kaufchance". */
+function globalTopKaufchanceSymbol(topBuy, highConfidence) {
+  for (const row of topBuy) {
+    if (String(row?.recommendation || "").toUpperCase() !== "BUY" && row?.symbol) {
+      return row.symbol;
+    }
+  }
+  for (const row of highConfidence) {
+    if (String(row?.recommendation || "").toUpperCase() !== "BUY" && row?.symbol) {
+      return row.symbol;
+    }
+  }
+  return null;
+}
+
+function opportunityPillLabel(entry, sectionKind, opts) {
+  const isTopRowInSection = Boolean(opts?.isTopRowInSection);
+  const topKaufSym = opts?.globalTopKaufchanceSymbol ?? null;
+  const rec = String(entry?.recommendation || "").toUpperCase();
+  const score = Number(entry?.score) || 0;
+  if (sectionKind === "topBuy" || sectionKind === "highConfBuy") {
+    if (rec === "BUY") {
+      return isTopRowInSection ? tf("signals.topPick", { rec: "BUY" }) : "BUY";
+    }
+    const isTopKauf = topKaufSym ? entry.symbol === topKaufSym : isTopRowInSection;
+    return isTopKauf ? t("signals.topKaufchance") : t("signals.kaufchance");
+  }
+  if (sectionKind === "topSell") {
+    if (rec === "SELL") {
+      return isTopRowInSection ? tf("signals.topPick", { rec: "SELL" }) : "SELL";
+    }
+    if (rec === "HOLD" && score < 0) {
+      return isTopRowInSection ? t("signals.topAbwaerts") : t("signals.abwaertsTendenz");
+    }
+    if (score < 0) {
+      return isTopRowInSection ? t("signals.topAbwaerts") : t("signals.abwaertsTendenz");
+    }
+    return isTopRowInSection ? t("signals.topVerkauf") : t("signals.verkaufsdruck");
+  }
+  return isTopRowInSection
+    ? tf("signals.topPick", { rec: entry.recommendation })
+    : String(entry.recommendation || "");
+}
+
 function opportunityMetricLabel(entry) {
   return `${entry.symbol} · ${entry.recommendation} · ${Math.round(entry.confidence)}%`;
 }
@@ -2861,6 +3027,16 @@ function sortOpportunityDirection(entries, direction) {
   });
 }
 
+function opportunityEmptyCopy(sectionKind) {
+  if (sectionKind === "topSell") {
+    return { titleKey: "signals.emptyTopSellTitle", bodyKey: "signals.emptyTopSellBody" };
+  }
+  if (sectionKind === "highConfBuy") {
+    return { titleKey: "signals.emptyHighConfTitle", bodyKey: "signals.emptyHighConfBody" };
+  }
+  return { titleKey: "signals.emptyTopBuyTitle", bodyKey: "signals.emptyTopBuyBody" };
+}
+
 function renderOpportunityLoading() {
   if (!elements.opportunityList || !elements.opportunityMeta) {
     return;
@@ -2880,49 +3056,75 @@ function renderOpportunityLoading() {
     .join("");
 }
 
-function buildOpportunitySection(title, tone, entries, emptyMessage) {
+function buildOpportunitySection(title, sectionKind, entries, globalTopKaufchanceSymbol = null) {
+  const groupTone = sectionKind === "topSell" ? "opportunity-group--bearish" : "opportunity-group--bullish";
   if (!entries.length) {
+    const { titleKey, bodyKey } = opportunityEmptyCopy(sectionKind);
     return `
-      <article class="opportunity-group">
+      <article class="opportunity-group ${groupTone}" data-opportunity-section="${escapeHtml(sectionKind)}">
         <div class="opportunity-group-head">
           <p class="opportunity-group-title">${escapeHtml(title)}</p>
         </div>
-        <div class="rounded-2xl border border-neutral-200/90 bg-white px-4 py-4 text-sm leading-6 text-neutral-600">
-          ${escapeHtml(t("signals.emptySetups"))}
-          <span class="block mt-1 text-xs text-neutral-500">${escapeHtml(emptyMessage)}</span>
+        <div class="opportunity-empty" role="status">
+          <p class="opportunity-empty-title">${escapeHtml(t(titleKey))}</p>
+          <p class="opportunity-empty-body">${escapeHtml(t(bodyKey))}</p>
         </div>
       </article>
     `;
   }
 
+  const pillOptsBase = {
+    globalTopKaufchanceSymbol:
+      sectionKind === "topBuy" || sectionKind === "highConfBuy" ? globalTopKaufchanceSymbol : null,
+  };
+
   return `
-    <article class="opportunity-group">
+    <article class="opportunity-group ${groupTone}" data-opportunity-section="${escapeHtml(sectionKind)}">
       <div class="opportunity-group-head">
         <p class="opportunity-group-title">${escapeHtml(title)}</p>
       </div>
-      <div class="space-y-2.5">
+      <div class="opportunity-card-stack">
         ${entries
           .map(
-            (entry, index) => `
+            (entry, index) => {
+              const visualRec = opportunityCardVisualRec(entry, sectionKind);
+              const pill = opportunityPillLabel(entry, sectionKind, {
+                ...pillOptsBase,
+                isTopRowInSection: index === 0,
+              });
+              const aria = tf("signals.ariaOpportunityCard", {
+                symbol: entry.symbol,
+                pill,
+                pct: String(Math.round(entry.confidence)),
+              });
+              return `
               <button
                 type="button"
-                class="opportunity-card ${opportunityToneClass(entry.recommendation)} ${entry.symbol === state.selectedSymbol ? "opportunity-card-current" : ""} ${index === 0 ? "opportunity-card-strongest" : ""}"
+                class="opportunity-card ${opportunityToneClass(visualRec)} ${entry.symbol === state.selectedSymbol ? "opportunity-card-current" : ""} ${index === 0 ? "opportunity-card-strongest" : ""}"
                 data-symbol="${entry.symbol}"
+                aria-label="${escapeHtml(aria)}"
                 aria-pressed="${entry.symbol === state.selectedSymbol ? "true" : "false"}"
               >
-                <div class="min-w-0">
-                  <div class="flex items-center justify-between gap-3">
-                    <p class="truncate text-sm font-semibold text-neutral-900">${entry.symbol}</p>
-                    <span class="opportunity-pill">${index === 0 ? escapeHtml(tf("signals.topPick", { rec: entry.recommendation })) : escapeHtml(entry.recommendation)}</span>
+                <div class="opportunity-card-main min-w-0">
+                  <div class="opportunity-card-row">
+                    <p class="opportunity-symbol">${entry.symbol}</p>
+                    <span class="opportunity-pill">${escapeHtml(pill)}</span>
                   </div>
-                  <p class="mt-1 truncate text-xs text-neutral-600">${entry.name}</p>
+                  <p class="opportunity-name">${entry.name}</p>
                 </div>
-                <div class="text-right">
-                  <p class="text-sm font-semibold text-neutral-900">${Math.round(entry.confidence)}%</p>
-                  <p class="mt-1 text-[11px] uppercase tracking-[0.18em] text-neutral-500">${escapeHtml(tf("signals.scoreLabel", { label: entry.scoreLabel }))}</p>
+                <div class="opportunity-metrics">
+                  <div class="opportunity-metric-primary">
+                    <p class="opportunity-metric-label">${escapeHtml(t("signals.metricConfidence"))}</p>
+                    <p class="opportunity-confidence-value"><span class="opportunity-confidence-num">${Math.round(entry.confidence)}</span><span class="opportunity-confidence-suffix">%</span></p>
+                  </div>
+                  <div class="opportunity-metric-secondary">
+                    <p class="opportunity-metric-sublabel">${escapeHtml(t("signals.metricScoreHint"))}</p>
+                    <p class="opportunity-score-value">${escapeHtml(entry.scoreLabel)}</p>
+                  </div>
                 </div>
               </button>
-            `,
+            `;
+            },
           )
           .join("")}
       </div>
@@ -2942,37 +3144,92 @@ function uniqueOpportunityEntries(entries) {
 }
 
 function opportunityBuyCandidates(entries) {
-  const directional = entries.filter(
-    (entry) => entry.recommendation === "BUY" || entry.score > 0 || entry.rank > 0.35 || entry.confidence >= 38,
-  );
-  const fallback = sortOpportunityDirection(entries, "BUY");
-  return uniqueOpportunityEntries(sortOpportunityDirection(directional.length ? directional : fallback, "BUY")).slice(
-    0,
-    OPPORTUNITY_LIMIT,
-  );
+  const meetsBar = (entry) =>
+    entry.recommendation === "SELL"
+      ? false
+      : entry.recommendation === "BUY" ||
+        (Number(entry.score) > 0 && entry.confidence >= OPPORTUNITY_MIN_TOP_BUY_CONFIDENCE);
+
+  const primary = entries.filter(meetsBar);
+  const fallbackPool = primary.length
+    ? primary
+    : entries.filter(
+        (entry) =>
+          entry.recommendation !== "SELL" &&
+          (entry.recommendation === "BUY" || Number(entry.score) > 0),
+      );
+  return uniqueOpportunityEntries(sortOpportunityDirection(fallbackPool, "BUY")).slice(0, OPPORTUNITY_LIMIT);
 }
 
 function opportunitySellCandidates(entries) {
-  const directional = entries.filter(
-    (entry) => entry.recommendation === "SELL" || entry.score < 0 || entry.rank < -0.35 || entry.confidence >= 38,
+  const bearishShape = (entry) => {
+    if (entry.recommendation === "BUY") {
+      return false;
+    }
+    if (entry.recommendation === "SELL") {
+      return true;
+    }
+    return Number(entry.score) < -0.1;
+  };
+
+  const strict = entries.filter(
+    (entry) => bearishShape(entry) && entry.confidence >= OPPORTUNITY_MIN_SELL_CONFIDENCE,
   );
-  const fallback = sortOpportunityDirection(entries, "SELL");
-  return uniqueOpportunityEntries(sortOpportunityDirection(directional.length ? directional : fallback, "SELL")).slice(
-    0,
-    OPPORTUNITY_LIMIT,
+  const ranked = uniqueOpportunityEntries(sortOpportunityDirection(strict, "SELL"));
+  if (ranked.length) {
+    return ranked.slice(0, OPPORTUNITY_LIMIT);
+  }
+  const relaxed = entries.filter(
+    (entry) => entry.recommendation === "SELL" && entry.confidence >= 48,
   );
+  const relaxedRanked = uniqueOpportunityEntries(sortOpportunityDirection(relaxed, "SELL"));
+  if (relaxedRanked.length) {
+    return relaxedRanked.slice(0, OPPORTUNITY_LIMIT);
+  }
+  const tertiary = entries.filter(
+    (entry) =>
+      entry.recommendation !== "BUY" &&
+      Number(entry.score) < 0 &&
+      entry.confidence >= OPPORTUNITY_MIN_TOP_BUY_CONFIDENCE,
+  );
+  return uniqueOpportunityEntries(sortOpportunityDirection(tertiary, "SELL")).slice(0, OPPORTUNITY_LIMIT);
 }
 
-function opportunityConfidenceCandidates(entries, excludedSymbols = new Set()) {
+function opportunityHighConfidenceBuyCandidates(entries, excludedSymbols = new Set()) {
   const primary = entries
-    .filter((entry) => !excludedSymbols.has(entry.symbol) && entry.confidence >= 60)
-    .sort((left, right) => opportunityStrength(right) - opportunityStrength(left) || right.confidence - left.confidence);
+    .filter(
+      (entry) =>
+        entry.recommendation !== "SELL" &&
+        !excludedSymbols.has(entry.symbol) &&
+        entry.confidence >= OPPORTUNITY_MIN_HIGH_CONF_BUY &&
+        (entry.recommendation === "BUY" || Number(entry.score) > 0.06),
+    )
+    .sort(
+      (left, right) =>
+        right.confidence - left.confidence ||
+        opportunityStrength(right) - opportunityStrength(left),
+    );
+
+  const uniquePrimary = uniqueOpportunityEntries(primary);
+  if (uniquePrimary.length) {
+    return uniquePrimary.slice(0, OPPORTUNITY_LIMIT);
+  }
 
   const fallback = entries
-    .filter((entry) => !excludedSymbols.has(entry.symbol))
-    .sort((left, right) => opportunityStrength(right) - opportunityStrength(left) || right.confidence - left.confidence);
+    .filter(
+      (entry) =>
+        entry.recommendation !== "SELL" &&
+        !excludedSymbols.has(entry.symbol) &&
+        (entry.recommendation === "BUY" || Number(entry.score) > 0) &&
+        entry.confidence >= 52,
+    )
+    .sort(
+      (left, right) =>
+        right.confidence - left.confidence ||
+        opportunityStrength(right) - opportunityStrength(left),
+    );
 
-  return uniqueOpportunityEntries(primary.length ? primary : fallback).slice(0, OPPORTUNITY_LIMIT);
+  return uniqueOpportunityEntries(fallback).slice(0, OPPORTUNITY_LIMIT);
 }
 
 function buildFallbackOpportunityEntries(symbols, watchlistMap) {
@@ -3016,44 +3273,38 @@ function renderOpportunityPanel(entries) {
   state.opportunityWarningMessage = "";
   state.opportunities = entries;
   const fullCount = entries.filter((entry) => entry.dataQuality === "FULL").length;
-  elements.opportunityMeta.textContent = tf("signals.metaRanked", { count: entries.length, full: fullCount });
-  const strongest = [...entries].sort((left, right) => opportunityStrength(right) - opportunityStrength(left))[0] || null;
+  elements.opportunityMeta.textContent = `${tf("signals.metaRanked", { count: entries.length, full: fullCount })} · ${t("signals.metricsLegend")}`;
 
   let topBuy = opportunityBuyCandidates(entries);
   let topSell = opportunitySellCandidates(entries);
+
+  const excludedForHighConf = new Set(topSell.map((entry) => entry.symbol));
+  let highConfidence = opportunityHighConfidenceBuyCandidates(entries, excludedForHighConf);
+
   if (!topBuy.length && entries.length) {
-    topBuy = [sortOpportunityDirection(entries, "BUY")[0]].filter(Boolean);
+    const buyBias = [...entries]
+      .filter((entry) => entry.recommendation === "BUY" || entry.score > 0)
+      .sort((left, right) => opportunityStrength(right) - opportunityStrength(left));
+    topBuy = buyBias.length ? [buyBias[0]] : [];
   }
-  if (!topSell.length && entries.length) {
-    topSell = [sortOpportunityDirection(entries, "SELL")[0]].filter(Boolean);
-  }
-  if (!topBuy.length && !topSell.length && entries.length) {
-    const best = [...entries].sort((left, right) => opportunityStrength(right) - opportunityStrength(left))[0];
-    if (best) {
-      if ((best.score || 0) >= 0) {
-        topBuy = [best];
-      } else {
-        topSell = [best];
-      }
+
+  if (!highConfidence.length && entries.length) {
+    const buyBias = [...entries]
+      .filter(
+        (entry) =>
+          !excludedForHighConf.has(entry.symbol) && (entry.recommendation === "BUY" || entry.score > 0),
+      )
+      .sort((left, right) => right.confidence - left.confidence || opportunityStrength(right) - opportunityStrength(left));
+    if (buyBias.length && buyBias[0].confidence >= 48) {
+      highConfidence = [buyBias[0]];
     }
   }
-  const excludedSymbols = new Set([...topBuy, ...topSell].map((entry) => entry.symbol));
-  let highConfidence = opportunityConfidenceCandidates(entries, excludedSymbols);
 
-  if (!topBuy.length && strongest) {
-    topBuy = [strongest];
-  }
-  if (!topSell.length && strongest) {
-    topSell = [strongest];
-  }
-  if (!highConfidence.length && strongest) {
-    highConfidence = [strongest];
-  }
-
+  const topKaufSym = globalTopKaufchanceSymbol(topBuy, highConfidence);
   elements.opportunityList.innerHTML = [
-    buildOpportunitySection(`📈 ${t("signals.sectionTopBuy")}`, "BUY", topBuy, t("signals.bestLong")),
-    buildOpportunitySection(`📉 ${t("signals.sectionTopSell")}`, "SELL", topSell, t("signals.bestShort")),
-    buildOpportunitySection(`⚠️ ${t("signals.sectionHighConf")}`, "HOLD", highConfidence, t("signals.clearestSetup")),
+    buildOpportunitySection(`📈 ${t("signals.sectionTopBuy")}`, "topBuy", topBuy, topKaufSym),
+    buildOpportunitySection(`📉 ${t("signals.sectionTopSell")}`, "topSell", topSell, null),
+    buildOpportunitySection(`📈 ${t("signals.sectionHighConf")}`, "highConfBuy", highConfidence, topKaufSym),
   ].join("");
 
   elements.opportunityList.querySelectorAll(".opportunity-card").forEach((button) => {
@@ -5589,6 +5840,33 @@ async function bootDashboard(forceRefresh = false) {
 }
 
 function bindAuth() {
+  elements.localDevAccessButton?.addEventListener("click", async () => {
+    try {
+      setAuthLoading(true, "Zugang wird geprüft...");
+      setAuthError("");
+      await loginWithLocalDevAccessCode();
+      setAuthError("");
+      setAuthInfo("");
+      ensureAppBindings();
+      await loadSubscriptionStatus();
+      enforceFreeStrategySelection();
+      await handleBillingRedirectState();
+      showAppShell();
+      await bootDashboard();
+    } catch (error) {
+      setAuthError(extractAuthErrorMessage(error, "Lokaler Zugang fehlgeschlagen."));
+    } finally {
+      setAuthLoading(false);
+    }
+  });
+
+  elements.localDevAccessInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      elements.localDevAccessButton?.click();
+    }
+  });
+
   elements.authModeLoginButton?.addEventListener("click", () => {
     state.auth.formMode = "login";
     state.auth.verifyStep = false;
@@ -6058,6 +6336,9 @@ async function initializeApp() {
   try {
     await initializeManagedAuth();
     await restoreAdminSessionUser();
+    if (state.auth.currentUser && !isAuthenticated()) {
+      setAuthenticated(true);
+    }
   } catch (error) {
     console.error("[frontend] auth init failed", error);
     state.auth.enabled = false;

@@ -249,7 +249,28 @@ body.booting *::after {
 
 .opportunity-group {
   display: grid;
-  gap: 0.65rem;
+  gap: 0.8rem;
+  position: relative;
+  padding-left: 0.55rem;
+}
+
+.opportunity-group::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.2rem;
+  bottom: 0.2rem;
+  width: 3px;
+  border-radius: 999px;
+  background: rgba(163, 163, 163, 0.35);
+}
+
+.opportunity-group--bullish::before {
+  background: linear-gradient(180deg, rgba(0, 92, 57, 0.55), rgba(0, 92, 57, 0.2));
+}
+
+.opportunity-group--bearish::before {
+  background: linear-gradient(180deg, rgba(157, 23, 77, 0.58), rgba(157, 23, 77, 0.22));
 }
 
 .opportunity-group-head {
@@ -261,36 +282,111 @@ body.booting *::after {
 
 .opportunity-group-title {
   color: var(--color-text-muted);
-  font-size: 0.72rem;
+  font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
+}
+
+.opportunity-group--bullish .opportunity-group-title {
+  color: rgba(0, 77, 48, 0.72);
+}
+
+.opportunity-group--bearish .opportunity-group-title {
+  color: rgba(131, 24, 67, 0.78);
+}
+
+.opportunity-card-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.opportunity-empty {
+  border-radius: 1rem;
+  border: 1px dashed rgba(23, 23, 23, 0.1);
+  background: linear-gradient(165deg, rgba(250, 250, 250, 0.95), rgba(255, 255, 255, 0.99));
+  padding: 1.2rem 1.25rem 1.25rem;
+}
+
+.opportunity-group--bullish .opportunity-empty {
+  border-color: rgba(0, 92, 57, 0.14);
+  background: linear-gradient(165deg, rgba(0, 92, 57, 0.04), rgba(255, 255, 255, 0.99));
+}
+
+.opportunity-group--bearish .opportunity-empty {
+  border-color: rgba(157, 23, 77, 0.16);
+  background: linear-gradient(165deg, rgba(157, 23, 77, 0.045), rgba(255, 255, 255, 0.99));
+}
+
+.opportunity-empty-title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.4;
+  color: #1f1f1f;
+}
+
+.opportunity-empty-body {
+  margin: 0.6rem 0 0;
+  max-width: 36rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.6;
+  color: #6b6b6b;
 }
 
 .opportunity-card {
   width: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.85rem;
+  align-items: start;
+  gap: 1rem 1.15rem;
   border-radius: 1rem;
   border: 1px solid var(--glass-border);
   background: var(--glass-bg);
-  padding: 0.85rem 0.95rem;
+  padding: 1rem 1.1rem;
   text-align: left;
   transition: transform 140ms ease, border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
 }
 
 .opportunity-card:hover {
   transform: translateY(-1px);
-  border-color: rgba(0, 92, 57, 0.2);
+}
+
+.opportunity-buy:hover {
+  border-color: rgba(0, 92, 57, 0.22);
+  box-shadow: 0 10px 28px rgba(0, 92, 57, 0.07);
+}
+
+.opportunity-sell:hover {
+  border-color: rgba(157, 23, 77, 0.28);
+  box-shadow: 0 10px 28px rgba(157, 23, 77, 0.08);
+}
+
+.opportunity-hold:hover {
+  border-color: rgba(0, 0, 0, 0.1);
   box-shadow: var(--shadow-premium);
 }
 
 .opportunity-card:focus-visible {
   outline: none;
-  border-color: rgba(0, 92, 57, 0.45);
-  box-shadow: 0 0 0 3px rgba(0, 92, 57, 0.12);
+}
+
+.opportunity-buy:focus-visible {
+  border-color: rgba(0, 92, 57, 0.42);
+  box-shadow: 0 0 0 3px rgba(0, 92, 57, 0.11);
+}
+
+.opportunity-sell:focus-visible {
+  border-color: rgba(157, 23, 77, 0.45);
+  box-shadow: 0 0 0 3px rgba(157, 23, 77, 0.12);
+}
+
+.opportunity-hold:focus-visible {
+  border-color: rgba(180, 83, 9, 0.35);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12);
 }
 
 .opportunity-card:active {
@@ -298,40 +394,148 @@ body.booting *::after {
   filter: brightness(1.03);
 }
 
+.opportunity-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.opportunity-symbol {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #171717;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opportunity-name {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #525252;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opportunity-metrics {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+  text-align: right;
+  min-width: 5.5rem;
+}
+
+.opportunity-metric-primary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+}
+
+.opportunity-metric-label {
+  margin: 0;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8c8c8c;
+}
+
+.opportunity-confidence-value {
+  margin: 0;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  color: #0a0a0a;
+  font-variant-numeric: tabular-nums;
+}
+
+.opportunity-confidence-num {
+  font-size: 1.5rem;
+}
+
+.opportunity-confidence-suffix {
+  margin-left: 0.06rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #3d3d3d;
+}
+
+.opportunity-metric-secondary {
+  margin-top: 0.55rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(23, 23, 23, 0.07);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.12rem;
+}
+
+.opportunity-metric-sublabel {
+  margin: 0;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #b0b0b0;
+}
+
+.opportunity-score-value {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #737373;
+}
+
 .opportunity-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 3.9rem;
+  flex-shrink: 0;
+  min-height: 1.625rem;
+  max-width: 11.25rem;
   border-radius: 999px;
-  padding: 0.32rem 0.6rem;
-  font-size: 0.68rem;
+  padding: 0.28rem 0.62rem;
+  font-size: 0.625rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.065em;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .opportunity-buy {
-  border-color: rgba(0, 92, 57, 0.2);
-  background: linear-gradient(180deg, rgba(0, 92, 57, 0.08), rgba(255, 255, 255, 0.95));
-  box-shadow: 0 8px 20px rgba(0, 92, 57, 0.06);
+  border-color: rgba(0, 92, 57, 0.14);
+  background: linear-gradient(165deg, rgba(0, 92, 57, 0.055), rgba(255, 255, 255, 0.97));
+  box-shadow: 0 6px 18px rgba(0, 92, 57, 0.045);
 }
 
 .opportunity-buy .opportunity-pill {
   color: var(--color-brand);
-  background: rgba(0, 92, 57, 0.1);
-  border: 1px solid rgba(0, 92, 57, 0.22);
+  background: rgba(0, 92, 57, 0.09);
+  border: 1px solid rgba(0, 92, 57, 0.18);
 }
 
 .opportunity-sell {
-  border-color: rgba(239, 68, 68, 0.22);
-  background: linear-gradient(180deg, rgba(239, 68, 68, 0.08), rgba(255, 255, 255, 0.96));
-  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.06);
+  border-color: rgba(157, 23, 77, 0.16);
+  background: linear-gradient(165deg, rgba(157, 23, 77, 0.06), rgba(255, 255, 255, 0.98));
+  box-shadow: 0 6px 18px rgba(157, 23, 77, 0.05);
 }
 
 .opportunity-sell .opportunity-pill {
-  color: #b91c1c;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.22);
+  color: #9d174d;
+  background: rgba(157, 23, 77, 0.09);
+  border: 1px solid rgba(157, 23, 77, 0.2);
 }
 
 .opportunity-hold {
@@ -345,19 +549,48 @@ body.booting *::after {
   border: 1px solid rgba(245, 158, 11, 0.25);
 }
 
-.opportunity-card-current {
-  border-color: rgba(0, 92, 57, 0.35);
+.opportunity-buy.opportunity-card-current {
+  border-color: rgba(0, 92, 57, 0.32);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    0 0 0 1px rgba(0, 92, 57, 0.12);
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 0 0 1px rgba(0, 92, 57, 0.1);
+}
+
+.opportunity-sell.opportunity-card-current {
+  border-color: rgba(157, 23, 77, 0.32);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 0 0 1px rgba(157, 23, 77, 0.1);
+}
+
+.opportunity-hold.opportunity-card-current {
+  border-color: rgba(180, 83, 9, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 0 0 1px rgba(245, 158, 11, 0.12);
 }
 
 .opportunity-card-strongest {
   border-width: 1px;
   transform: translateY(-1px);
+}
+
+.opportunity-buy.opportunity-card-strongest {
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    0 12px 28px rgba(0, 0, 0, 0.08);
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 12px 32px rgba(0, 92, 57, 0.1);
+}
+
+.opportunity-sell.opportunity-card-strongest {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 12px 32px rgba(157, 23, 77, 0.11);
+}
+
+.opportunity-hold.opportunity-card-strongest {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 12px 28px rgba(0, 0, 0, 0.07);
 }
 
 .chart-toolbar {
