@@ -6409,3 +6409,142 @@ body.booting *::after {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
+
+/* Premium Header: klare Hierarchie und ruhigeres Fintech-Layout */
+.dashboard-topbar-premium {
+  gap: 1rem !important;
+  padding: 1.1rem 1.2rem !important;
+}
+
+.dashboard-topbar-main {
+  align-items: center;
+}
+
+.dashboard-topbar-premium .dashboard-brand {
+  min-width: 220px;
+}
+
+.dashboard-topbar-premium .dashboard-brand-name {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.dashboard-topbar-premium .dashboard-brand-subtitle {
+  letter-spacing: 0.12em;
+  color: #525252;
+}
+
+.dashboard-topbar-premium .dashboard-search {
+  min-height: 2.95rem;
+  border-radius: 0.9rem;
+  background: #ffffff !important;
+  border-color: #d4d4d4 !important;
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.05);
+}
+
+.dashboard-topbar-premium .dashboard-lang-switch {
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 0.2rem;
+  background: #fafafa;
+}
+
+.dashboard-topbar-premium .dashboard-lang-button {
+  min-width: 2.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.dashboard-topbar-premium #strategyToggle {
+  border-radius: 0.95rem !important;
+  background: #fafafa !important;
+  border-color: #d4d4d4 !important;
+}
+
+.dashboard-topbar-premium .strategy-button {
+  border-radius: 0.75rem;
+  font-size: 0.74rem;
+  letter-spacing: 0.01em;
+}
+
+.dashboard-topbar-premium #backendStatus {
+  border-radius: 999px;
+  border-color: #d4d4d4 !important;
+  background: #fafafa !important;
+  color: #374151 !important;
+  font-weight: 600;
+}
+
+.dashboard-topbar-actions .action-primary,
+.dashboard-topbar-actions .action-secondary,
+.dashboard-topbar-actions .action-tertiary {
+  min-height: 2.7rem;
+  border-radius: 0.85rem;
+}
+
+.dashboard-topbar-actions .action-primary {
+  border-color: #005c39 !important;
+}
+
+.dashboard-topbar-actions .action-secondary {
+  border-color: #c7d7cf !important;
+  background: #edf4f0 !important;
+  color: #0d5138 !important;
+  box-shadow: none !important;
+}
+
+.dashboard-topbar-actions .action-tertiary {
+  color: #525252;
+  box-shadow: none !important;
+}
+
+.topbar-profile-menu {
+  position: relative;
+}
+
+.topbar-profile-menu > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.topbar-profile-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.topbar-profile-menu-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.45rem);
+  min-width: 170px;
+  padding: 0.35rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.85rem;
+  background: #ffffff;
+  box-shadow: 0 12px 30px rgba(17, 24, 39, 0.12);
+  z-index: 220;
+}
+
+.topbar-profile-item {
+  width: 100%;
+  display: block;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: #171717;
+  border-radius: 0.65rem;
+  padding: 0.58rem 0.62rem;
+  font-size: 0.83rem;
+  font-weight: 600;
+}
+
+.topbar-profile-item:hover {
+  background: #f5f5f5;
+}
+
+@media (max-width: 1279px) {
+  .dashboard-topbar-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+}

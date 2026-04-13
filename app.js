@@ -56,7 +56,7 @@ const I18N = {
     "paywall.logout": "Abmelden",
     "paywall.note": "Apple Pay und Google Pay sind im Stripe-Checkout verfugbar.",
     "premium.inline.cta": "Upgrade auf Pro",
-    "premium.inline.genericTitle": "Free-Modus aktiv",
+    "premium.inline.genericTitle": "Basismodus aktiv",
     "premium.inline.genericBody": "Simple-Strategie bleibt nutzbar. Fur Live-Alerts und Opportunity-Rankings brauchst du Pro.",
     "premium.inline.alertsTitle": "Alerts sind ein Pro-Feature",
     "premium.inline.alertsBody": "Im Free-Modus siehst du Marktanalyse und Simple-Signale. Fur Echtzeit-Alerts bitte auf Pro upgraden.",
@@ -64,12 +64,19 @@ const I18N = {
     "premium.inline.oppsBody": "Top-Buy/Top-Sell Scans sind fur Pro freigeschaltet. Free bleibt mit Simple-Analyse aktiv.",
     "premium.inline.strategyBody":
       "AI und Hedgefund sind Pro-Strategien. Du bleibst im Dashboard mit der kostenlosen Simple-Strategie.",
+    "premium.inline.dismiss": "Hinweis geschlossen.",
+    "premium.limit.analysisTitle": "Tageslimit erreicht",
+    "premium.limit.analysisBody":
+      "Du hast dein Free-Limit von {n} Analysen fur heute erreicht. Upgrade auf Pro fur mehr Analysen und volle Funktionen.",
 
     "dashboard.homeAria": "Zur Dashboard-Startseite",
-    "dashboard.privateSystem": "Privates System",
-    "dashboard.searchPlaceholder": "Suchen",
+    "dashboard.privateSystem": "Privates Handelssystem",
+    "dashboard.searchPlaceholder": "Symbol oder Unternehmen suchen",
     "dashboard.backendConnecting": "Backend wird verbunden...",
-    "dashboard.subscribe": "Upgrade €4.99",
+    "dashboard.subscribe": "Upgrade auf Pro",
+    "dashboard.settings": "Einstellungen",
+    "dashboard.account": "Konto",
+    "dashboard.freeModeStatus": "Basiszugang aktiv · Strategie Einfach verfugbar",
     "dashboard.refresh": "Aktualisieren",
     "dashboard.logout": "Abmelden",
     "dashboard.kickerLive": "LIVE",
@@ -299,12 +306,19 @@ const I18N = {
     "premium.inline.oppsBody": "Top-buy / top-sell scans are unlocked on Pro. Free mode stays active with Simple analysis.",
     "premium.inline.strategyBody":
       "AI and Hedgefund are Pro strategies. You stay inside the dashboard with the free Simple strategy.",
+    "premium.inline.dismiss": "Notice dismissed.",
+    "premium.limit.analysisTitle": "Daily limit reached",
+    "premium.limit.analysisBody":
+      "You reached your free limit of {n} analyses for today. Upgrade to Pro for more analyses and full features.",
 
     "dashboard.homeAria": "Go to dashboard home",
-    "dashboard.privateSystem": "Private system",
-    "dashboard.searchPlaceholder": "Search",
+    "dashboard.privateSystem": "Private trading system",
+    "dashboard.searchPlaceholder": "Search symbol or company",
     "dashboard.backendConnecting": "Connecting backend...",
-    "dashboard.subscribe": "Subscribe €4.99",
+    "dashboard.subscribe": "Upgrade to Pro",
+    "dashboard.settings": "Settings",
+    "dashboard.account": "Account",
+    "dashboard.freeModeStatus": "Free mode active · Simple strategy unlocked",
     "dashboard.refresh": "Refresh",
     "dashboard.logout": "Logout",
     "dashboard.kickerLive": "LIVE",
@@ -666,6 +680,7 @@ const state = {
   opportunityPanelMode: "panel",
   opportunityWarningMessage: "",
   opportunityPanelHydrated: false,
+  lastQuotaPromptAt: 0,
   auth: {
     enabled: false,
     ready: false,
@@ -700,6 +715,7 @@ const elements = {
   authOverlay: document.getElementById("authOverlay"),
   paywallOverlay: document.getElementById("paywallOverlay"),
   paywallUpgradeButton: document.getElementById("paywallUpgradeButton"),
+  paywallCloseButton: document.getElementById("paywallCloseButton"),
   paywallContinueFreeButton: document.getElementById("paywallContinueFreeButton"),
   paywallLogoutButton: document.getElementById("paywallLogoutButton"),
   paywallMessage: document.getElementById("paywallMessage"),
@@ -1138,6 +1154,31 @@ function extractAuthErrorMessage(error, fallback = "Authentication failed.") {
   return explicit || fallback;
 }
 
+function extractQuotaDetail(error) {
+  if (!error) {
+    return null;
+  }
+  const code = String(error.code || "").trim().toLowerCase();
+  if (code === "quota_reached") {
+    return {
+      feature: String(error.feature || ""),
+      limit: Number(error.limit || 0) || null,
+      window: String(error.window || ""),
+      message: String(error.message || "").trim(),
+    };
+  }
+  const message = String(error.message || "").toLowerCase();
+  if (message.includes("free limit reached") || message.includes("limit reached")) {
+    return {
+      feature: "",
+      limit: null,
+      window: "",
+      message: String(error.message || "").trim(),
+    };
+  }
+  return null;
+}
+
 async function completePostAuthEntry() {
   await syncAuthenticatedUserWithRetry({ forceRefresh: true, attempts: 4 });
   setAuthenticated(true);
@@ -1527,7 +1568,7 @@ function showPremiumStrategyPrompt(nextStrategy) {
   renderStrategyButtons();
   renderMobileStrategyCards();
   setAuthInfo(t("premium.inline.strategyBody"));
-  setBackendStatus("Free mode active · Simple strategy unlocked", "warning");
+  setBackendStatus(t("dashboard.freeModeStatus"), "warning");
   renderAlertsWarning(t("premium.inline.alertsTitle"), {
     title: t("premium.inline.alertsTitle"),
     body: t("premium.inline.alertsBody"),
@@ -2753,7 +2794,17 @@ function renderAlertsWarning(message, options = {}) {
   const ctaHref = String(options.ctaHref || "").trim();
   elements.alertsList.innerHTML = `
     <article class="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-      <p class="text-sm font-semibold text-neutral-900">${escapeHtml(title)}</p>
+      <div class="flex items-start justify-between gap-3">
+        <p class="text-sm font-semibold text-neutral-900">${escapeHtml(title)}</p>
+        <button
+          type="button"
+          data-dismiss-warning="alerts"
+          class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-neutral-300 bg-white text-sm font-semibold leading-none text-neutral-700 transition hover:bg-neutral-100"
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </div>
       <p class="mt-2 text-sm leading-6 text-neutral-700">${escapeHtml(body)}</p>
       ${
         ctaLabel && ctaHref
@@ -2762,6 +2813,10 @@ function renderAlertsWarning(message, options = {}) {
       }
     </article>
   `;
+  elements.alertsList.querySelector('[data-dismiss-warning="alerts"]')?.addEventListener("click", () => {
+    elements.alertsList.innerHTML = "";
+    elements.alertsMeta.textContent = t("premium.inline.dismiss");
+  });
   requestAnimationFrame(syncCompanySectionAlignment);
 }
 
@@ -3027,7 +3082,17 @@ function renderOpportunityWarning(message, options = {}) {
   const ctaHref = String(options.ctaHref || "").trim();
   elements.opportunityList.innerHTML = `
     <article class="rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-      <p class="text-sm font-semibold text-neutral-900">${escapeHtml(title)}</p>
+      <div class="flex items-start justify-between gap-3">
+        <p class="text-sm font-semibold text-neutral-900">${escapeHtml(title)}</p>
+        <button
+          type="button"
+          data-dismiss-warning="opportunities"
+          class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-neutral-300 bg-white text-sm font-semibold leading-none text-neutral-700 transition hover:bg-neutral-100"
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </div>
       <p class="mt-2 text-sm leading-6 text-neutral-700">${escapeHtml(body)}</p>
       ${
         ctaLabel && ctaHref
@@ -3036,6 +3101,12 @@ function renderOpportunityWarning(message, options = {}) {
       }
     </article>
   `;
+  elements.opportunityList.querySelector('[data-dismiss-warning="opportunities"]')?.addEventListener("click", () => {
+    elements.opportunityList.innerHTML = "";
+    elements.opportunityMeta.textContent = t("premium.inline.dismiss");
+    state.opportunityWarningMessage = "";
+    state.opportunityPanelMode = "panel";
+  });
 }
 
 async function loadOpportunities(forceRefresh = false) {
@@ -3372,18 +3443,19 @@ function renderAnalysis(analysis) {
 
   if (!analysis || analysis.no_data) {
     const reason = analysis?.no_data_reason || "No live market data available.";
+    const quotaReason = reason.toLowerCase().includes("limit");
     const noDataQuality = dataQualityInfo(analysis);
     elements.recommendationCard.className = "rounded-[28px] border border-rose-400/25 bg-rose-500/10 p-5";
     elements.recommendationIcon.className = "signal-icon tone-sell";
-    elements.recommendationIcon.textContent = recommendationIcon("NO DATA");
+    elements.recommendationIcon.textContent = recommendationIcon(quotaReason ? "HOLD" : "NO DATA");
     elements.recommendationValue.className = "text-5xl font-black tracking-[-0.06em] text-rose-800 xl:text-6xl";
-    elements.recommendationValue.textContent = "NO DATA";
+    elements.recommendationValue.textContent = quotaReason ? "LIMIT" : "NO DATA";
     elements.signalQualityBadge.hidden = true;
     elements.conflictBadge.hidden = true;
     elements.confidenceValue.className = "mt-2 text-2xl font-semibold text-neutral-800";
     elements.confidenceValue.textContent = "--";
     setConfidenceBar(0, "NO_DATA");
-    elements.confidenceHint.textContent = "⚠️ No data";
+    elements.confidenceHint.textContent = quotaReason ? "⚠️ Limit reached" : "⚠️ No data";
     elements.analysisSummary.textContent = trimDecisionText(reason, 110);
     elements.analysisGeneratedAt.textContent = "No signal";
     elements.biasValue.textContent = "Balanced";
@@ -3397,7 +3469,7 @@ function renderAnalysis(analysis) {
       elements.mobileConfidenceBarFill.style.width = "0%";
     }
     if (elements.mobileConfidenceHint) {
-      elements.mobileConfidenceHint.textContent = "⚠️ No data";
+      elements.mobileConfidenceHint.textContent = quotaReason ? "⚠️ Limit reached" : "⚠️ No data";
     }
     if (elements.mobileAnalysisSummary) {
       elements.mobileAnalysisSummary.textContent = trimDecisionText(reason, 110);
@@ -3422,8 +3494,9 @@ function renderAnalysis(analysis) {
     elements.positionSizeReason.textContent = "No data.";
     elements.stopLossValue.textContent = "--";
     elements.stopLossReason.textContent = "No stop.";
-    elements.warningsList.innerHTML =
-      '<span class="rounded-full border border-rose-400/25 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-800">No live data</span>';
+    elements.warningsList.innerHTML = quotaReason
+      ? '<span class="rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-900">Free limit reached</span>'
+      : '<span class="rounded-full border border-rose-400/25 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-800">No live data</span>';
     renderMobileStrategyCards();
     syncMobileFavoriteButton();
     return;
@@ -4310,7 +4383,15 @@ async function api(path, options = {}) {
         timeoutMs: Math.round(timeoutMs * 1.2),
       });
     }
-    throw new Error(detail);
+    const requestError = new Error(detail);
+    if (typeof rawDetail === "object" && rawDetail !== null) {
+      requestError.code = rawDetail.code || "";
+      requestError.feature = rawDetail.feature || "";
+      requestError.limit = rawDetail.limit;
+      requestError.window = rawDetail.window || "";
+      requestError.upgrade_required = Boolean(rawDetail.upgrade_required);
+    }
+    throw requestError;
   }
 
   console.log("[frontend] API ok", { path, status: response.status });
@@ -5330,6 +5411,29 @@ async function loadSymbol(symbol, forceRefresh = false) {
     if (analysisResult.status === "fulfilled") {
       renderAnalysis(analysisResult.value);
     } else {
+      const quotaDetail = extractQuotaDetail(analysisResult.reason);
+      if (quotaDetail && String(quotaDetail.feature || "").toLowerCase() === "analysis_daily") {
+        const limitValue = quotaDetail.limit && quotaDetail.limit > 0 ? quotaDetail.limit : 20;
+        const title = t("premium.limit.analysisTitle");
+        const body = tf("premium.limit.analysisBody", { n: limitValue });
+        setAuthInfo(`${title}. ${body}`);
+        setBackendStatus(`${title}. ${body}`, "warning");
+        showError(`${title}. ${body}`);
+        const now = Date.now();
+        if (now - state.lastQuotaPromptAt > 120000) {
+          state.lastQuotaPromptAt = now;
+          if (window.confirm(`${title}. ${body}`)) {
+            window.location.href = "/pricing.html";
+          }
+        }
+        renderAnalysis({
+          no_data: true,
+          no_data_reason: `${title}. ${body}`,
+          data_quality: "NO_DATA",
+          data_quality_reason: `${title}. ${body}`,
+        });
+        return;
+      }
       renderAnalysis({
         no_data: true,
         no_data_reason:
@@ -5732,6 +5836,10 @@ function bindApp() {
     void startCheckout();
   });
 
+  elements.paywallCloseButton?.addEventListener("click", () => {
+    hidePaywall();
+  });
+
   elements.paywallContinueFreeButton?.addEventListener("click", async () => {
     hidePaywall();
     persistSelectedStrategy("simple");
@@ -5797,6 +5905,10 @@ function bindApp() {
   });
 
   window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && elements.paywallOverlay && !elements.paywallOverlay.hidden) {
+      hidePaywall();
+      return;
+    }
     if (event.key === "Escape" && elements.settingsOverlay && !elements.settingsOverlay.hidden) {
       closeSettingsOverlay();
       return;
