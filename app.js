@@ -1246,6 +1246,9 @@ function currentUserKey() {
 }
 
 function renderAuthMode() {
+  const signup = state.auth.formMode === "signup";
+  const verifyStep = Boolean(state.auth.verifyStep);
+  const resetMode = state.auth.verifyMode === "reset";
   if (elements.authForm) {
     elements.authForm.hidden = false;
     elements.authForm.classList.toggle("is-signup", signup);
@@ -1253,9 +1256,6 @@ function renderAuthMode() {
     elements.authForm.dataset.mode = signup ? "signup" : "login";
     elements.authForm.dataset.phase = verifyStep ? "verify" : "form";
   }
-  const signup = state.auth.formMode === "signup";
-  const verifyStep = Boolean(state.auth.verifyStep);
-  const resetMode = state.auth.verifyMode === "reset";
   if (elements.authUsernameLabel) {
     elements.authUsernameLabel.hidden = !signup || verifyStep;
   }
