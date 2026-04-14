@@ -795,6 +795,7 @@ const state = {
     resetSignIn: null,
     recoveryFlow: false,
     lastOtpType: "",
+    emailConfirmedNoticeShown: false,
     paywallMode: "default",
     usernamePromptShown: false,
     lastInitError: "",
@@ -1247,6 +1248,10 @@ function currentUserKey() {
 function renderAuthMode() {
   if (elements.authForm) {
     elements.authForm.hidden = false;
+    elements.authForm.classList.toggle("is-signup", signup);
+    elements.authForm.classList.toggle("is-verify", verifyStep);
+    elements.authForm.dataset.mode = signup ? "signup" : "login";
+    elements.authForm.dataset.phase = verifyStep ? "verify" : "form";
   }
   const signup = state.auth.formMode === "signup";
   const verifyStep = Boolean(state.auth.verifyStep);
@@ -1322,8 +1327,16 @@ function setAuthLoading(loading, message = "Redirecting…") {
   if (!elements.authLoading) {
     return;
   }
+  if (elements.authOverlay) {
+    elements.authOverlay.classList.toggle("is-loading", loading);
+    elements.authOverlay.setAttribute("aria-busy", loading ? "true" : "false");
+  }
+  if (elements.authForm) {
+    elements.authForm.classList.toggle("is-loading", loading);
+  }
   elements.authLoading.hidden = !loading;
   elements.authLoading.textContent = message;
+  elements.authLoading.classList.toggle("auth-loading-text", loading);
 }
 
 function setAuthInfo(message = "") {
@@ -1497,6 +1510,19 @@ function syncResendCooldownButton() {
   authResendTicker = window.setTimeout(syncResendCooldownButton, 250);
 }
 
+function pulseAuthForm() {
+  if (!elements.authForm) {
+    return;
+  }
+  elements.authForm.classList.remove("is-switching");
+  window.requestAnimationFrame(() => {
+    elements.authForm.classList.add("is-switching");
+    window.setTimeout(() => {
+      elements.authForm?.classList.remove("is-switching");
+    }, 240);
+  });
+}
+
 async function fetchAuthConfig() {
   const config = await api("/api/auth/config", {
     timeoutMs: 12000,
@@ -1589,6 +1615,9 @@ async function ensureSupabaseAuthClient(config) {
       throw new Error(otpError.message || "Could not finalize email confirmation.");
     }
     state.auth.lastOtpType = otpParams.type;
+    if (otpParams.type === "signup") {
+      state.auth.emailConfirmedNoticeShown = false;
+    }
     clearSupabaseOtpParamsFromUrl();
   }
   const recoveryFlow = isSupabaseRecoveryFlow();
@@ -4710,6 +4739,15 @@ function showLoginOverlay() {
   if (state.auth.enabled) {
     setAuthLoading(false);
   }
+  if (
+    state.auth.provider === "supabase" &&
+    state.auth.lastOtpType === "signup" &&
+    !state.auth.emailConfirmedNoticeShown
+  ) {
+    setAuthInfo("Email confirmed. You can now log in with your email and password.");
+    state.auth.emailConfirmedNoticeShown = true;
+    pulseAuthForm();
+  }
   bindAuthVisualMotion();
   if (!prefersReducedMotion) {
     scheduleLowPriorityTask(() => initAuthMiniGame(), 120);
@@ -6146,6 +6184,7 @@ function bindAuth() {
     setAuthError("");
     syncResendCooldownButton();
     renderAuthMode();
+    pulseAuthForm();
   });
 
   elements.authModeSignupButton?.addEventListener("click", (event) => {
@@ -6161,6 +6200,7 @@ function bindAuth() {
     setAuthError("");
     syncResendCooldownButton();
     renderAuthMode();
+    pulseAuthForm();
   });
 
   elements.authAdminToggleButton?.addEventListener("click", () => {
@@ -6203,6 +6243,7 @@ function bindAuth() {
       setAuthLoading(true, "Sending reset code...");
       await startPasswordResetFlow(elements.authEmail?.value || "");
       setAuthInfo("Reset email sent. Open the link in your inbox.");
+      pulseAuthForm();
     } catch (error) {
       setAuthError(error.message || "Could not start password reset.");
     } finally {
@@ -6275,6 +6316,7 @@ function bindAuth() {
     setAuthError("");
     syncResendCooldownButton();
     renderAuthMode();
+    pulseAuthForm();
   });
 
   elements.authForm?.addEventListener("submit", async (event) => {

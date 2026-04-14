@@ -1935,6 +1935,7 @@ body.booting *::after {
 
 .auth-landing-form {
   margin-top: 0.8rem;
+  transition: opacity 200ms ease, transform 200ms ease;
 }
 
 .auth-login-card {
@@ -1944,6 +1945,78 @@ body.booting *::after {
   border: 1px solid var(--glass-border);
   background: var(--color-surface-2);
   box-shadow: var(--shadow-premium);
+  transition: transform 200ms ease, box-shadow 200ms ease, opacity 200ms ease;
+}
+
+.auth-landing-form.is-switching .auth-login-card {
+  transform: translateY(8px);
+  opacity: 0.85;
+}
+
+#authVerifyPanel {
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+#authVerifyPanel[hidden] {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.auth-landing-form[data-mode="signup"] .auth-login-card {
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+}
+
+.auth-landing-form[data-phase="verify"] .auth-login-card {
+  opacity: 0.92;
+  transform: translateY(-6px);
+}
+
+#authVerifyPanel:not([hidden]) {
+  animation: auth-panel-in 220ms ease both;
+}
+
+.auth-loading-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.auth-loading-text::before {
+  content: "";
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  border: 2px solid rgba(148, 163, 184, 0.35);
+  border-top-color: rgba(59, 130, 246, 0.9);
+  animation: auth-spinner 0.8s linear infinite;
+}
+
+#authOverlay.is-loading .auth-landing-primary,
+#authOverlay.is-loading .auth-landing-secondary,
+#authOverlay.is-loading .auth-social-button {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+#authOverlay.is-loading .auth-login-card {
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.08);
+}
+
+@keyframes auth-spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes auth-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .auth-card-intro {
@@ -1991,11 +2064,13 @@ body.booting *::after {
   font-weight: 500;
   line-height: 1.45;
   color: rgb(251, 113, 133);
+  transition: opacity 180ms ease, transform 180ms ease;
 }
 
 .auth-login-card .auth-password-hint {
   margin-top: 1rem;
   text-align: left;
+  transition: opacity 180ms ease, transform 180ms ease;
 }
 
 .auth-landing-input-shell {
@@ -2008,6 +2083,11 @@ body.booting *::after {
   gap: 0.9rem;
   align-items: center;
   margin-top: 1rem;
+}
+
+.auth-landing-form.is-loading {
+  pointer-events: none;
+  opacity: 0.7;
 }
 
 .auth-social-row {
