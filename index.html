@@ -210,6 +210,18 @@
               </div>
             </form>
 
+            <div id="authNoticeModal" class="auth-notice-modal" hidden>
+              <div class="auth-notice-card" role="status" aria-live="polite">
+                <p id="authNoticeTitle" class="auth-notice-title">Check your email</p>
+                <p id="authNoticeBody" class="auth-notice-body">
+                  We sent a confirmation link. Open your inbox and confirm your email to activate your account.
+                </p>
+                <button id="authNoticeCloseButton" type="button" class="auth-notice-button">
+                  Okay
+                </button>
+              </div>
+            </div>
+
             <div
               id="localDevAccessShell"
               class="local-dev-access-shell mt-4 rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 px-4 py-4 text-sm text-neutral-700"

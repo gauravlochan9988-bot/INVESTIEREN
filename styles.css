@@ -2090,6 +2090,58 @@ body.booting *::after {
   opacity: 0.7;
 }
 
+.auth-notice-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(2, 6, 23, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+.auth-notice-card {
+  width: min(100%, 28rem);
+  border-radius: 1.5rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: #0f172a;
+  padding: 1.6rem 1.4rem 1.4rem;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(2, 6, 23, 0.55);
+}
+
+.auth-notice-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.auth-notice-body {
+  margin: 0.7rem 0 1.2rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.auth-notice-button {
+  width: 100%;
+  min-height: 3rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(56, 189, 248, 0.14);
+  color: #e2e8f0;
+  font-weight: 600;
+  transition: transform 180ms ease, background 180ms ease;
+}
+
+.auth-notice-button:hover {
+  transform: translateY(-1px);
+  background: rgba(56, 189, 248, 0.22);
+}
+
 .auth-social-row {
   justify-content: center;
   gap: 0.85rem;

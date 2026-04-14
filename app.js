@@ -844,6 +844,10 @@ const elements = {
   authPassword: document.getElementById("authPassword"),
   authError: document.getElementById("authError"),
   authInfo: document.getElementById("authInfo"),
+  authNoticeModal: document.getElementById("authNoticeModal"),
+  authNoticeTitle: document.getElementById("authNoticeTitle"),
+  authNoticeBody: document.getElementById("authNoticeBody"),
+  authNoticeCloseButton: document.getElementById("authNoticeCloseButton"),
   localDevAccessShell: document.getElementById("localDevAccessShell"),
   localDevAccessInput: document.getElementById("localDevAccessInput"),
   localDevAccessButton: document.getElementById("localDevAccessButton"),
@@ -1350,6 +1354,22 @@ function setAuthInfo(message = "") {
   }
   elements.authInfo.textContent = message;
   elements.authInfo.hidden = false;
+}
+
+function showAuthNotice({ title, body }) {
+  if (!elements.authNoticeModal || !elements.authNoticeTitle || !elements.authNoticeBody) {
+    return;
+  }
+  elements.authNoticeTitle.textContent = title || "Check your email";
+  elements.authNoticeBody.textContent = body || "We sent a confirmation link. Please open your inbox.";
+  elements.authNoticeModal.hidden = false;
+}
+
+function hideAuthNotice() {
+  if (!elements.authNoticeModal) {
+    return;
+  }
+  elements.authNoticeModal.hidden = true;
 }
 
 function setAuthError(message = "") {
@@ -2214,7 +2234,11 @@ async function initializeManagedAuth() {
       renderSubscriptionButton();
       setAuthError("");
       if (state.auth.lastOtpType === "signup") {
-        setAuthInfo("Email confirmed. Please login with your email and password.");
+        setAuthInfo("Email confirmed. You can now log in with your email and password.");
+        showAuthNotice({
+          title: "Email confirmed",
+          body: "Your account is verified. You can now log in with your email and password.",
+        });
       } else {
         setAuthInfo("");
       }
@@ -2275,10 +2299,10 @@ async function authenticateWithEmailPassword({ mode, username, email, password }
       throw new Error(error.message || "Sign up failed.");
     }
     if (!data?.session) {
-      throw new Error("Check your email to verify your account, then login.");
+      return { pendingVerification: true };
     }
     setSupabaseClientSession(supabase, data.session);
-    return;
+    return { pendingVerification: false };
   }
   const { data, error } = await supabase.auth.signInWithPassword({
     email: normalizedEmail,
@@ -2288,6 +2312,7 @@ async function authenticateWithEmailPassword({ mode, username, email, password }
     throw new Error(error?.message || "Login failed. Check your credentials.");
   }
   setSupabaseClientSession(supabase, data.session);
+  return { pendingVerification: false };
 }
 
 async function completeSignupVerification(code) {
@@ -4746,6 +4771,10 @@ function showLoginOverlay() {
     !state.auth.emailConfirmedNoticeShown
   ) {
     setAuthInfo("Email confirmed. You can now log in with your email and password.");
+    showAuthNotice({
+      title: "Email confirmed",
+      body: "Your account is verified. You can now log in with your email and password.",
+    });
     state.auth.emailConfirmedNoticeShown = true;
     pulseAuthForm();
   }
@@ -6220,6 +6249,9 @@ function bindAuth() {
     setAuthInfo("");
     setAuthError("");
   });
+  elements.authNoticeCloseButton?.addEventListener("click", () => {
+    hideAuthNotice();
+  });
   elements.authEmail?.addEventListener("input", () => {
     setAuthInfo("");
     setAuthError("");
@@ -6241,6 +6273,7 @@ function bindAuth() {
     try {
       setAuthInfo("");
       setAuthError("");
+      hideAuthNotice();
       setAuthLoading(true, "Sending reset code...");
       await startPasswordResetFlow(elements.authEmail?.value || "");
       setAuthInfo("Reset email sent. Open the link in your inbox.");
@@ -6315,6 +6348,7 @@ function bindAuth() {
     state.auth.resendCooldownUntil = 0;
     setAuthInfo("");
     setAuthError("");
+    hideAuthNotice();
     syncResendCooldownButton();
     renderAuthMode();
     pulseAuthForm();
@@ -6332,7 +6366,16 @@ function bindAuth() {
     try {
       setAuthLoading(true, mode === "signup" ? "Creating account..." : "Signing in...");
       setAuthInfo("");
-      await authenticateWithEmailPassword({ mode, username, email, password });
+      const result = await authenticateWithEmailPassword({ mode, username, email, password });
+      if (result?.pendingVerification) {
+        setAuthError("");
+        setAuthInfo("We sent a confirmation email. Open it, click Confirm, then log in.");
+        showAuthNotice({
+          title: "Confirm your email",
+          body: "We sent a confirmation link. Open your inbox, click Confirm, then return here to log in with your email and password.",
+        });
+        return;
+      }
       await syncAuthenticatedUser(true);
       setAuthError("");
       setAuthenticated(true);
