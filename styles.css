@@ -2098,48 +2098,138 @@ body.booting *::after {
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  background: rgba(2, 6, 23, 0.6);
-  backdrop-filter: blur(8px);
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.16), transparent 36%),
+    linear-gradient(180deg, rgba(250, 249, 245, 0.52) 0%, rgba(243, 241, 234, 0.74) 100%);
+  backdrop-filter: blur(12px) saturate(110%);
+  -webkit-backdrop-filter: blur(12px) saturate(110%);
 }
 
 .auth-notice-card {
-  width: min(100%, 28rem);
-  border-radius: 1.5rem;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  background: #0f172a;
-  padding: 1.6rem 1.4rem 1.4rem;
+  width: min(100%, 24.5rem);
+  border-radius: 1.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.87) 0%, rgba(248, 246, 240, 0.82) 100%);
+  padding: 1.3rem 1.25rem 1.15rem;
   text-align: center;
-  box-shadow: 0 20px 60px rgba(2, 6, 23, 0.55);
+  box-shadow:
+    0 18px 48px rgba(15, 23, 42, 0.12),
+    0 6px 18px rgba(15, 23, 42, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(24px) saturate(130%);
+  -webkit-backdrop-filter: blur(24px) saturate(130%);
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-notice-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top left, rgba(0, 92, 57, 0.06), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(255, 193, 7, 0.06), transparent 34%);
+  pointer-events: none;
+}
+
+.auth-notice-card::after {
+  content: "";
+  position: absolute;
+  left: 1.15rem;
+  right: 1.15rem;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 92, 57, 0.24), transparent);
+  opacity: 0.85;
+}
+
+.auth-notice-brand {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.85rem;
+}
+
+.auth-notice-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 92, 57, 0.16);
+  background: var(--color-brand);
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  box-shadow: 0 10px 22px rgba(0, 92, 57, 0.16);
+}
+
+.auth-notice-kicker {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(15, 23, 42, 0.46);
 }
 
 .auth-notice-title {
+  position: relative;
+  z-index: 1;
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1.22rem;
   font-weight: 700;
-  color: #f8fafc;
+  letter-spacing: -0.03em;
+  color: #0f172a;
 }
 
 .auth-notice-body {
-  margin: 0.7rem 0 1.2rem;
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: rgba(148, 163, 184, 0.9);
+  position: relative;
+  z-index: 1;
+  margin: 0.62rem 0 1.05rem;
+  font-size: 0.9rem;
+  line-height: 1.58;
+  color: rgba(51, 65, 85, 0.78);
 }
 
 .auth-notice-button {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  min-height: 3rem;
+  min-height: 2.95rem;
   border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  background: rgba(56, 189, 248, 0.14);
-  color: #e2e8f0;
+  border: 1px solid rgba(0, 92, 57, 0.2);
+  background: var(--color-brand);
+  color: #ffffff;
   font-weight: 600;
-  transition: transform 180ms ease, background 180ms ease;
+  box-shadow:
+    0 10px 24px rgba(0, 92, 57, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
 }
 
 .auth-notice-button:hover {
   transform: translateY(-1px);
-  background: rgba(56, 189, 248, 0.22);
+  background: var(--color-brand-hover);
+  box-shadow:
+    0 14px 30px rgba(0, 92, 57, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+@media (max-width: 640px) {
+  .auth-notice-modal {
+    padding: 1rem;
+  }
+
+  .auth-notice-card {
+    width: min(100%, 22.5rem);
+    border-radius: 1.45rem;
+    padding: 1.15rem 1rem 1rem;
+  }
 }
 
 .auth-social-row {
