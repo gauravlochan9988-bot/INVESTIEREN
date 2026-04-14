@@ -1953,22 +1953,6 @@ body.booting *::after {
   opacity: 0.85;
 }
 
-.auth-landing-form.is-switching[data-slide="left"] .auth-login-card {
-  transform: translateX(-18px);
-}
-
-.auth-landing-form.is-switching[data-slide="right"] .auth-login-card {
-  transform: translateX(18px);
-}
-
-.auth-landing-form.is-switching[data-slide="down"] .auth-login-card {
-  transform: translateY(12px);
-}
-
-.auth-landing-form.is-switching[data-slide="up"] .auth-login-card {
-  transform: translateY(-12px);
-}
-
 #authVerifyPanel {
   transition: opacity 200ms ease, transform 200ms ease;
 }

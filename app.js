@@ -1510,19 +1510,15 @@ function syncResendCooldownButton() {
   authResendTicker = window.setTimeout(syncResendCooldownButton, 250);
 }
 
-function pulseAuthForm(direction = "right") {
+function pulseAuthForm() {
   if (!elements.authForm) {
     return;
   }
-  elements.authForm.dataset.slide = direction;
   elements.authForm.classList.remove("is-switching");
   window.requestAnimationFrame(() => {
     elements.authForm.classList.add("is-switching");
     window.setTimeout(() => {
       elements.authForm?.classList.remove("is-switching");
-      if (elements.authForm) {
-        delete elements.authForm.dataset.slide;
-      }
     }, 240);
   });
 }
@@ -2176,7 +2172,7 @@ async function initializeManagedAuth() {
       setAuthInfo("Set a new password to finish account recovery.");
       setAuthError("");
       renderAuthMode();
-      pulseAuthForm("down");
+      pulseAuthForm();
       return true;
     }
 
@@ -6189,7 +6185,7 @@ function bindAuth() {
     setAuthError("");
     syncResendCooldownButton();
     renderAuthMode();
-    pulseAuthForm("right");
+    pulseAuthForm();
   });
 
   elements.authModeSignupButton?.addEventListener("click", (event) => {
@@ -6205,7 +6201,7 @@ function bindAuth() {
     setAuthError("");
     syncResendCooldownButton();
     renderAuthMode();
-    pulseAuthForm("left");
+    pulseAuthForm();
   });
 
   elements.authAdminToggleButton?.addEventListener("click", () => {
@@ -6321,7 +6317,7 @@ function bindAuth() {
     setAuthError("");
     syncResendCooldownButton();
     renderAuthMode();
-    pulseAuthForm("up");
+    pulseAuthForm();
   });
 
   elements.authForm?.addEventListener("submit", async (event) => {
