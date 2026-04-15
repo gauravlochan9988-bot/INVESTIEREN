@@ -50,9 +50,10 @@ def create_app() -> FastAPI:
         version="0.1.0",
     )
 
+    _cors_origins = settings.get_cors_allowed_origins()
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.get_cors_allowed_origins(),
+        allow_origins=_cors_origins,
         allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -60,6 +61,16 @@ def create_app() -> FastAPI:
 
     app.include_router(api_router)
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+
+    @app.on_event("startup")
+    def log_cors_origins() -> None:
+        print(
+            "cors_allowed_origins",
+            {
+                "count": len(_cors_origins),
+                "origins": _cors_origins,
+            },
+        )
 
     @app.on_event("startup")
     def ensure_database_tables() -> None:
