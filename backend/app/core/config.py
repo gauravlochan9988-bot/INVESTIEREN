@@ -155,6 +155,9 @@ class Settings(BaseSettings):
             "http://localhost:8000",
             "http://127.0.0.1:8003",
             "http://localhost:8003",
+            # Hardcoded production frontend — always allowed regardless of env vars.
+            "https://gauravtrades.de",
+            "https://www.gauravtrades.de",
         ]
         fe = str(self.frontend_origin or "").strip()
         if fe:
