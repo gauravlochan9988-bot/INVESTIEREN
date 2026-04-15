@@ -68,7 +68,9 @@ def _derive_role_plan(
     db: Session,
 ) -> tuple[str, str]:
     owner_subjects = set(settings.get_owner_subjects())
-    if is_admin or user.auth_subject in owner_subjects:
+    owner_emails = set(settings.get_owner_emails())
+    user_email = str(getattr(user, "email", "") or "").strip().lower()
+    if is_admin or user.auth_subject in owner_subjects or (user_email and user_email in owner_emails):
         return "owner", "pro"
     subscription = subscription_repository.get_by_user_id(db, app_user_id=user.id)
     if subscription and subscription.status in {"active", "trialing"}:

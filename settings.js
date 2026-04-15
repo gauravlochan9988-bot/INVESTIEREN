@@ -51,6 +51,9 @@ const state = {
     subscription: null,
     preferences: null,
   },
+  adminAccess: {
+    user: null,
+  },
 };
 
 function resolveApiBaseUrl() {
@@ -378,6 +381,189 @@ function applyUserState() {
       billingContract.textContent = user.plan === "pro" ? "Monthly, cancellable anytime" : "Free tier contract";
     }
   }
+
+  setAdminAccessVisibility();
+}
+
+function isOwnerOrAdmin() {
+  const role = String(state.auth.user?.role || "").toLowerCase();
+  return Boolean(state.auth.user?.is_admin) || role === "owner";
+}
+
+function setAdminAccessVisibility() {
+  const visible = isOwnerOrAdmin();
+  const section = document.getElementById("admin-access");
+  const navItem = document.getElementById("adminAccessNavItem");
+  const selectOption = document.getElementById("adminAccessSelectOption");
+  if (section) {
+    section.hidden = !visible;
+  }
+  if (navItem) {
+    navItem.hidden = !visible;
+  }
+  if (selectOption) {
+    selectOption.hidden = !visible;
+  }
+  if (!visible) {
+    resetAdminAccessState();
+  }
+}
+
+function resetAdminAccessState() {
+  state.adminAccess.user = null;
+  const resultCard = document.getElementById("adminAccessResultCard");
+  const emptyState = document.getElementById("adminAccessResultEmpty");
+  const inline = document.getElementById("adminAccessInlineMessage");
+  const grantButton = document.getElementById("adminGrantProButton");
+  const revokeButton = document.getElementById("adminRevokeProButton");
+  if (resultCard) {
+    resultCard.hidden = true;
+  }
+  if (emptyState) {
+    emptyState.hidden = false;
+  }
+  if (inline) {
+    inline.hidden = true;
+    inline.textContent = "";
+  }
+  if (grantButton) {
+    grantButton.disabled = true;
+  }
+  if (revokeButton) {
+    revokeButton.disabled = true;
+  }
+}
+
+function setAdminInlineMessage(message, tone = "neutral") {
+  const node = document.getElementById("adminAccessInlineMessage");
+  if (!node) {
+    return;
+  }
+  const text = String(message || "").trim();
+  if (!text) {
+    node.hidden = true;
+    node.textContent = "";
+    node.style.color = "#64748b";
+    return;
+  }
+  node.hidden = false;
+  node.textContent = text;
+  node.style.color =
+    tone === "error" ? "#b91c1c" : tone === "success" ? "#166534" : "#64748b";
+}
+
+function renderAdminAccessUser(user) {
+  state.adminAccess.user = user || null;
+  const resultCard = document.getElementById("adminAccessResultCard");
+  const emptyState = document.getElementById("adminAccessResultEmpty");
+  const grantButton = document.getElementById("adminGrantProButton");
+  const revokeButton = document.getElementById("adminRevokeProButton");
+
+  if (!user?.found) {
+    if (resultCard) {
+      resultCard.hidden = true;
+    }
+    if (emptyState) {
+      emptyState.hidden = false;
+      emptyState.textContent =
+        user?.message || "User not found. The user must log in once before access can be managed.";
+    }
+    if (grantButton) {
+      grantButton.disabled = true;
+    }
+    if (revokeButton) {
+      revokeButton.disabled = true;
+    }
+    return;
+  }
+
+  if (resultCard) {
+    resultCard.hidden = false;
+  }
+  if (emptyState) {
+    emptyState.hidden = true;
+  }
+
+  const setText = (id, value) => {
+    const node = document.getElementById(id);
+    if (node) {
+      node.textContent = value;
+    }
+  };
+
+  setText("adminAccessResultEmail", user.email || "-");
+  setText("adminAccessResultName", user.name || "No display name");
+  setText("adminAccessResultPlan", String(user.plan || "free").toUpperCase());
+  setText("adminAccessResultRole", String(user.role || "user").toUpperCase());
+  setText("adminAccessResultSubscription", String(user.subscription_status || "inactive").toUpperCase());
+  setText("adminAccessResultId", user.app_user_id != null ? String(user.app_user_id) : "-");
+
+  const isOwner = String(user.role || "").toLowerCase() === "owner";
+  const isPro = String(user.plan || "").toLowerCase() === "pro";
+
+  if (grantButton) {
+    grantButton.disabled = isOwner || isPro;
+  }
+  if (revokeButton) {
+    revokeButton.disabled = isOwner || !isPro;
+  }
+}
+
+async function lookupAdminAccessUser() {
+  const emailInput = document.getElementById("adminAccessEmailInput");
+  const lookupButton = document.getElementById("adminAccessLookupButton");
+  const email = String(emailInput?.value || "").trim().toLowerCase();
+  if (!email) {
+    setAdminInlineMessage("Enter a user email first.", "error");
+    return;
+  }
+  try {
+    setAdminInlineMessage("Looking up user...");
+    if (lookupButton) {
+      lookupButton.disabled = true;
+    }
+    const payload = await api(`/api/admin/access/user?email=${encodeURIComponent(email)}`);
+    renderAdminAccessUser(payload);
+    setAdminInlineMessage(payload?.found ? "User loaded." : payload?.message || "User not found.", payload?.found ? "success" : "error");
+  } catch (error) {
+    resetAdminAccessState();
+    setAdminInlineMessage(error?.message || "Could not load user access.", "error");
+  } finally {
+    if (lookupButton) {
+      lookupButton.disabled = false;
+    }
+  }
+}
+
+async function updateAdminAccess(action) {
+  const user = state.adminAccess.user;
+  const email = String(user?.email || document.getElementById("adminAccessEmailInput")?.value || "").trim().toLowerCase();
+  if (!email) {
+    setAdminInlineMessage("Search for a user first.", "error");
+    return;
+  }
+
+  const grantButton = document.getElementById("adminGrantProButton");
+  const revokeButton = document.getElementById("adminRevokeProButton");
+  try {
+    setAdminInlineMessage(action === "grant" ? "Granting Pro..." : "Removing Pro...");
+    if (grantButton) {
+      grantButton.disabled = true;
+    }
+    if (revokeButton) {
+      revokeButton.disabled = true;
+    }
+    const endpoint = action === "grant" ? "/api/admin/access/grant-pro" : "/api/admin/access/revoke-pro";
+    const payload = await api(endpoint, {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+    renderAdminAccessUser(payload.user);
+    setAdminInlineMessage(payload.message || "Access updated.", "success");
+  } catch (error) {
+    setAdminInlineMessage(error?.message || "Could not update access.", "error");
+    renderAdminAccessUser(state.adminAccess.user);
+  }
 }
 
 function applyStoredPreferencesFallback() {
@@ -691,6 +877,29 @@ function bindActions() {
       "Delete account is protected. Contact support to complete verified account deletion.",
       "neutral",
     );
+  });
+
+  const adminLookupButton = document.getElementById("adminAccessLookupButton");
+  adminLookupButton?.addEventListener("click", () => {
+    void lookupAdminAccessUser();
+  });
+
+  const adminEmailInput = document.getElementById("adminAccessEmailInput");
+  adminEmailInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      void lookupAdminAccessUser();
+    }
+  });
+
+  const adminGrantButton = document.getElementById("adminGrantProButton");
+  adminGrantButton?.addEventListener("click", () => {
+    void updateAdminAccess("grant");
+  });
+
+  const adminRevokeButton = document.getElementById("adminRevokeProButton");
+  adminRevokeButton?.addEventListener("click", () => {
+    void updateAdminAccess("revoke");
   });
 
   [

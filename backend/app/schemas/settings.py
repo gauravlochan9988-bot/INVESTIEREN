@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -28,7 +28,7 @@ class UserSettingsResponse(BaseModel):
     new_device_notify: bool = True
     legal_analytics: bool = True
     legal_personalized: bool = True
-    updated_at: datetime | None = None
+    updated_at: Optional[datetime] = None
 
 
 class UserSettingsUpdateRequest(BaseModel):

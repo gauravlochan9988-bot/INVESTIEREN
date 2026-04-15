@@ -43,6 +43,7 @@
           <nav class="settings-nav" aria-label="Settings sections">
             <a href="#profile" data-settings-nav>Profile / Account</a>
             <a href="#billing" data-settings-nav>Subscription / Billing</a>
+            <a href="#admin-access" data-settings-nav id="adminAccessNavItem" hidden>Admin Access</a>
             <a href="#security" data-settings-nav>Security</a>
             <a href="#notifications" data-settings-nav>Notifications</a>
             <a href="#trading" data-settings-nav>Trading Preferences</a>
@@ -80,6 +81,7 @@
             <select id="settingsSectionSelect">
               <option value="profile">Profile / Account</option>
               <option value="billing">Subscription / Billing</option>
+              <option value="admin-access" id="adminAccessSelectOption" hidden>Admin Access</option>
               <option value="security">Security</option>
               <option value="notifications">Notifications</option>
               <option value="trading">Trading Preferences</option>
@@ -208,6 +210,68 @@
                 <div class="card-actions">
                   <button type="button" id="cancelSubscriptionButton" class="danger-button">Cancel subscription</button>
                   <button type="button" class="ghost-button">View cancellation terms</button>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section id="admin-access" class="settings-section" hidden>
+            <div class="section-heading">
+              <p class="section-kicker">Owner Tools</p>
+              <h2>Admin Access</h2>
+              <p>Find a user by email and switch Pro access on or off in a few seconds.</p>
+            </div>
+            <div class="settings-card-grid">
+              <article class="settings-card">
+                <h3>User lookup</h3>
+                <div class="settings-form-grid">
+                  <label>
+                    User email
+                    <input id="adminAccessEmailInput" type="email" placeholder="user@example.com" />
+                  </label>
+                </div>
+                <div class="card-actions">
+                  <button type="button" id="adminAccessLookupButton" class="primary-button">Find user</button>
+                </div>
+                <p id="adminAccessInlineMessage" class="muted-copy admin-inline-message" hidden></p>
+              </article>
+
+              <article class="settings-card">
+                <h3>Access state</h3>
+                <div id="adminAccessResultEmpty" class="admin-access-empty">
+                  Search for a user to view current access and manage Pro.
+                </div>
+                <div id="adminAccessResultCard" class="admin-access-result" hidden>
+                  <div class="admin-access-result-grid">
+                    <div>
+                      <span>Email</span>
+                      <strong id="adminAccessResultEmail">-</strong>
+                    </div>
+                    <div>
+                      <span>Name</span>
+                      <strong id="adminAccessResultName">-</strong>
+                    </div>
+                    <div>
+                      <span>Plan</span>
+                      <strong id="adminAccessResultPlan">-</strong>
+                    </div>
+                    <div>
+                      <span>Role</span>
+                      <strong id="adminAccessResultRole">-</strong>
+                    </div>
+                    <div>
+                      <span>Subscription</span>
+                      <strong id="adminAccessResultSubscription">-</strong>
+                    </div>
+                    <div>
+                      <span>User ID</span>
+                      <strong id="adminAccessResultId">-</strong>
+                    </div>
+                  </div>
+                  <div class="card-actions">
+                    <button type="button" id="adminGrantProButton" class="primary-button" disabled>Grant Pro</button>
+                    <button type="button" id="adminRevokeProButton" class="ghost-button" disabled>Remove Pro</button>
+                  </div>
                 </div>
               </article>
             </div>

@@ -76,3 +76,20 @@ def test_static_assets_are_available(client):
     assert "mergeLearningInsight" in response.text
     assert "recommendationIcon(" in response.text
     assert "hasMixedSignals" in response.text
+
+
+def test_settings_page_exposes_admin_access_controls(client):
+    response = client.get("/settings")
+
+    assert response.status_code == 200
+    assert 'id="adminAccessNavItem"' in response.text
+    assert 'id="adminAccessEmailInput"' in response.text
+    assert 'id="adminAccessLookupButton"' in response.text
+    assert 'id="adminGrantProButton"' in response.text
+    assert 'id="adminRevokeProButton"' in response.text
+
+    script_response = client.get("/settings.js")
+    assert script_response.status_code == 200
+    assert "/api/admin/access/user" in script_response.text
+    assert "/api/admin/access/grant-pro" in script_response.text
+    assert "/api/admin/access/revoke-pro" in script_response.text

@@ -136,6 +136,7 @@ class Settings(BaseSettings):
     cron_secret: str = ""
     favorite_signal_min_confidence_partial: float = 58.0
     owner_auth_subjects: str = ""
+    owner_emails: str = ""
 
     @model_validator(mode="after")
     def _fallback_frontend_origin_in_production(self) -> "Settings":
@@ -168,6 +169,13 @@ class Settings(BaseSettings):
 
     def get_owner_subjects(self) -> List[str]:
         return [part.strip() for part in self.owner_auth_subjects.split(",") if part.strip()]
+
+    def get_owner_emails(self) -> List[str]:
+        return [
+            part.strip().lower()
+            for part in self.owner_emails.split(",")
+            if part.strip()
+        ]
 
     def get_clerk_authorized_parties(self) -> List[str]:
         parties: list[str] = []

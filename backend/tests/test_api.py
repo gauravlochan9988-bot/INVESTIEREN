@@ -238,6 +238,65 @@ def test_search_universe_endpoint_returns_full_known_catalog(client):
     assert {"AAPL", "KO", "SPY", "COIN"}.issubset(symbols)
 
 
+def test_owner_can_lookup_and_manage_user_pro_access(client, db_session):
+    client.app.dependency_overrides[get_request_user_context] = lambda: RequestUserContext(
+        user_key="owner|desk",
+        app_user_id=91,
+        is_authenticated=True,
+        is_admin=False,
+        role="owner",
+        plan="pro",
+    )
+    try:
+        user = AppUser(
+            auth_subject="supabase|member-1",
+            provider="supabase",
+            email="member@example.com",
+            name="Member One",
+        )
+        db_session.add(user)
+        db_session.commit()
+
+        lookup = client.get("/api/admin/access/user", params={"email": "member@example.com"})
+        assert lookup.status_code == 200
+        lookup_payload = lookup.json()
+        assert lookup_payload["found"] is True
+        assert lookup_payload["plan"] == "free"
+        assert lookup_payload["subscription_status"] == "inactive"
+
+        grant = client.post("/api/admin/access/grant-pro", json={"email": "member@example.com"})
+        assert grant.status_code == 200
+        grant_payload = grant.json()
+        assert grant_payload["status"] == "ok"
+        assert grant_payload["user"]["plan"] == "pro"
+        assert grant_payload["user"]["subscription_status"] == "active"
+
+        revoke = client.post("/api/admin/access/revoke-pro", json={"email": "member@example.com"})
+        assert revoke.status_code == 200
+        revoke_payload = revoke.json()
+        assert revoke_payload["user"]["plan"] == "free"
+        assert revoke_payload["user"]["subscription_status"] == "inactive"
+    finally:
+        client.app.dependency_overrides.pop(get_request_user_context, None)
+
+
+def test_non_owner_cannot_use_admin_access_routes(client):
+    client.app.dependency_overrides[get_request_user_context] = lambda: RequestUserContext(
+        user_key="clerk|basic-user",
+        app_user_id=77,
+        is_authenticated=True,
+        is_admin=False,
+        role="user",
+        plan="free",
+    )
+    try:
+        response = client.get("/api/admin/access/user", params={"email": "member@example.com"})
+        assert response.status_code == 403
+        assert response.json()["detail"] == "Owner access required."
+    finally:
+        client.app.dependency_overrides.pop(get_request_user_context, None)
+
+
 def test_full_access_dependency_requires_authentication(client):
     client.app.dependency_overrides.pop(require_full_access_user_context, None)
     try:

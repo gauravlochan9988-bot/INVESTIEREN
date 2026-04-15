@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.routes.analysis import router as analysis_router
+from app.api.routes.admin_access import router as admin_access_router
 from app.api.routes.internal_cron import router as internal_cron_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.billing import router as billing_router
@@ -13,6 +14,7 @@ from app.api.routes.user_alerts import router as user_alerts_router
 
 
 api_router = APIRouter(prefix="/api")
+api_router.include_router(admin_access_router)
 api_router.include_router(auth_router)
 api_router.include_router(billing_router)
 api_router.include_router(dashboard_router)

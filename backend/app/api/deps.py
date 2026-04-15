@@ -23,6 +23,7 @@ from app.repositories.user_notification import UserNotificationRepository
 from app.services.alerts import AlertService
 from app.services.analysis_calibration import AnalysisCalibrationService
 from app.services.analysis import AnalysisService
+from app.services.admin_access import AdminAccessService
 from app.services.favorite_signal_monitor import FavoriteSignalMonitorService
 from app.services.billing import BillingService
 from app.services.finnhub_dashboard import FinnhubDashboardService
@@ -82,7 +83,9 @@ def _resolve_role_plan(
     db: Session,
 ) -> tuple[str, str]:
     owner_subjects = set(settings.get_owner_subjects())
-    if is_admin or user.auth_subject in owner_subjects:
+    owner_emails = set(settings.get_owner_emails())
+    user_email = str(getattr(user, "email", "") or "").strip().lower()
+    if is_admin or user.auth_subject in owner_subjects or (user_email and user_email in owner_emails):
         return "owner", "pro"
     subscription = subscription_repository.get_by_user_id(db, app_user_id=user.id)
     if subscription and subscription.status in {"active", "trialing"}:
@@ -445,6 +448,17 @@ def require_pro_user_context(
     return user_context
 
 
+def require_owner_user_context(
+    user_context: RequestUserContext = Depends(require_authenticated_user_context),
+) -> RequestUserContext:
+    if user_context.is_admin or user_context.role == "owner":
+        return user_context
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Owner access required.",
+    )
+
+
 def ensure_strategy_access(
     user_context: RequestUserContext,
     strategy: str,
@@ -473,6 +487,19 @@ def get_billing_service_instance() -> BillingService:
 
 def get_billing_service() -> BillingService:
     return get_billing_service_instance()
+
+
+@lru_cache
+def get_admin_access_service_instance() -> AdminAccessService:
+    return AdminAccessService(
+        settings=get_settings(),
+        app_user_repository=get_app_user_repository_instance(),
+        subscription_repository=get_app_subscription_repository_instance(),
+    )
+
+
+def get_admin_access_service() -> AdminAccessService:
+    return get_admin_access_service_instance()
 
 
 def get_trade_performance_repository() -> TradePerformanceRepository:

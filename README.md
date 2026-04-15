@@ -68,6 +68,16 @@ uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT}
 X-Cron-Secret: $CRON_SECRET
 ```
 
+### Grant Pro access manually
+- Existing users can be upgraded directly in the app database after they have logged in at least once.
+- Run:
+
+```bash
+PYTHONPATH=backend .venv/bin/python backend/scripts/grant_pro_access.py gauravlochan9988@gmail.com
+```
+
+- The script uses the active `DATABASE_URL`, so on Railway/Neon it updates the live user record.
+
 ## Neon database
 - Set `DATABASE_URL` to Neon Postgres:
 
@@ -90,6 +100,7 @@ DATABASE_URL=postgresql+psycopg2://USER:PASSWORD@ep-xxxxxx.eu-central-1.aws.neon
 - `FRONTEND_ORIGIN`
 - `CORS_ALLOW_ORIGINS` (comma-separated, optional)
 - `OWNER_AUTH_SUBJECTS` (comma-separated auth `sub` values with owner access)
+- `OWNER_EMAILS` (comma-separated emails with owner access; easiest for manual allowlisting)
 - `CRON_SECRET`
 
 ## API overview

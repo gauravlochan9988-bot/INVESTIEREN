@@ -13,6 +13,13 @@ class AppUserRepository:
         statement = select(AppUser).where(AppUser.auth_subject == auth_subject)
         return db.scalar(statement)
 
+    def get_by_email(self, db: Session, *, email: str) -> Optional[AppUser]:
+        normalized_email = (email or "").strip().lower()
+        if not normalized_email:
+            return None
+        statement = select(AppUser).where(func.lower(AppUser.email) == normalized_email)
+        return db.scalar(statement)
+
     def upsert_from_claims(
         self,
         db: Session,
