@@ -27,7 +27,7 @@ const LOCAL_API_HOSTS = new Set(["127.0.0.1", "localhost"]);
 /** Local FastAPI (uvicorn); static pages on other ports still call API here */
 const LOCAL_API_PORT = "8003";
 const AUTH_TOKEN_CACHE_MS = 45 * 1000;
-const SIMPLE_ACCESS_CODE = "9988";
+const SIMPLE_ACCESS_CODE = "8899";
 const BOOT_ANIMATION_FREEZE_MS = 900;
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const AUTH_RESEND_COOLDOWN_SECONDS = 30;
@@ -4713,12 +4713,17 @@ function resetAuthOverlayPosition() {
   }
 
   const resetScroll = () => {
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
     elements.authOverlay.scrollTop = 0;
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   };
 
   resetScroll();
   window.requestAnimationFrame(resetScroll);
+  window.setTimeout(resetScroll, 80);
+  window.setTimeout(resetScroll, 220);
+  window.setTimeout(resetScroll, 420);
 }
 
 function showAppShell() {
@@ -6692,6 +6697,7 @@ function deferToNextFrame() {
 }
 
 async function initializeApp() {
+  resetAuthOverlayPosition();
   await deferToNextFrame();
   initI18n();
   releaseBootAnimationFreeze();

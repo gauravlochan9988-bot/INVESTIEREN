@@ -1159,7 +1159,8 @@ body.booting *::after {
   overflow-anchor: none;
   overflow-x: hidden;
   scrollbar-gutter: stable both-edges;
-  padding: 1.25rem 0 1.75rem;
+  padding: max(1.25rem, calc(env(safe-area-inset-top, 0px) + 0.45rem)) 0 1.75rem;
+  scroll-padding-top: max(1.25rem, calc(env(safe-area-inset-top, 0px) + 0.45rem));
   background:
     radial-gradient(circle at 0% 0%, rgba(0, 92, 57, 0.07), transparent 42%),
     radial-gradient(circle at 100% 85%, rgba(255, 193, 7, 0.07), transparent 40%),
@@ -1752,11 +1753,13 @@ body.booting *::after {
 @media (max-width: 768px) {
   #authOverlay {
     background: linear-gradient(180deg, #fdfdfb 0%, var(--color-page) 55%, #f3f2ed 100%);
+    padding-top: max(0.95rem, calc(env(safe-area-inset-top, 0px) + 0.55rem));
+    scroll-padding-top: max(0.95rem, calc(env(safe-area-inset-top, 0px) + 0.55rem));
   }
 
   .auth-landing-shell {
     min-height: 100svh;
-    padding-top: 0.5rem;
+    padding-top: 0.95rem;
     padding-bottom: 1rem;
   }
 
@@ -1794,7 +1797,7 @@ body.booting *::after {
   flex-direction: column;
   justify-content: flex-start;
   gap: clamp(1.25rem, 3vw, 2.5rem);
-  padding-top: clamp(0.75rem, 2.5vw, 3.4rem);
+  padding-top: clamp(1.2rem, 2.8vw, 3.6rem);
   padding-bottom: clamp(1.25rem, 2.5vw, 2.8rem);
   padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
   padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
@@ -1910,7 +1913,7 @@ body.booting *::after {
 .auth-landing-title {
   margin: 0;
   font-size: clamp(3.1rem, 7vw, 5.1rem);
-  line-height: 0.94;
+  line-height: 0.98;
   letter-spacing: -0.065em;
   font-weight: 800;
   color: var(--color-text);
@@ -6836,7 +6839,12 @@ html.auth-session-hint #appShell.hidden {
   }
 }
 
-/* Auth top offset fix: keep both desktop columns below viewport top */
+/* Auth top offset fix: keep login content consistently below viewport top */
+#authOverlay > section.auth-landing-shell.login-container {
+  margin-top: 0.65rem !important;
+  padding-top: clamp(1.25rem, 3.2vh, 2.6rem) !important;
+}
+
 @media (min-width: 1200px) {
   #authOverlay > section.auth-landing-shell.login-container {
     margin-top: 1.25rem !important;
