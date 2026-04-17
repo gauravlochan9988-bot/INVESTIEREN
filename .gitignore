@@ -22,3 +22,4 @@ htmlcov/
 *.db-journal
 _write_probe.txt
 uvicorn_*.log
+_write_test_*.tmp
