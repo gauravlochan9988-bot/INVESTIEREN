@@ -1159,8 +1159,7 @@ body.booting *::after {
   overflow-anchor: none;
   overflow-x: hidden;
   scrollbar-gutter: stable both-edges;
-  padding: max(1.25rem, calc(env(safe-area-inset-top, 0px) + 0.45rem)) 0 1.75rem;
-  scroll-padding-top: max(1.25rem, calc(env(safe-area-inset-top, 0px) + 0.45rem));
+  padding: 1.25rem 0 1.75rem;
   background:
     radial-gradient(circle at 0% 0%, rgba(0, 92, 57, 0.07), transparent 42%),
     radial-gradient(circle at 100% 85%, rgba(255, 193, 7, 0.07), transparent 40%),
@@ -1753,13 +1752,11 @@ body.booting *::after {
 @media (max-width: 768px) {
   #authOverlay {
     background: linear-gradient(180deg, #fdfdfb 0%, var(--color-page) 55%, #f3f2ed 100%);
-    padding-top: max(0.95rem, calc(env(safe-area-inset-top, 0px) + 0.55rem));
-    scroll-padding-top: max(0.95rem, calc(env(safe-area-inset-top, 0px) + 0.55rem));
   }
 
   .auth-landing-shell {
     min-height: 100svh;
-    padding-top: 0.95rem;
+    padding-top: 0.5rem;
     padding-bottom: 1rem;
   }
 
@@ -1797,7 +1794,7 @@ body.booting *::after {
   flex-direction: column;
   justify-content: flex-start;
   gap: clamp(1.25rem, 3vw, 2.5rem);
-  padding-top: clamp(1.2rem, 2.8vw, 3.6rem);
+  padding-top: clamp(0.75rem, 2.5vw, 3.4rem);
   padding-bottom: clamp(1.25rem, 2.5vw, 2.8rem);
   padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
   padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
@@ -1913,7 +1910,7 @@ body.booting *::after {
 .auth-landing-title {
   margin: 0;
   font-size: clamp(3.1rem, 7vw, 5.1rem);
-  line-height: 0.98;
+  line-height: 0.94;
   letter-spacing: -0.065em;
   font-weight: 800;
   color: var(--color-text);
@@ -6322,12 +6319,30 @@ header.dashboard-topbar.dashboard-topbar-premium .dashboard-lang-switch {
 /* Stronger visual hierarchy inside auth card (email/password-only layout) */
 #authForm .auth-login-card > .auth-mode-toggle-row.grid.grid-cols-2.gap-2 {
   margin-top: 0.55rem;
-  position: sticky;
-  top: 0;
-  z-index: 8;
-  padding: 0.35rem 0 0.45rem;
-  background: var(--color-surface-2);
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+  padding: 0.25rem;
+  border-radius: 1.1rem;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+#authForm .auth-login-card > .auth-mode-toggle-row.grid.grid-cols-2.gap-2 > button {
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0.9rem !important;
+}
+
+#authForm
+  .auth-login-card
+  > .auth-mode-toggle-row.grid.grid-cols-2.gap-2
+  > button.bg-white {
+  background: transparent !important;
+}
+
+#authForm
+  .auth-login-card
+  > .auth-mode-toggle-row.grid.grid-cols-2.gap-2
+  > button.bg-neutral-900 {
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.16);
 }
 
 .risk-disclaimer-modal {
@@ -6839,23 +6854,11 @@ html.auth-session-hint #appShell.hidden {
   }
 }
 
-/* Auth top offset fix: keep login content consistently below viewport top */
-#authOverlay > section.auth-landing-shell.login-container {
-  margin-top: max(1.1rem, calc(env(safe-area-inset-top, 0px) + 0.45rem)) !important;
-  padding-top: clamp(2.35rem, 5.8vh, 4.4rem) !important;
-}
-
+/* Auth top offset fix: keep both desktop columns below viewport top */
 @media (min-width: 1200px) {
   #authOverlay > section.auth-landing-shell.login-container {
     margin-top: 1.25rem !important;
     padding-top: clamp(2.4rem, 4.2vh, 3.4rem) !important;
-  }
-}
-
-@media (max-width: 768px) {
-  #authOverlay > section.auth-landing-shell.login-container {
-    margin-top: max(0.9rem, env(safe-area-inset-top, 0px)) !important;
-    padding-top: max(2.45rem, calc(env(safe-area-inset-top, 0px) + 1.15rem)) !important;
   }
 }
 
@@ -7227,56 +7230,5 @@ header.dashboard-topbar-premium #strategyToggle .strategy-button-idle {
 @media (max-width: 768px) {
   header.dashboard-topbar-premium #strategyToggle .strategy-button {
     min-height: 44px;
-  }
-}
-
-/* Final auth start fix:
-   prevent vertical centering from clipping the top logo row,
-   and always start both columns below the browser top bar. */
-#authOverlay {
-  justify-content: flex-start !important;
-  align-items: stretch !important;
-  padding-top: max(1rem, env(safe-area-inset-top, 0px)) !important;
-}
-
-#authOverlay > section.auth-landing-shell.login-container {
-  margin-top: max(1.2rem, env(safe-area-inset-top, 0px)) !important;
-  padding-top: max(1.5rem, calc(env(safe-area-inset-top, 0px) + 0.9rem)) !important;
-}
-
-/* Localhost tends to sit slightly higher in some browser chrome layouts */
-html.is-localhost #authOverlay > section.auth-landing-shell.login-container {
-  margin-top: max(2.4rem, env(safe-area-inset-top, 0px)) !important;
-  padding-top: max(2.8rem, calc(env(safe-area-inset-top, 0px) + 1.8rem)) !important;
-}
-
-#authOverlay .auth-landing-copy {
-  padding-top: max(1.4rem, calc(env(safe-area-inset-top, 0px) + 0.85rem)) !important;
-  overflow: visible !important;
-}
-
-#authOverlay .auth-landing-title {
-  line-height: 1.08 !important;
-  padding-top: 0.08em;
-  overflow: visible;
-}
-
-@media (max-width: 768px) {
-  #authOverlay {
-    padding-top: max(0.8rem, env(safe-area-inset-top, 0px)) !important;
-  }
-
-  #authOverlay > section.auth-landing-shell.login-container {
-    margin-top: max(1.2rem, env(safe-area-inset-top, 0px)) !important;
-    padding-top: max(1.6rem, calc(env(safe-area-inset-top, 0px) + 1rem)) !important;
-  }
-
-  html.is-localhost #authOverlay > section.auth-landing-shell.login-container {
-    margin-top: max(2rem, env(safe-area-inset-top, 0px)) !important;
-    padding-top: max(2.5rem, calc(env(safe-area-inset-top, 0px) + 1.7rem)) !important;
-  }
-
-  #authOverlay .auth-landing-copy {
-    padding-top: max(1.25rem, calc(env(safe-area-inset-top, 0px) + 0.8rem)) !important;
   }
 }

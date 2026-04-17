@@ -2,6 +2,7 @@ node_modules/
 my-clerk-app/
 .cursor/
 .DS_Store
+._*
 .env
 .neon
 .venv/
@@ -15,3 +16,9 @@ __pycache__/
 backend/.pytest_cache/
 backend/htmlcov/
 htmlcov/
+
+# Local SQLite artifacts
+*.db
+*.db-journal
+_write_probe.txt
+uvicorn_*.log
