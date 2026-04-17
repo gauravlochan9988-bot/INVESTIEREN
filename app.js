@@ -24,6 +24,9 @@ function readMetaApiOrigin() {
 const DEPLOYED_API_ORIGIN = readMetaApiOrigin() || "https://investieren-production.up.railway.app";
 const STRIPE_PAYMENT_LINK_URL = "https://buy.stripe.com/00w9AS43G9V73c1aa08Zq00";
 const LOCAL_API_HOSTS = new Set(["127.0.0.1", "localhost"]);
+if (LOCAL_API_HOSTS.has(window.location.hostname)) {
+  document.documentElement.classList.add("is-localhost");
+}
 /** Local FastAPI (uvicorn); static pages on other ports still call API here */
 const LOCAL_API_PORT = "8003";
 const AUTH_TOKEN_CACHE_MS = 45 * 1000;

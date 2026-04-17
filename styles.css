@@ -6841,14 +6841,21 @@ html.auth-session-hint #appShell.hidden {
 
 /* Auth top offset fix: keep login content consistently below viewport top */
 #authOverlay > section.auth-landing-shell.login-container {
-  margin-top: 0.65rem !important;
-  padding-top: clamp(1.25rem, 3.2vh, 2.6rem) !important;
+  margin-top: max(1.1rem, calc(env(safe-area-inset-top, 0px) + 0.45rem)) !important;
+  padding-top: clamp(2.35rem, 5.8vh, 4.4rem) !important;
 }
 
 @media (min-width: 1200px) {
   #authOverlay > section.auth-landing-shell.login-container {
     margin-top: 1.25rem !important;
     padding-top: clamp(2.4rem, 4.2vh, 3.4rem) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  #authOverlay > section.auth-landing-shell.login-container {
+    margin-top: max(0.9rem, env(safe-area-inset-top, 0px)) !important;
+    padding-top: max(2.45rem, calc(env(safe-area-inset-top, 0px) + 1.15rem)) !important;
   }
 }
 
@@ -7220,5 +7227,56 @@ header.dashboard-topbar-premium #strategyToggle .strategy-button-idle {
 @media (max-width: 768px) {
   header.dashboard-topbar-premium #strategyToggle .strategy-button {
     min-height: 44px;
+  }
+}
+
+/* Final auth start fix:
+   prevent vertical centering from clipping the top logo row,
+   and always start both columns below the browser top bar. */
+#authOverlay {
+  justify-content: flex-start !important;
+  align-items: stretch !important;
+  padding-top: max(1rem, env(safe-area-inset-top, 0px)) !important;
+}
+
+#authOverlay > section.auth-landing-shell.login-container {
+  margin-top: max(1.2rem, env(safe-area-inset-top, 0px)) !important;
+  padding-top: max(1.5rem, calc(env(safe-area-inset-top, 0px) + 0.9rem)) !important;
+}
+
+/* Localhost tends to sit slightly higher in some browser chrome layouts */
+html.is-localhost #authOverlay > section.auth-landing-shell.login-container {
+  margin-top: max(2.4rem, env(safe-area-inset-top, 0px)) !important;
+  padding-top: max(2.8rem, calc(env(safe-area-inset-top, 0px) + 1.8rem)) !important;
+}
+
+#authOverlay .auth-landing-copy {
+  padding-top: max(1.4rem, calc(env(safe-area-inset-top, 0px) + 0.85rem)) !important;
+  overflow: visible !important;
+}
+
+#authOverlay .auth-landing-title {
+  line-height: 1.08 !important;
+  padding-top: 0.08em;
+  overflow: visible;
+}
+
+@media (max-width: 768px) {
+  #authOverlay {
+    padding-top: max(0.8rem, env(safe-area-inset-top, 0px)) !important;
+  }
+
+  #authOverlay > section.auth-landing-shell.login-container {
+    margin-top: max(1.2rem, env(safe-area-inset-top, 0px)) !important;
+    padding-top: max(1.6rem, calc(env(safe-area-inset-top, 0px) + 1rem)) !important;
+  }
+
+  html.is-localhost #authOverlay > section.auth-landing-shell.login-container {
+    margin-top: max(2rem, env(safe-area-inset-top, 0px)) !important;
+    padding-top: max(2.5rem, calc(env(safe-area-inset-top, 0px) + 1.7rem)) !important;
+  }
+
+  #authOverlay .auth-landing-copy {
+    padding-top: max(1.25rem, calc(env(safe-area-inset-top, 0px) + 0.8rem)) !important;
   }
 }
