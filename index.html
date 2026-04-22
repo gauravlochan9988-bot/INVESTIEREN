@@ -9,6 +9,12 @@
     />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="color-scheme" content="light" />
+    <style>
+      :root {
+        --color-page: #fdfdfc;
+      }
+      body { background-color: var(--color-page); }
+    </style>
     <meta
       name="investieren-api-origin"
       content="https://investieren-production.up.railway.app"
@@ -30,7 +36,7 @@
     <link rel="stylesheet" href="styles.css" />
     <script src="auth-boot.js"></script>
   </head>
-  <body class="booting min-h-screen max-w-full overflow-x-hidden bg-[#F9F9F8] text-neutral-900 antialiased">
+  <body class="booting min-h-screen max-w-full overflow-x-hidden bg-[#fdfdfc] text-gray-900 antialiased font-['Inter']">
     <div
       id="authOverlay"
       class="fixed inset-0 z-30 flex min-h-[100dvh] flex-col items-stretch justify-start overflow-x-hidden overflow-y-auto overscroll-y-contain pt-[env(safe-area-inset-top)] pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center sm:justify-center"
@@ -54,7 +60,7 @@
             </div>
 
             <div class="auth-landing-headline-block">
-              <h1 class="auth-landing-title" data-i18n="auth.title">GQ Trading System</h1>
+              <h1 class="auth-landing-title font-heading" data-i18n="auth.title">GQ Trading System</h1>
               <p class="auth-landing-subtitle" data-i18n="auth.subtitle">Echtzeit-Signale. KI-gestützte Entscheidungen.</p>
               <p class="auth-landing-description" data-i18n="auth.description">
                 Ein privates Trading-Terminal fur schnelle Marktanalysen, klare Ausfuhrungslogik und Signal-Monitoring mit hoher Ueberzeugung.
@@ -65,7 +71,7 @@
               <div class="auth-login-card">
                 <div class="auth-card-intro">
                   <p class="auth-card-kicker">Member Login</p>
-                  <p class="auth-card-title">Enter the terminal</p>
+                  <p class="auth-card-title font-heading">Enter the terminal</p>
                 </div>
                 <div class="auth-mode-toggle-row grid grid-cols-2 gap-2">
                   <button id="authModeLoginButton" type="button" class="rounded-xl border border-neutral-200/90 bg-white px-3 py-2 text-sm font-semibold text-neutral-900">
@@ -156,7 +162,7 @@
                   <button id="authForgotPasswordButton" type="button" class="auth-landing-secondary">
                     Forgot password?
                   </button>
-                  <button id="authSubmitButton" type="submit" class="auth-private-button auth-landing-primary login-button">
+                  <button id="authSubmitButton" type="submit" class="auth-private-button auth-landing-primary login-button bg-[#004d32] hover:bg-[#003a26]">
                     Login
                   </button>
                 </div>
@@ -268,7 +274,7 @@
               </p>
               <a
                 href="pricing.html"
-                class="auth-purchase-cta"
+                class="auth-purchase-cta bg-[#004d32] hover:bg-[#003a26]"
                 data-i18n="auth.purchaseCta"
                 data-i18n-aria="auth.purchaseCtaAria"
               >
@@ -440,7 +446,7 @@
               >
                 <span id="headerMonogram" aria-hidden="true">GQ</span>
                 <span class="dashboard-brand-copy">
-                  <span class="dashboard-brand-name">GQ Trading</span>
+                  <span class="dashboard-brand-name font-heading text-xl">GQ Trading</span>
                   <span class="dashboard-brand-subtitle" data-i18n="dashboard.privateSystem">Privates Handelssystem</span>
                 </span>
               </button>
@@ -582,8 +588,8 @@
           >
             <div id="watchlistHeader" class="mb-4 flex shrink-0 items-end justify-between">
               <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-700" data-i18n="dashboard.kickerLive">LIVE</p>
-                <h2 class="mt-2 text-xl font-semibold text-neutral-950" data-i18n="watchlist.quotes">Kurse</h2>
+                <p class="text-xs font-semibold uppercase tracking-[0.12em] text-[#d97706]" data-i18n="dashboard.kickerLive">LIVE</p>
+                <h2 class="mt-2 text-xl font-bold font-heading text-gray-950" data-i18n="watchlist.quotes">Kurse</h2>
               </div>
               <span id="watchlistMeta" class="text-xs font-semibold text-neutral-700" data-i18n="watchlist.syncing">Synchronisiere...</span>
             </div>
@@ -617,9 +623,9 @@
             <div id="selectedSymbolSection" class="dashboard-panel min-w-0 rounded-[24px] border border-neutral-200/90 bg-white p-4 shadow-lg shadow-black/[0.06] sm:rounded-[28px] sm:p-5">
               <div id="selectedSymbolHero" class="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
-                  <p class="text-xs font-medium text-neutral-600" data-i18n="symbol.selected">Ausgewahlt</p>
-                  <h2 id="selectedSymbolName" class="mt-2 break-words text-2xl font-semibold tracking-tight xl:text-3xl">AAPL</h2>
-                  <p id="selectedCompanyName" class="mt-1 break-words text-sm text-neutral-500">Apple Inc</p>
+                  <p class="text-xs font-medium text-gray-500" data-i18n="symbol.selected">Ausgewahlt</p>
+                  <h2 id="selectedSymbolName" class="mt-2 break-words text-2xl font-bold font-heading tracking-tight xl:text-4xl">AAPL</h2>
+                  <p id="selectedCompanyName" class="mt-1 break-words text-sm text-gray-400">Apple Inc</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2 md:justify-end">
                   <div id="changeBadge" class="inline-flex w-fit rounded-full bg-[#005c39]/12 px-4 py-2 text-sm font-semibold text-[#004730]">

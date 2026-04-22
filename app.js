@@ -1742,7 +1742,7 @@ function renderSubscriptionButton() {
     elements.subscribeButton.textContent = "Full Access";
     elements.subscribeButton.disabled = true;
     elements.subscribeButton.className =
-      "action-secondary rounded-2xl border border-[#005c39]/25 bg-[#005c39]/10 px-4 py-3 text-sm font-semibold text-[#005c39] opacity-90 xl:min-w-[132px]";
+      "action-secondary rounded-2xl border border-[#004d32]/25 bg-[#004d32]/10 px-4 py-3 text-sm font-semibold text-[#004d32] opacity-90 xl:min-w-[132px]";
     return;
   }
 
@@ -3849,7 +3849,7 @@ function renderLearningStats(response = emptyLearningResponse()) {
       return `
         <article class="rounded-2xl border p-4 ${
           active
-            ? "border-[#005c39]/30 bg-[#005c39]/10 shadow-md shadow-black/10"
+            ? "border-[#004d32]/30 bg-[#004d32]/10 shadow-md shadow-black/10"
             : "border-neutral-200/90 bg-white"
         }">
           <div class="flex items-start justify-between gap-3">
@@ -3858,7 +3858,7 @@ function renderLearningStats(response = emptyLearningResponse()) {
                 <p class="text-sm font-semibold text-neutral-900">${getStrategyLabel(profile.strategy) || titleCase(profile.strategy)}</p>
                 ${
                   active
-                    ? `<span class="rounded-full border border-[#005c39]/25 bg-[#005c39]/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#005c39]">${escapeHtml(t("learning.selected"))}</span>`
+                    ? `<span class="rounded-full border border-[#004d32]/25 bg-[#004d32]/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#004d32]">${escapeHtml(t("learning.selected"))}</span>`
                     : ""
                 }
               </div>
@@ -5171,7 +5171,7 @@ function renderWatchlist(items) {
     card.className = [
       "watchlist-slot w-full rounded-2xl border px-4 py-4 text-left transition",
       active
-        ? "border-[#005c39]/35 bg-[#005c39]/10 shadow-md shadow-black/10"
+        ? "border-[#004d32]/35 bg-[#004d32]/10 shadow-md shadow-black/10"
         : quoteStatus === "fetch_error"
           ? "border-neutral-200/90 bg-neutral-50/90 hover:bg-neutral-100"
           : "border-neutral-200/90 bg-neutral-50 hover:bg-neutral-100",
@@ -5486,7 +5486,7 @@ function renderOverview(overview) {
     "inline-flex w-fit rounded-full px-4 py-2 text-sm font-semibold",
     hasPrice
       ? positive
-        ? "bg-[#005c39]/12 text-[#004730]"
+        ? "bg-[#004d32]/12 text-[#003a26]"
         : "bg-rose-500/15 text-rose-700"
       : "bg-neutral-100 text-neutral-600",
   ].join(" ");
